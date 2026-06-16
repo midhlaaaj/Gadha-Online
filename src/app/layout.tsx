@@ -1,0 +1,37 @@
+import type { Metadata } from "next";
+import { Outfit, Poppins } from "next/font/google";
+import "./globals.css";
+
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+});
+
+const poppins = Poppins({
+  variable: "--font-poppins",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+export const metadata: Metadata = {
+  title: "Tutoboard - Premium Online Tutoring",
+  description: "Connect with verified top-rated tutors for 1-on-1 sessions, structured courses, and hourly lessons.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${outfit.variable} ${poppins.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col font-sans">
+        {children}
+      </body>
+    </html>
+  );
+}

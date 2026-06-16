@@ -1,0 +1,408 @@
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Poppins',sans-serif;background:#fff;color:#1B3A6B;}
+.site{width:100%;background:#fff;}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:60px;background:#fff;border-bottom:0.5px solid #d0dcf5;position:sticky;top:0;z-index:50;}
+.nav-logo{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1B3A6B;letter-spacing:-0.5px;}
+.nav-logo span{color:#2F7FE8;}
+.nav-links{display:flex;gap:20px;align-items:center;}
+.nav-links a{font-size:13px;font-weight:500;color:#4a5a7a;text-decoration:none;}
+.btn-nav{font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;padding:8px 18px;border-radius:8px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;}
+
+/* PAGE HEADER */
+.page-header{background:#F5F8FF;padding:32px 28px 24px;border-bottom:0.5px solid #d0dcf5;}
+.breadcrumb{font-size:12px;color:#4a5a7a;margin-bottom:10px;}
+.breadcrumb a{color:#2F7FE8;text-decoration:none;font-weight:500;}
+.breadcrumb span{margin:0 6px;color:#b9c5dd;}
+
+/* TITLE ROW — title left, search icon right */
+.header-title-row{display:flex;align-items:center;justify-content:space-between;}
+.header-text{}
+.page-title{font-family:'Outfit',sans-serif;font-size:26px;font-weight:800;color:#1B3A6B;margin-bottom:4px;}
+.page-sub{font-size:13px;color:#4a5a7a;}
+
+/* EXPANDABLE SEARCH */
+.search-widget{display:flex;align-items:center;justify-content:flex-end;gap:0;}
+.search-icon-btn{width:40px;height:40px;border-radius:10px;border:1.5px solid #d0dcf5;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:border-color 0.2s,background 0.2s;z-index:2;position:relative;}
+.search-icon-btn:hover{border-color:#2F7FE8;background:#F0F6FF;}
+.search-icon-btn i{font-size:16px;color:#1B3A6B;}
+.search-expand{display:flex;align-items:center;overflow:hidden;width:0;transition:width 0.3s ease,opacity 0.3s ease;opacity:0;margin-right:0;}
+.search-expand.open{width:280px;opacity:1;margin-right:8px;}
+.search-inner{display:flex;align-items:center;background:#fff;border:1.5px solid #2F7FE8;border-radius:10px;overflow:hidden;width:100%;}
+.search-inner input{flex:1;font-family:'Poppins',sans-serif;font-size:13px;padding:9px 12px;border:none;outline:none;color:#1B3A6B;background:transparent;}
+.search-inner input::placeholder{color:#9aaecf;}
+.search-clear{width:32px;height:100%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9aaecf;font-size:13px;flex-shrink:0;}
+.search-clear:hover{color:#1B3A6B;}
+
+/* MAIN */
+.main{padding:22px 28px 48px;}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:16px;border-bottom:0.5px solid #d0dcf5;}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.btn-filter{display:inline-flex;align-items:center;gap:7px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;padding:9px 16px;border-radius:9px;border:1.5px solid #1B3A6B;color:#1B3A6B;background:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.btn-filter:hover{background:#F5F8FF;}
+.filter-badge{width:18px;height:18px;border-radius:50%;background:#2F7FE8;color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;}
+.divider-v{width:1px;height:24px;background:#d0dcf5;flex-shrink:0;}
+.tab-strip{display:flex;gap:6px;align-items:center;overflow-x:auto;}
+.tab-strip::-webkit-scrollbar{display:none;}
+.tab{font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;padding:8px 16px;border-radius:99px;border:1px solid #d0dcf5;color:#4a5a7a;background:#fff;cursor:pointer;white-space:nowrap;}
+.tab.active{background:#1B3A6B;color:#fff;border-color:#1B3A6B;}
+.tab:hover:not(.active){background:#F5F8FF;}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.sort-label{font-size:12px;color:#4a5a7a;white-space:nowrap;}
+.sort-select{font-family:'Poppins',sans-serif;font-size:12px;font-weight:500;padding:9px 14px;border-radius:9px;border:0.5px solid #d0dcf5;color:#1B3A6B;background:#fff;cursor:pointer;outline:none;}
+
+/* SUBBAR */
+.subbar{display:flex;align-items:center;justify-content:space-between;margin-top:14px;margin-bottom:20px;min-height:28px;}
+.active-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:5px 6px 5px 12px;border-radius:99px;background:#E6F1FB;color:#0C447C;}
+.pill-x{width:16px;height:16px;border-radius:50%;background:#b5d0f0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:#0C447C;}
+.clear-all{font-size:11px;color:#2F7FE8;font-weight:600;cursor:pointer;text-decoration:underline;margin-left:4px;}
+.results-count{font-size:12px;color:#4a5a7a;white-space:nowrap;flex-shrink:0;}
+.results-count strong{color:#1B3A6B;}
+
+/* COURSE GRID */
+.cards-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
+.card{background:#fff;border:0.5px solid #d0dcf5;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
+.card-img-placeholder{width:100%;height:150px;display:flex;align-items:center;justify-content:center;position:relative;}
+.live-tag{position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:5px;background:#1B3A6B;color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:99px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#FFC107;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.card-body{padding:16px 18px 18px;display:flex;flex-direction:column;}
+.card-tag{font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;background:#E6F1FB;color:#0C447C;display:inline-block;margin-bottom:8px;align-self:flex-start;}
+.card-tag-gold{background:#FFF3CD;color:#7a4d00;}
+.card-tag-green{background:#dcfce7;color:#085041;}
+.card-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;color:#1B3A6B;margin-bottom:6px;line-height:1.3;}
+.card-desc{font-size:12px;color:#4a5a7a;line-height:1.6;margin-bottom:12px;flex:1;}
+.card-meta{display:flex;align-items:center;gap:6px;margin-bottom:14px;}
+.card-rating{font-size:12px;font-weight:600;color:#FFC107;}
+.card-reviews{font-size:11px;color:#4a5a7a;}
+.card-price{font-family:'Outfit',sans-serif;font-size:17px;font-weight:700;color:#1B3A6B;}
+.card-btns{display:flex;gap:8px;}
+.btn-book{flex:1;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;text-align:center;}
+.btn-details{flex:1;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:transparent;color:#1B3A6B;border:1px solid #1B3A6B;cursor:pointer;text-align:center;}
+
+/* PAGINATION */
+.pagination{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:30px;}
+.page-btn{font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;width:34px;height:34px;border-radius:8px;border:0.5px solid #d0dcf5;color:#4a5a7a;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.page-btn.active{background:#2F7FE8;color:#fff;border-color:#2F7FE8;}
+
+/* FILTER OVERLAY */
+.overlay{position:fixed;inset:0;background:rgba(10,20,50,0.45);z-index:100;display:none;}
+.overlay.show{display:block;}
+.filter-panel{position:fixed;top:0;left:-340px;width:340px;height:100%;background:#fff;z-index:101;box-shadow:4px 0 24px rgba(27,58,107,0.12);display:flex;flex-direction:column;transition:left 0.25s ease;}
+.filter-panel.show{left:0;}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:0.5px solid #d0dcf5;flex-shrink:0;}
+.panel-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;color:#1B3A6B;}
+.panel-close{width:32px;height:32px;border-radius:8px;border:0.5px solid #d0dcf5;background:#F5F8FF;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:#1B3A6B;}
+.panel-body{padding:20px 22px;flex:1;overflow-y:auto;}
+.filter-section{margin-bottom:24px;}
+.filter-section-title{font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;color:#1B3A6B;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;padding-bottom:8px;border-bottom:0.5px solid #eef2fb;}
+.filter-option{display:flex;align-items:center;gap:10px;font-size:13px;color:#4a5a7a;padding:8px 0;cursor:pointer;border-bottom:0.5px solid #f5f7fc;}
+.filter-option:last-child{border-bottom:none;}
+.filter-option input{accent-color:#2F7FE8;width:15px;height:15px;flex-shrink:0;}
+.filter-option-count{margin-left:auto;color:#a8b6d4;font-size:11px;}
+.price-range{display:flex;align-items:center;gap:8px;padding-top:4px;}
+.price-input{width:100%;font-family:'Poppins',sans-serif;font-size:13px;padding:9px 12px;border-radius:8px;border:0.5px solid #d0dcf5;outline:none;color:#1B3A6B;}
+.rating-row{display:flex;align-items:center;gap:8px;font-size:13px;color:#4a5a7a;padding:8px 0;border-bottom:0.5px solid #f5f7fc;cursor:pointer;}
+.rating-row:last-child{border-bottom:none;}
+.stars{color:#FFC107;font-weight:700;}
+.panel-footer{padding:16px 22px;border-top:0.5px solid #d0dcf5;display:flex;gap:10px;flex-shrink:0;}
+.btn-apply{flex:1;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;padding:12px 0;border-radius:9px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;}
+.btn-reset{font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;padding:12px 20px;border-radius:9px;background:transparent;color:#1B3A6B;border:1.5px solid #d0dcf5;cursor:pointer;}
+</style>
+
+<div class="site">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-logo">Tuto<span>board</span></div>
+    <div class="nav-links">
+      <a href="#">Mentors</a>
+      <a href="#">Courses</a>
+      <a href="#">Sessions</a>
+      <a href="#">About</a>
+      <button class="btn-nav">Sign up</button>
+    </div>
+  </nav>
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="breadcrumb"><a href="#">Home</a><span>/</span>Courses</div>
+    <div class="header-title-row">
+      <div class="header-text">
+        <div class="page-title">Explore Courses</div>
+        <div class="page-sub">Browse 320+ courses and live batches taught by verified mentors</div>
+      </div>
+      <!-- EXPANDABLE SEARCH -->
+      <div class="search-widget">
+        <div class="search-expand" id="searchExpand">
+          <div class="search-inner">
+            <input id="searchInput" type="text" placeholder="Search by subject, mentor, or keyword..." />
+            <div class="search-clear" onclick="closeSearch()">✕</div>
+          </div>
+        </div>
+        <div class="search-icon-btn" id="searchBtn" onclick="toggleSearch()">
+          <i class="ti ti-search" aria-hidden="true"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="btn-filter" onclick="openFilters()">
+          <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i>
+          Filters
+          <span class="filter-badge">2</span>
+        </button>
+        <div class="divider-v"></div>
+        <div class="tab-strip">
+          <div class="tab active">All courses</div>
+          <div class="tab">Mathematics</div>
+          <div class="tab">Science</div>
+          <div class="tab">Programming</div>
+          <div class="tab">English</div>
+          <div class="tab">Test Prep</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="sort-label">Sort by</span>
+        <select class="sort-select">
+          <option>Most popular</option>
+          <option>Newest</option>
+          <option>Price: Low to High</option>
+          <option>Price: High to Low</option>
+          <option>Highest rated</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="subbar">
+      <div class="active-filters">
+        <div class="pill">Mathematics <span class="pill-x">✕</span></div>
+        <div class="pill">Live batch <span class="pill-x">✕</span></div>
+        <span class="clear-all">Clear all</span>
+      </div>
+      <div class="results-count">Showing <strong>1–8</strong> of <strong>86</strong> courses</div>
+    </div>
+
+    <div class="cards-grid">
+
+      <div class="card">
+        <div class="card-img-placeholder" style="background:#dbeafe;">
+          <div class="live-tag"><span class="live-dot"></span> LIVE</div>
+          <i class="ti ti-math" aria-hidden="true" style="font-size:48px;color:#2F7FE8;"></i>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Mathematics</span>
+          <div class="card-title">Advanced Calculus & Algebra</div>
+          <div class="card-desc">8-week live batch covering limits, derivatives, integrals & linear algebra fundamentals.</div>
+          <div class="card-meta"><span class="card-rating">★ 4.9</span><span class="card-reviews">(214 reviews)</span><span style="margin-left:auto;"><span class="card-price">₹4,999</span></span></div>
+          <div class="card-btns"><button class="btn-book">Book now</button><button class="btn-details">Details</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img-placeholder" style="background:#dcfce7;">
+          <div class="live-tag"><span class="live-dot"></span> LIVE</div>
+          <i class="ti ti-code" aria-hidden="true" style="font-size:48px;color:#3B6D11;"></i>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Programming</span>
+          <div class="card-title">Python for Beginners</div>
+          <div class="card-desc">6-week live coding bootcamp with weekly project assignments and code reviews.</div>
+          <div class="card-meta"><span class="card-rating">★ 4.8</span><span class="card-reviews">(189 reviews)</span><span style="margin-left:auto;"><span class="card-price">₹3,499</span></span></div>
+          <div class="card-btns"><button class="btn-book">Book now</button><button class="btn-details">Details</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img-placeholder" style="background:#fef9c3;">
+          <div class="live-tag"><span class="live-dot"></span> LIVE</div>
+          <i class="ti ti-flask" aria-hidden="true" style="font-size:48px;color:#854F0B;"></i>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Science</span>
+          <div class="card-title">Chemistry: Class 11 & 12</div>
+          <div class="card-desc">Live exam-prep batch covering organic, inorganic and physical chemistry topics.</div>
+          <div class="card-meta"><span class="card-rating">★ 4.7</span><span class="card-reviews">(143 reviews)</span><span style="margin-left:auto;"><span class="card-price">₹3,999</span></span></div>
+          <div class="card-btns"><button class="btn-book">Book now</button><button class="btn-details">Details</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img-placeholder" style="background:#ede9fe;">
+          <i class="ti ti-writing" aria-hidden="true" style="font-size:48px;color:#534AB7;"></i>
+        </div>
+        <div class="card-body">
+          <span class="card-tag card-tag-gold">Recorded</span>
+          <div class="card-title">English Essay Writing</div>
+          <div class="card-desc">Self-paced course on essay structure, argumentation and grammar fundamentals.</div>
+          <div class="card-meta"><span class="card-rating">★ 4.9</span><span class="card-reviews">(98 reviews)</span><span style="margin-left:auto;"><span class="card-price">₹999</span></span></div>
+          <div class="card-btns"><button class="btn-book">Book now</button><button class="btn-details">Details</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img-placeholder" style="background:#fce7f3;">
+          <div class="live-tag"><span class="live-dot"></span> LIVE</div>
+          <i class="ti ti-map" aria-hidden="true" style="font-size:48px;color:#993556;"></i>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Test Prep</span>
+          <div class="card-title">Geography & World History</div>
+          <div class="card-desc">Live weekly classes covering map skills, timelines and key world events.</div>
+          <div class="card-meta"><span class="card-rating">★ 4.6</span><span class="card-reviews">(72 reviews)</span><span style="margin-left:auto;"><span class="card-price">₹2,799</span></span></div>
+          <div class="card-btns"><button class="btn-book">Book now</button><button class="btn-details">Details</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img-placeholder" style="background:#d1fae5;">
+          <i class="ti ti-calculator" aria-hidden="true" style="font-size:48px;color:#085041;"></i>
+        </div>
+        <div class="card-body">
+          <span class="card-tag card-tag-green">Hourly</span>
+          <div class="card-title">Statistics & Probability</div>
+          <div class="card-desc">1-on-1 sessions covering confidence intervals, hypothesis testing & more.</div>
+          <div class="card-meta"><span class="card-rating">★ 4.8</span><span class="card-reviews">(115 reviews)</span><span style="margin-left:auto;"><span class="card-price">₹449/hr</span></span></div>
+          <div class="card-btns"><button class="btn-book">Book now</button><button class="btn-details">Details</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img-placeholder" style="background:#fde2e2;">
+          <div class="live-tag"><span class="live-dot"></span> LIVE</div>
+          <i class="ti ti-atom-2" aria-hidden="true" style="font-size:48px;color:#A32D2D;"></i>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Science</span>
+          <div class="card-title">Physics: Mechanics & Waves</div>
+          <div class="card-desc">10-week live batch with weekly problem-solving workshops and assessments.</div>
+          <div class="card-meta"><span class="card-rating">★ 4.8</span><span class="card-reviews">(167 reviews)</span><span style="margin-left:auto;"><span class="card-price">₹5,499</span></span></div>
+          <div class="card-btns"><button class="btn-book">Book now</button><button class="btn-details">Details</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img-placeholder" style="background:#e0f2fe;">
+          <i class="ti ti-language" aria-hidden="true" style="font-size:48px;color:#0C5C8C;"></i>
+        </div>
+        <div class="card-body">
+          <span class="card-tag card-tag-gold">Recorded</span>
+          <div class="card-title">Conversational French A1</div>
+          <div class="card-desc">Self-paced beginner course with audio drills, quizzes and vocabulary lists.</div>
+          <div class="card-meta"><span class="card-rating">★ 4.5</span><span class="card-reviews">(54 reviews)</span><span style="margin-left:auto;"><span class="card-price">₹1,499</span></span></div>
+          <div class="card-btns"><button class="btn-book">Book now</button><button class="btn-details">Details</button></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="pagination">
+      <button class="page-btn"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+      <button class="page-btn active">1</button>
+      <button class="page-btn">2</button>
+      <button class="page-btn">3</button>
+      <button class="page-btn">4</button>
+      <span style="color:#a8b6d4;font-size:13px;">...</span>
+      <button class="page-btn">10</button>
+      <button class="page-btn"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- FILTER OVERLAY -->
+<div class="overlay" id="filterOverlay" onclick="handleOverlayClick(event)"></div>
+<div class="filter-panel" id="filterPanel">
+  <div class="panel-header">
+    <div class="panel-title">Filters</div>
+    <div class="panel-close" onclick="closeFilters()">✕</div>
+  </div>
+  <div class="panel-body">
+    <div class="filter-section">
+      <div class="filter-section-title">Category</div>
+      <label class="filter-option"><input type="checkbox" checked> Mathematics <span class="filter-option-count">86</span></label>
+      <label class="filter-option"><input type="checkbox"> Science <span class="filter-option-count">64</span></label>
+      <label class="filter-option"><input type="checkbox"> Programming <span class="filter-option-count">52</span></label>
+      <label class="filter-option"><input type="checkbox"> English <span class="filter-option-count">41</span></label>
+      <label class="filter-option"><input type="checkbox"> Languages <span class="filter-option-count">28</span></label>
+      <label class="filter-option"><input type="checkbox"> Test Prep <span class="filter-option-count">49</span></label>
+    </div>
+    <div class="filter-section">
+      <div class="filter-section-title">Format</div>
+      <label class="filter-option"><input type="checkbox" checked> Live batch <span class="filter-option-count">68</span></label>
+      <label class="filter-option"><input type="checkbox"> Recorded course <span class="filter-option-count">210</span></label>
+      <label class="filter-option"><input type="checkbox"> Hourly 1-on-1 <span class="filter-option-count">42</span></label>
+    </div>
+    <div class="filter-section">
+      <div class="filter-section-title">Price range</div>
+      <div class="price-range">
+        <input class="price-input" type="text" placeholder="₹ Min">
+        <span style="color:#9aaecf;">—</span>
+        <input class="price-input" type="text" placeholder="₹ Max">
+      </div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-section-title">Rating</div>
+      <div class="rating-row"><span class="stars">★★★★★</span> 4.5 & up</div>
+      <div class="rating-row"><span class="stars">★★★★</span><span style="color:#d8dde6;">★</span> 4.0 & up</div>
+      <div class="rating-row"><span class="stars">★★★</span><span style="color:#d8dde6;">★★</span> 3.0 & up</div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-section-title">Level</div>
+      <label class="filter-option"><input type="checkbox"> Beginner <span class="filter-option-count">120</span></label>
+      <label class="filter-option"><input type="checkbox"> Intermediate <span class="filter-option-count">98</span></label>
+      <label class="filter-option"><input type="checkbox"> Advanced <span class="filter-option-count">102</span></label>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn-reset">Reset all</button>
+    <button class="btn-apply" onclick="closeFilters()">Apply filters</button>
+  </div>
+</div>
+
+<script>
+let searchOpen = false;
+
+function toggleSearch() {
+  searchOpen ? closeSearch() : openSearch();
+}
+
+function openSearch() {
+  searchOpen = true;
+  document.getElementById('searchExpand').classList.add('open');
+  setTimeout(() => document.getElementById('searchInput').focus(), 300);
+}
+
+function closeSearch() {
+  searchOpen = false;
+  document.getElementById('searchExpand').classList.remove('open');
+  document.getElementById('searchInput').value = '';
+}
+
+// Close search on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && searchOpen) closeSearch();
+});
+
+function openFilters() {
+  document.getElementById('filterOverlay').classList.add('show');
+  document.getElementById('filterPanel').classList.add('show');
+}
+function closeFilters() {
+  document.getElementById('filterOverlay').classList.remove('show');
+  document.getElementById('filterPanel').classList.remove('show');
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('filterOverlay')) closeFilters();
+}
+</script>

@@ -1,0 +1,319 @@
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Poppins',sans-serif;background:#fff;color:#1B3A6B;}
+.site{width:100%;background:#fff;}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:60px;background:#fff;border-bottom:0.5px solid #d0dcf5;}
+.nav-logo{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1B3A6B;letter-spacing:-0.5px;}
+.nav-logo span{color:#2F7FE8;}
+.nav-links{display:flex;gap:20px;align-items:center;}
+.nav-links a{font-size:13px;font-weight:500;color:#4a5a7a;text-decoration:none;}
+.btn-nav{font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;padding:8px 18px;border-radius:8px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;}
+
+/* BREADCRUMB */
+.breadcrumb{padding:14px 28px;font-size:12px;color:#4a5a7a;background:#F5F8FF;border-bottom:0.5px solid #d0dcf5;}
+.breadcrumb a{color:#2F7FE8;text-decoration:none;font-weight:500;}
+.breadcrumb span{margin:0 6px;color:#b9c5dd;}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:2fr 1fr;gap:28px;padding:28px;align-items:start;}
+
+/* HEADER BLOCK */
+.course-header{margin-bottom:18px;}
+.tag-row{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
+.card-tag{font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;background:#E6F1FB;color:#0C447C;display:inline-block;}
+.card-tag-gold{background:#FFF3CD;color:#7a4d00;}
+.live-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:#FDE8E8;color:#C0392B;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#E74C3C;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.course-title{font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:#1B3A6B;margin-bottom:8px;line-height:1.25;}
+.course-sub{font-size:13px;color:#4a5a7a;line-height:1.7;max-width:620px;margin-bottom:12px;}
+.meta-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+.meta-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#4a5a7a;font-weight:500;}
+.meta-rating{color:#FFC107;font-weight:700;}
+.meta-divider{width:1px;height:16px;background:#d0dcf5;}
+
+/* HERO IMAGE */
+.course-img{width:100%;height:280px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#dbeafe;margin-bottom:24px;position:relative;}
+.img-live-tag{position:absolute;top:14px;left:14px;display:flex;align-items:center;gap:6px;background:#1B3A6B;color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;}
+
+/* NEXT SESSION BANNER */
+.next-session{display:flex;align-items:center;gap:14px;background:#F5F8FF;border:0.5px solid #d0dcf5;border-radius:12px;padding:14px 16px;margin-bottom:20px;}
+.next-session-icon{width:44px;height:44px;border-radius:10px;background:#1B3A6B;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.next-session-icon i{font-size:20px;color:#FFC107;}
+.next-session-text .ns-label{font-size:10px;color:#2F7FE8;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;}
+.next-session-text .ns-time{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:#1B3A6B;}
+.next-session-text .ns-sub{font-size:11px;color:#4a5a7a;}
+.ns-countdown{margin-left:auto;text-align:right;}
+.ns-countdown .cd-num{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#2F7FE8;}
+.ns-countdown .cd-label{font-size:10px;color:#4a5a7a;}
+
+/* SECTION HEADINGS */
+.section-block{margin-bottom:28px;}
+.block-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#1B3A6B;margin-bottom:12px;}
+.block-text{font-size:13px;color:#4a5a7a;line-height:1.75;margin-bottom:6px;}
+
+/* WHAT YOU'LL LEARN */
+.learn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.learn-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#33415c;line-height:1.5;}
+.learn-icon{width:18px;height:18px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.learn-icon i{font-size:11px;color:#3B6D11;}
+
+/* SCHEDULE TABLE */
+.schedule-item{display:flex;align-items:center;gap:14px;border:0.5px solid #d0dcf5;border-radius:10px;padding:13px 16px;margin-bottom:10px;}
+.schedule-date{width:54px;height:54px;border-radius:10px;background:#F5F8FF;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:0.5px solid #d0dcf5;}
+.schedule-date .sd-day{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#1B3A6B;line-height:1;}
+.schedule-date .sd-month{font-size:10px;color:#2F7FE8;font-weight:600;text-transform:uppercase;}
+.schedule-info{flex:1;}
+.schedule-topic{font-size:13px;font-weight:600;color:#1B3A6B;margin-bottom:2px;}
+.schedule-time{font-size:11px;color:#4a5a7a;display:flex;align-items:center;gap:5px;}
+.schedule-status{font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;flex-shrink:0;}
+.status-upcoming{background:#E6F1FB;color:#0C447C;}
+.status-live{background:#FDE8E8;color:#C0392B;}
+.status-done{background:#F0F0F0;color:#8a8a8a;}
+
+/* MENTOR CARD */
+.mentor-card{border:0.5px solid #d0dcf5;border-radius:12px;display:flex;overflow:hidden;}
+.mentor-img-side{width:110px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#E6F1FB;}
+.mentor-avatar{width:70px;height:70px;border-radius:50%;background:#1B3A6B;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#FFC107;}
+.mentor-details{padding:14px;flex:1;}
+.mentor-name{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:#1B3A6B;margin-bottom:2px;}
+.mentor-role{font-size:11px;color:#2F7FE8;font-weight:600;margin-bottom:6px;}
+.mentor-bio{font-size:11px;color:#4a5a7a;line-height:1.5;margin-bottom:8px;}
+.mentor-stats{display:flex;gap:10px;}
+.m-stat{font-size:10px;color:#4a5a7a;}.m-stat strong{color:#1B3A6B;font-size:11px;}
+
+/* REVIEWS */
+.review-card{border:0.5px solid #d0dcf5;border-radius:12px;padding:16px;margin-bottom:10px;}
+.review-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.review-avatar{width:34px;height:34px;border-radius:50%;background:#1B3A6B;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#FFC107;font-family:'Outfit',sans-serif;}
+.review-name{font-size:12px;font-weight:600;color:#1B3A6B;}
+.review-date{font-size:10px;color:#4a5a7a;}
+.review-stars{margin-left:auto;font-size:12px;color:#FFC107;font-weight:700;}
+.review-text{font-size:12px;color:#4a5a7a;line-height:1.6;}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:20px;}
+.booking-card{border:0.5px solid #d0dcf5;border-radius:14px;padding:20px;background:#fff;box-shadow:0 4px 20px rgba(27,58,107,0.06);}
+.price-row{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
+.price-now{font-family:'Outfit',sans-serif;font-size:26px;font-weight:800;color:#1B3A6B;}
+.price-old{font-size:14px;color:#a8b6d4;text-decoration:line-through;}
+.price-unit{font-size:12px;color:#4a5a7a;}
+.seats-bar-wrap{margin:10px 0 14px;}
+.seats-label{display:flex;justify-content:space-between;font-size:11px;color:#4a5a7a;margin-bottom:5px;}
+.seats-label strong{color:#C0392B;font-weight:700;}
+.seats-bar{height:6px;border-radius:99px;background:#F0F0F0;overflow:hidden;}
+.seats-bar-fill{height:100%;width:78%;background:#E74C3C;border-radius:99px;}
+.btn-book-main{width:100%;font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;padding:13px 0;border-radius:9px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;margin-bottom:8px;}
+.btn-wishlist{width:100%;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;padding:11px 0;border-radius:9px;background:transparent;color:#1B3A6B;border:1.5px solid #1B3A6B;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.divider{border:none;border-top:0.5px solid #eef2fb;margin:16px 0;}
+.include-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#33415c;margin-bottom:10px;}
+.include-item i{font-size:14px;color:#2F7FE8;width:16px;text-align:center;}
+.batch-info{background:#F5F8FF;border:0.5px solid #d0dcf5;border-radius:10px;padding:12px 14px;margin-top:14px;}
+.batch-row{display:flex;justify-content:space-between;font-size:11px;color:#4a5a7a;padding:5px 0;}
+.batch-row strong{color:#1B3A6B;font-weight:600;}
+</style>
+
+<div class="site">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-logo">Tuto<span>board</span></div>
+    <div class="nav-links">
+      <a href="#">Mentors</a>
+      <a href="#">Courses</a>
+      <a href="#">Sessions</a>
+      <a href="#">About</a>
+      <button class="btn-nav">Sign up</button>
+    </div>
+  </nav>
+
+  <!-- BREADCRUMB -->
+  <div class="breadcrumb">
+    <a href="#">Home</a><span>/</span><a href="#">Live Classes</a><span>/</span><a href="#">Mathematics</a><span>/</span>Advanced Calculus & Algebra
+  </div>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+    <!-- LEFT COLUMN -->
+    <div>
+      <div class="course-img">
+        <div class="img-live-tag"><span class="live-dot" style="background:#FFC107;"></span> Live batch · Starts Mon, 22 Jun</div>
+        <i class="ti ti-math" aria-hidden="true" style="font-size:64px;color:#2F7FE8;"></i>
+      </div>
+
+      <div class="course-header">
+        <div class="tag-row">
+          <span class="card-tag">Mathematics</span>
+          <span class="live-badge"><span class="live-dot"></span> LIVE CLASSES</span>
+        </div>
+        <div class="course-title">Advanced Calculus & Algebra — Live Batch</div>
+        <div class="course-sub">Join live, instructor-led sessions twice a week with real-time doubt solving, interactive whiteboards, and group discussions. No recordings — every class happens live with your mentor.</div>
+        <div class="meta-row">
+          <div class="meta-item"><span class="meta-rating">★ 4.9</span> (214 reviews)</div>
+          <div class="meta-divider"></div>
+          <div class="meta-item"><i class="ti ti-users" aria-hidden="true"></i> 38 students in this batch</div>
+          <div class="meta-divider"></div>
+          <div class="meta-item"><i class="ti ti-calendar" aria-hidden="true"></i> 8-week program</div>
+          <div class="meta-divider"></div>
+          <div class="meta-item"><i class="ti ti-world" aria-hidden="true"></i> English · IST</div>
+        </div>
+      </div>
+
+      <!-- NEXT SESSION BANNER -->
+      <div class="next-session">
+        <div class="next-session-icon"><i class="ti ti-broadcast" aria-hidden="true"></i></div>
+        <div class="next-session-text">
+          <div class="ns-label">Next live session</div>
+          <div class="ns-time">Monday, 22 June · 6:00 PM – 7:30 PM IST</div>
+          <div class="ns-sub">Topic: Introduction to Limits & Continuity</div>
+        </div>
+        <div class="ns-countdown">
+          <div class="cd-num">2d 4h</div>
+          <div class="cd-label">until class starts</div>
+        </div>
+      </div>
+
+      <!-- WHAT YOU'LL LEARN -->
+      <div class="section-block">
+        <div class="block-title">What you'll learn</div>
+        <div class="learn-grid">
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Master differentiation and integration techniques</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Solve complex limit and continuity problems</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Build strong matrix and vector space fundamentals</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Get real-time feedback during live problem-solving</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Participate in weekly live mock tests</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Ask questions live and get instant clarity</div>
+        </div>
+      </div>
+
+      <!-- ABOUT -->
+      <div class="section-block">
+        <div class="block-title">About this live batch</div>
+        <div class="block-text">This is a fully live, instructor-led batch — there are no pre-recorded videos. Classes happen twice a week over Zoom with an interactive whiteboard, live polls, and breakout rooms for group problem-solving.</div>
+        <div class="block-text">Each session is capped at 40 students to ensure everyone gets personal attention. Missed a class? You'll get access to that session's recording for 7 days only, but live attendance is strongly encouraged.</div>
+      </div>
+
+      <!-- LIVE SCHEDULE -->
+      <div class="section-block">
+        <div class="block-title">Class schedule</div>
+
+        <div class="schedule-item">
+          <div class="schedule-date"><div class="sd-day">22</div><div class="sd-month">Jun</div></div>
+          <div class="schedule-info">
+            <div class="schedule-topic">Introduction to Limits & Continuity</div>
+            <div class="schedule-time"><i class="ti ti-clock" aria-hidden="true"></i> 6:00 PM – 7:30 PM IST · Mon</div>
+          </div>
+          <span class="schedule-status status-upcoming">Upcoming</span>
+        </div>
+
+        <div class="schedule-item">
+          <div class="schedule-date"><div class="sd-day">25</div><div class="sd-month">Jun</div></div>
+          <div class="schedule-info">
+            <div class="schedule-topic">L'Hôpital's Rule & Practice Problems</div>
+            <div class="schedule-time"><i class="ti ti-clock" aria-hidden="true"></i> 6:00 PM – 7:30 PM IST · Thu</div>
+          </div>
+          <span class="schedule-status status-upcoming">Upcoming</span>
+        </div>
+
+        <div class="schedule-item">
+          <div class="schedule-date"><div class="sd-day">29</div><div class="sd-month">Jun</div></div>
+          <div class="schedule-info">
+            <div class="schedule-topic">Differentiation Rules & Chain Rule</div>
+            <div class="schedule-time"><i class="ti ti-clock" aria-hidden="true"></i> 6:00 PM – 7:30 PM IST · Mon</div>
+          </div>
+          <span class="schedule-status status-upcoming">Upcoming</span>
+        </div>
+
+        <div class="schedule-item" style="opacity:0.55;">
+          <div class="schedule-date"><div class="sd-day">15</div><div class="sd-month">Jun</div></div>
+          <div class="schedule-info">
+            <div class="schedule-topic">Orientation & Course Overview</div>
+            <div class="schedule-time"><i class="ti ti-clock" aria-hidden="true"></i> 6:00 PM – 7:00 PM IST · Mon</div>
+          </div>
+          <span class="schedule-status status-done">Completed</span>
+        </div>
+      </div>
+
+      <!-- MENTOR -->
+      <div class="section-block">
+        <div class="block-title">Your live instructor</div>
+        <div class="mentor-card">
+          <div class="mentor-img-side"><div class="mentor-avatar">AK</div></div>
+          <div class="mentor-details">
+            <div class="mentor-name">Arjun Kapoor</div>
+            <div class="mentor-role">Mathematics & Physics</div>
+            <div class="mentor-bio">IIT Delhi graduate with 8 years of experience preparing students for JEE and NEET. Hosts every class personally — no substitute teachers.</div>
+            <div class="mentor-stats"><div class="m-stat"><strong>420</strong> students</div><div class="m-stat"><strong>★ 4.9</strong> rating</div><div class="m-stat"><strong>6</strong> live batches</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REVIEWS -->
+      <div class="section-block">
+        <div class="block-title">Student reviews</div>
+        <div class="review-card">
+          <div class="review-top">
+            <div class="review-avatar">RA</div>
+            <div>
+              <div class="review-name">Rohan Agarwal</div>
+              <div class="review-date">2 weeks ago</div>
+            </div>
+            <div class="review-stars">★★★★★</div>
+          </div>
+          <div class="review-text">Loved that it's actually live — I could ask questions mid-class and get answers right away. Felt like a real classroom.</div>
+        </div>
+        <div class="review-card">
+          <div class="review-top">
+            <div class="review-avatar" style="background:#993556;">AN</div>
+            <div>
+              <div class="review-name">Aisha Naik</div>
+              <div class="review-date">1 month ago</div>
+            </div>
+            <div class="review-stars">★★★★★</div>
+          </div>
+          <div class="review-text">The small batch size made a huge difference. Arjun sir noticed when I was stuck and slowed down to help.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="booking-card">
+        <div class="tag-row" style="margin-bottom:10px;">
+          <span class="live-badge"><span class="live-dot"></span> Batch starts in 2 days</span>
+        </div>
+        <div class="price-row">
+          <span class="price-now">₹4,999</span>
+          <span class="price-old">₹7,999</span>
+          <span class="price-unit">/ 8-week batch</span>
+        </div>
+
+        <div class="seats-bar-wrap">
+          <div class="seats-label"><span>Seats filled</span><strong>31 / 40 — only 9 left</strong></div>
+          <div class="seats-bar"><div class="seats-bar-fill"></div></div>
+        </div>
+
+        <button class="btn-book-main">Reserve your seat</button>
+        <button class="btn-wishlist"><i class="ti ti-heart" aria-hidden="true"></i> Add to wishlist</button>
+        <hr class="divider">
+        <div class="include-item"><i class="ti ti-broadcast" aria-hidden="true"></i> 16 live sessions, 2x weekly</div>
+        <div class="include-item"><i class="ti ti-device-laptop" aria-hidden="true"></i> Live on Zoom — join via browser or app</div>
+        <div class="include-item"><i class="ti ti-message-circle" aria-hidden="true"></i> Live doubt-solving every class</div>
+        <div class="include-item"><i class="ti ti-replace" aria-hidden="true"></i> 7-day replay for missed classes</div>
+        <div class="include-item"><i class="ti ti-certificate" aria-hidden="true"></i> Certificate on batch completion</div>
+
+        <div class="batch-info">
+          <div class="batch-row"><span>Batch start date</span><strong>22 Jun 2026</strong></div>
+          <div class="batch-row"><span>Batch end date</span><strong>14 Aug 2026</strong></div>
+          <div class="batch-row"><span>Class days</span><strong>Mon & Thu</strong></div>
+          <div class="batch-row"><span>Class timing</span><strong>6:00–7:30 PM IST</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

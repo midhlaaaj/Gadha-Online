@@ -1,0 +1,299 @@
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Poppins',sans-serif;background:#fff;color:#1B3A6B;}
+.site{width:100%;background:#fff;}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:60px;background:#fff;border-bottom:0.5px solid #d0dcf5;}
+.nav-logo{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1B3A6B;letter-spacing:-0.5px;}
+.nav-logo span{color:#2F7FE8;}
+.nav-links{display:flex;gap:20px;align-items:center;}
+.nav-links a{font-size:13px;font-weight:500;color:#4a5a7a;text-decoration:none;}
+.btn-nav{font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;padding:8px 18px;border-radius:8px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;}
+
+/* BREADCRUMB */
+.breadcrumb{padding:14px 28px;font-size:12px;color:#4a5a7a;background:#F5F8FF;border-bottom:0.5px solid #d0dcf5;}
+.breadcrumb a{color:#2F7FE8;text-decoration:none;font-weight:500;}
+.breadcrumb span{margin:0 6px;color:#b9c5dd;}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:2fr 1fr;gap:28px;padding:28px;align-items:start;}
+
+/* HEADER BLOCK */
+.course-header{margin-bottom:18px;}
+.tag-row{display:flex;gap:8px;margin-bottom:10px;}
+.card-tag{font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;background:#E6F1FB;color:#0C447C;display:inline-block;}
+.card-tag-gold{background:#FFF3CD;color:#7a4d00;}
+.course-title{font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:#1B3A6B;margin-bottom:8px;line-height:1.25;}
+.course-sub{font-size:13px;color:#4a5a7a;line-height:1.7;max-width:620px;margin-bottom:12px;}
+.meta-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+.meta-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#4a5a7a;font-weight:500;}
+.meta-rating{color:#FFC107;font-weight:700;}
+.meta-divider{width:1px;height:16px;background:#d0dcf5;}
+
+/* HERO IMAGE */
+.course-img{width:100%;height:280px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#dbeafe;margin-bottom:24px;}
+
+/* SECTION HEADINGS */
+.section-block{margin-bottom:28px;}
+.block-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#1B3A6B;margin-bottom:12px;}
+.block-text{font-size:13px;color:#4a5a7a;line-height:1.75;margin-bottom:6px;}
+
+/* WHAT YOU'LL LEARN */
+.learn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.learn-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#33415c;line-height:1.5;}
+.learn-icon{width:18px;height:18px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.learn-icon i{font-size:11px;color:#3B6D11;}
+
+/* SYLLABUS / CURRICULUM */
+.syllabus-item{border:0.5px solid #d0dcf5;border-radius:10px;margin-bottom:10px;overflow:hidden;}
+.syllabus-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:#F5F8FF;}
+.syllabus-name{font-size:13px;font-weight:600;color:#1B3A6B;}
+.syllabus-meta{font-size:11px;color:#4a5a7a;}
+.syllabus-body{padding:0 16px;}
+.syllabus-sub{display:flex;align-items:center;gap:8px;padding:9px 0;font-size:12px;color:#4a5a7a;border-top:0.5px solid #eef2fb;}
+.syllabus-sub:first-child{border-top:none;}
+.syllabus-sub i{font-size:13px;color:#2F7FE8;}
+
+/* MENTOR CARD */
+.mentor-card{border:0.5px solid #d0dcf5;border-radius:12px;display:flex;overflow:hidden;}
+.mentor-img-side{width:110px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#E6F1FB;}
+.mentor-avatar{width:70px;height:70px;border-radius:50%;background:#1B3A6B;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#FFC107;}
+.mentor-details{padding:14px;flex:1;}
+.mentor-name{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:#1B3A6B;margin-bottom:2px;}
+.mentor-role{font-size:11px;color:#2F7FE8;font-weight:600;margin-bottom:6px;}
+.mentor-bio{font-size:11px;color:#4a5a7a;line-height:1.5;margin-bottom:8px;}
+.mentor-stats{display:flex;gap:10px;}
+.m-stat{font-size:10px;color:#4a5a7a;}.m-stat strong{color:#1B3A6B;font-size:11px;}
+
+/* REVIEWS */
+.review-card{border:0.5px solid #d0dcf5;border-radius:12px;padding:16px;margin-bottom:10px;}
+.review-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.review-avatar{width:34px;height:34px;border-radius:50%;background:#1B3A6B;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#FFC107;font-family:'Outfit',sans-serif;}
+.review-name{font-size:12px;font-weight:600;color:#1B3A6B;}
+.review-date{font-size:10px;color:#4a5a7a;}
+.review-stars{margin-left:auto;font-size:12px;color:#FFC107;font-weight:700;}
+.review-text{font-size:12px;color:#4a5a7a;line-height:1.6;}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:20px;}
+.booking-card{border:0.5px solid #d0dcf5;border-radius:14px;padding:20px;background:#fff;box-shadow:0 4px 20px rgba(27,58,107,0.06);}
+.price-row{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
+.price-now{font-family:'Outfit',sans-serif;font-size:26px;font-weight:800;color:#1B3A6B;}
+.price-old{font-size:14px;color:#a8b6d4;text-decoration:line-through;}
+.price-unit{font-size:12px;color:#4a5a7a;}
+.discount-badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:#FFF3CD;color:#7a4d00;margin-bottom:14px;}
+.btn-book-main{width:100%;font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;padding:13px 0;border-radius:9px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;margin-bottom:8px;}
+.btn-wishlist{width:100%;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;padding:11px 0;border-radius:9px;background:transparent;color:#1B3A6B;border:1.5px solid #1B3A6B;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.divider{border:none;border-top:0.5px solid #eef2fb;margin:16px 0;}
+.include-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#33415c;margin-bottom:10px;}
+.include-item i{font-size:14px;color:#2F7FE8;width:16px;text-align:center;}
+
+/* RELATED */
+.related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:0 28px 40px;}
+.rel-card{border:0.5px solid #d0dcf5;border-radius:12px;overflow:hidden;}
+.rel-img{width:100%;height:80px;display:flex;align-items:center;justify-content:center;}
+.rel-body{padding:10px 12px 12px;}
+.rel-title{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:4px;}
+.rel-meta{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#4a5a7a;}
+.related-heading{padding:0 28px;margin-bottom:14px;}
+</style>
+
+<div class="site">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-logo">Tuto<span>board</span></div>
+    <div class="nav-links">
+      <a href="#">Mentors</a>
+      <a href="#">Courses</a>
+      <a href="#">Sessions</a>
+      <a href="#">About</a>
+      <button class="btn-nav">Sign up</button>
+    </div>
+  </nav>
+
+  <!-- BREADCRUMB -->
+  <div class="breadcrumb">
+    <a href="#">Home</a><span>/</span><a href="#">Courses</a><span>/</span><a href="#">Mathematics</a><span>/</span>Advanced Calculus & Algebra
+  </div>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+    <!-- LEFT COLUMN -->
+    <div>
+      <div class="course-img"><i class="ti ti-math" aria-hidden="true" style="font-size:64px;color:#2F7FE8;"></i></div>
+
+      <div class="course-header">
+        <div class="tag-row">
+          <span class="card-tag">Mathematics</span>
+          <span class="card-tag card-tag-gold">Bestseller</span>
+        </div>
+        <div class="course-title">Advanced Calculus & Algebra</div>
+        <div class="course-sub">A complete, exam-focused course covering limits, derivatives, integrals, sequences, and linear algebra — designed for Class 11-12 and competitive exam aspirants.</div>
+        <div class="meta-row">
+          <div class="meta-item"><span class="meta-rating">★ 4.9</span> (214 reviews)</div>
+          <div class="meta-divider"></div>
+          <div class="meta-item"><i class="ti ti-users" aria-hidden="true"></i> 1,240 students enrolled</div>
+          <div class="meta-divider"></div>
+          <div class="meta-item"><i class="ti ti-clock" aria-hidden="true"></i> 32 hours total</div>
+          <div class="meta-divider"></div>
+          <div class="meta-item"><i class="ti ti-world" aria-hidden="true"></i> English</div>
+        </div>
+      </div>
+
+      <!-- WHAT YOU'LL LEARN -->
+      <div class="section-block">
+        <div class="block-title">What you'll learn</div>
+        <div class="learn-grid">
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Master differentiation and integration techniques</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Solve complex limit and continuity problems</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Build strong matrix and vector space fundamentals</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Apply calculus to real-world physics problems</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Practice with 500+ curated problem sets</div>
+          <div class="learn-item"><div class="learn-icon"><i class="ti ti-check" aria-hidden="true"></i></div>Prepare for JEE, NEET and board exam patterns</div>
+        </div>
+      </div>
+
+      <!-- ABOUT -->
+      <div class="section-block">
+        <div class="block-title">About this course</div>
+        <div class="block-text">This course is built for students who want a rock-solid foundation in calculus and algebra before tackling competitive exams. Each module combines concept videos, worked examples, and timed practice tests.</div>
+        <div class="block-text">You'll get lifetime access to recordings, downloadable notes, and weekly live doubt-clearing sessions with the mentor.</div>
+      </div>
+
+      <!-- SYLLABUS -->
+      <div class="section-block">
+        <div class="block-title">Course curriculum</div>
+
+        <div class="syllabus-item">
+          <div class="syllabus-head">
+            <span class="syllabus-name">Module 1 — Limits & Continuity</span>
+            <span class="syllabus-meta">5 lessons · 6h 20m</span>
+          </div>
+          <div class="syllabus-body">
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> Introduction to limits</div>
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> Continuity and discontinuity</div>
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> L'Hôpital's rule</div>
+          </div>
+        </div>
+
+        <div class="syllabus-item">
+          <div class="syllabus-head">
+            <span class="syllabus-name">Module 2 — Differentiation</span>
+            <span class="syllabus-meta">7 lessons · 9h 10m</span>
+          </div>
+          <div class="syllabus-body">
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> Rules of differentiation</div>
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> Chain rule & implicit differentiation</div>
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> Applications: maxima & minima</div>
+          </div>
+        </div>
+
+        <div class="syllabus-item">
+          <div class="syllabus-head">
+            <span class="syllabus-name">Module 3 — Integration & Linear Algebra</span>
+            <span class="syllabus-meta">9 lessons · 12h 45m</span>
+          </div>
+          <div class="syllabus-body">
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> Definite and indefinite integrals</div>
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> Matrices and determinants</div>
+            <div class="syllabus-sub"><i class="ti ti-player-play" aria-hidden="true"></i> Vector spaces and transformations</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MENTOR -->
+      <div class="section-block">
+        <div class="block-title">Meet your mentor</div>
+        <div class="mentor-card">
+          <div class="mentor-img-side"><div class="mentor-avatar">AK</div></div>
+          <div class="mentor-details">
+            <div class="mentor-name">Arjun Kapoor</div>
+            <div class="mentor-role">Mathematics & Physics</div>
+            <div class="mentor-bio">IIT Delhi graduate with 8 years of experience preparing students for JEE and NEET. Known for breaking down complex problems into simple, memorable steps.</div>
+            <div class="mentor-stats"><div class="m-stat"><strong>420</strong> students</div><div class="m-stat"><strong>★ 4.9</strong> rating</div><div class="m-stat"><strong>12</strong> courses</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REVIEWS -->
+      <div class="section-block">
+        <div class="block-title">Student reviews</div>
+        <div class="review-card">
+          <div class="review-top">
+            <div class="review-avatar">RA</div>
+            <div>
+              <div class="review-name">Rohan Agarwal</div>
+              <div class="review-date">2 weeks ago</div>
+            </div>
+            <div class="review-stars">★★★★★</div>
+          </div>
+          <div class="review-text">Extremely well structured. The module on integration alone was worth the price — clear explanations and tons of practice problems.</div>
+        </div>
+        <div class="review-card">
+          <div class="review-top">
+            <div class="review-avatar" style="background:#993556;">AN</div>
+            <div>
+              <div class="review-name">Aisha Naik</div>
+              <div class="review-date">1 month ago</div>
+            </div>
+            <div class="review-stars">★★★★★</div>
+          </div>
+          <div class="review-text">Arjun sir explains everything so patiently. The weekly live sessions really helped clear my doubts before the boards.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="booking-card">
+        <div class="price-row">
+          <span class="price-now">₹1,499</span>
+          <span class="price-old">₹2,499</span>
+          <span class="price-unit">/ course</span>
+        </div>
+        <span class="discount-badge">40% OFF — Limited time</span>
+        <button class="btn-book-main">Book now</button>
+        <button class="btn-wishlist"><i class="ti ti-heart" aria-hidden="true"></i> Add to wishlist</button>
+        <hr class="divider">
+        <div class="include-item"><i class="ti ti-clock" aria-hidden="true"></i> 32 hours of content</div>
+        <div class="include-item"><i class="ti ti-device-laptop" aria-hidden="true"></i> Access on mobile & desktop</div>
+        <div class="include-item"><i class="ti ti-certificate" aria-hidden="true"></i> Certificate of completion</div>
+        <div class="include-item"><i class="ti ti-infinity" aria-hidden="true"></i> Lifetime access</div>
+        <div class="include-item"><i class="ti ti-message-circle" aria-hidden="true"></i> Weekly live Q&A with mentor</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RELATED COURSES -->
+  <div class="related-heading">
+    <div class="block-title">Related courses</div>
+  </div>
+  <div class="related-grid">
+    <div class="rel-card">
+      <div class="rel-img" style="background:#fef9c3;"><i class="ti ti-flask" aria-hidden="true" style="font-size:30px;color:#854F0B;"></i></div>
+      <div class="rel-body">
+        <div class="rel-title">Chemistry: Class 11 & 12</div>
+        <div class="rel-meta"><span>★ 4.7 (143)</span><span style="font-weight:700;color:#1B3A6B;">₹1,199</span></div>
+      </div>
+    </div>
+    <div class="rel-card">
+      <div class="rel-img" style="background:#dcfce7;"><i class="ti ti-code" aria-hidden="true" style="font-size:30px;color:#3B6D11;"></i></div>
+      <div class="rel-body">
+        <div class="rel-title">Python for Beginners</div>
+        <div class="rel-meta"><span>★ 4.8 (189)</span><span style="font-weight:700;color:#1B3A6B;">₹1,299</span></div>
+      </div>
+    </div>
+    <div class="rel-card">
+      <div class="rel-img" style="background:#d1fae5;"><i class="ti ti-calculator" aria-hidden="true" style="font-size:30px;color:#085041;"></i></div>
+      <div class="rel-body">
+        <div class="rel-title">Statistics & Probability</div>
+        <div class="rel-meta"><span>★ 4.8 (115)</span><span style="font-weight:700;color:#1B3A6B;">₹449/hr</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>

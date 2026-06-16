@@ -1,0 +1,11 @@
+id,bio,expertise,hourly_rate,rating,is_active,created_at,qualification,experience,verified
+00000000-0000-0000-0000-000000000001,IIT Delhi graduate with 8 years of experience preparing students for JEE and NEET.,"[""Mathematics"",""Physics""]",499.00,5.00,true,2026-06-16 05:50:27.660838+00,IIT Delhi,8,true
+00000000-0000-0000-0000-000000000002,MA English from Delhi University. Specialises in essay coaching and creative writing.,"[""English"",""Literature""]",399.00,5.00,true,2026-06-16 05:50:27.660838+00,"MA English, DU",6,true
+00000000-0000-0000-0000-000000000003,"Senior engineer at a top tech firm. Teaches Python, DSA, and web development.","[""Computer Science""]",549.00,5.00,true,2026-06-16 05:50:27.660838+00,"B.Tech CS, Senior Engineer",7,true
+00000000-0000-0000-0000-000000000004,MBBS graduate with a passion for making science concepts simple and exam-ready.,"[""Chemistry"",""Biology""]",449.00,5.00,true,2026-06-16 05:50:27.660838+00,MBBS,5,false
+00000000-0000-0000-0000-000000000005,Professional statistician and tutor specializing in exam preparation and data math.,"[""Mathematics"",""Statistics""]",459.00,5.00,true,2026-06-16 05:50:27.660838+00,Actuary,9,true
+635fd1b6-c179-4ecc-8f91-18bf8b11c013,asdfvghjkl;',"[""Mathematics""]",150.00,5.00,true,2026-06-16 10:55:34.86409+00,wedrftgyhuji,1,false
+94f4c47f-8a7a-4c36-b4df-d7e6e7d44059,dfghnhgfdsdfg,"[""Mathematics""]",0.00,5.00,true,2026-06-16 11:10:25.372237+00,fghg,1,false
+a65e93e4-70cf-4f17-9981-b8b331b6cf6a,asdfghgfdsa,"[""Mathematics""]",1250.00,5.00,true,2026-06-16 11:17:00.006108+00,asdfgfdsa,1,false
+a8d4dde5-27f7-4be7-bd61-49e6e465dbeb,"FGCHVJK,.JHGCFDSA","[""Mathematics""]",123.00,5.00,true,2026-06-16 11:16:23.763324+00,DFGHGREWQ,1,false
+ff977d83-c7a4-44d0-86aa-2bc9f3a41344,"dfghjmk,","[""Mathematics""]",140.00,5.00,true,2026-06-16 11:02:28.886219+00,dfg,1,false

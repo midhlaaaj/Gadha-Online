@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1B3A6B; /* primary brand color */
+  
+  /* theme color mappings */
+  --color-primary: #1B3A6B;
+  --color-secondary: #2F7FE8;
+  --color-accent: #FFC107;
+  --color-surface: #F5F8FF;
+  
+  /* Text and muted helpers */
+  --color-text-main: #1B3A6B;
+  --color-text-muted: #4A5A7A;
+  --color-border-subtle: #D0DCF5;
+  --color-badge-bg: #E6F1FB;
+  --color-badge-text: #0C447C;
+  --color-badge-border: #B5D4F4;
+}
+
+@theme {
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-heading: var(--font-outfit), system-ui, sans-serif;
+  
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-accent: var(--color-accent);
+  --color-surface: var(--color-surface);
+  
+  --color-text-main: var(--color-text-main);
+  --color-text-muted: var(--color-text-muted);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-badge-bg: var(--color-badge-bg);
+  --color-badge-text: var(--color-badge-text);
+  --color-badge-border: var(--color-badge-border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* Custom premium thin scrollbar for horizontal/vertical scrolling containers */
+.premium-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #D0DCF5 transparent;
+}
+.premium-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 5px;
+}
+.premium-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.premium-scrollbar::-webkit-scrollbar-thumb {
+  background: #D0DCF5;
+  border-radius: 10px;
+}
+.premium-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #2F7FE8;
+}
