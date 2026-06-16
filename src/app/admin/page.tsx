@@ -46,12 +46,15 @@ import {
   deleteTestimonial as apiDeleteTestimonial,
   toggleTestimonialStatus as apiToggleTestimonialStatus,
   syncMockDataToBackend,
+  uploadCourseCover,
 } from "../actions";
 
 // Mock Data Types
 interface Course {
   id: string;
   title: string;
+  description?: string;
+  coverImageUrl?: string;
   subject: "Mathematics" | "Science" | "Programming" | "English";
   format: "Live batch" | "Recorded" | "Hourly";
   price: number;
@@ -220,6 +223,25 @@ export default function AdminPanel() {
   >(null);
   const [drawerEditId, setDrawerEditId] = useState<string | null>(null);
   const [drawerForm, setDrawerForm] = useState<any>({});
+  const [showMoreCourseDetails, setShowMoreCourseDetails] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await uploadCourseCover(formData);
+      setDrawerForm((prev: any) => ({ ...prev, coverImageUrl: res.publicUrl }));
+    } catch (err: any) {
+      alert("Image upload failed: " + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   // Helper: Open Drawer for Add/Edit
   const openDrawer = (
@@ -249,10 +271,14 @@ export default function AdminPanel() {
       if (mode === "course") {
         setDrawerForm({
           title: "",
+          description: "",
+          coverImageUrl: "",
           subject: "Mathematics",
           format: "Live batch",
           price: 0,
           mentor: mentors[0]?.name || "Arjun Kapoor",
+          students: 0,
+          rating: 5.0,
           status: "Draft",
         });
       } else if (mode === "session") {
@@ -292,6 +318,7 @@ export default function AdminPanel() {
     setDrawerOpen(false);
     setDrawerMode(null);
     setDrawerEditId(null);
+    setShowMoreCourseDetails(false);
   };
 
   // CRUD Save changes
@@ -1834,6 +1861,7 @@ export default function AdminPanel() {
               {/* Form 1: Course */}
               {drawerMode === "course" && (
                 <>
+                  {/* Basic Details (Visible by default) */}
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold text-primary uppercase">Course title</label>
                     <input
@@ -1842,6 +1870,15 @@ export default function AdminPanel() {
                       placeholder="e.g. Advanced Calculus & Algebra"
                       value={drawerForm.title || ""}
                       onChange={(e) => setDrawerForm({ ...drawerForm, title: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-primary uppercase">Short Description</label>
+                    <textarea
+                      className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none resize-none h-18"
+                      placeholder="Enter course details, syllabus preview or overview..."
+                      value={drawerForm.description || ""}
+                      onChange={(e) => setDrawerForm({ ...drawerForm, description: e.target.value })}
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -1894,6 +1931,40 @@ export default function AdminPanel() {
                       ))}
                     </select>
                   </div>
+
+                  {/* Direct File Cover Image Upload */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-primary uppercase">Cover Image</label>
+                    {drawerForm.coverImageUrl ? (
+                      <div className="relative border border-border-subtle rounded-lg p-2 flex items-center gap-3 bg-surface">
+                        <img src={drawerForm.coverImageUrl} className="w-12 h-12 rounded object-cover" alt="Cover Preview" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[9px] font-semibold text-primary truncate">{drawerForm.coverImageUrl}</p>
+                          <button
+                            type="button"
+                            onClick={() => setDrawerForm({ ...drawerForm, coverImageUrl: "" })}
+                            className="text-[9px] text-red-600 font-bold hover:underline cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative border border-dashed border-border-subtle hover:border-secondary hover:bg-badge-bg/10 rounded-lg p-4 text-center transition-colors cursor-pointer min-h-[50px] flex items-center justify-center">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={uploadingImage}
+                          onChange={handleImageUpload}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                        />
+                        <span className="text-[11px] text-text-muted font-bold">
+                          {uploadingImage ? "Uploading Image..." : "Upload Cover from Device"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold text-primary uppercase">Status</label>
                     <select
@@ -1905,6 +1976,261 @@ export default function AdminPanel() {
                       <option>Active</option>
                     </select>
                   </div>
+
+                  {/* Advanced Options Toggler */}
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreCourseDetails(!showMoreCourseDetails)}
+                    className="w-full text-xs font-bold py-2 border border-secondary rounded-lg text-secondary hover:bg-[#F0F6FF] transition-colors mt-2 cursor-pointer"
+                  >
+                    {showMoreCourseDetails ? "Hide Details" : "Show More"}
+                  </button>
+
+                  {/* Advanced Custom Fields (Outcomes, Syllabus, Inclusions, Timings) */}
+                  {showMoreCourseDetails && (
+                    <div className="space-y-4 border-t border-border-subtle pt-4 mt-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-primary uppercase">About details description</label>
+                        <textarea
+                          className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none resize-none h-20"
+                          placeholder="e.g. This is a fully live batch... (overwrites default about text)"
+                          value={drawerForm.aboutCourse || ""}
+                          onChange={(e) => setDrawerForm({ ...drawerForm, aboutCourse: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-primary uppercase">What you'll learn (one item per line)</label>
+                        <textarea
+                          className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none resize-none h-20"
+                          placeholder="e.g. Master differentiation and integration&#10;Solve complex limit and continuity problems"
+                          value={drawerForm.learningOutcomes ? drawerForm.learningOutcomes.join("\n") : ""}
+                          onChange={(e) => setDrawerForm({ ...drawerForm, learningOutcomes: e.target.value.split("\n").filter(Boolean) })}
+                        />
+                      </div>
+
+                      {/* Course format specific forms */}
+                      {drawerForm.format === "Live batch" && (
+                        <>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-primary uppercase">Live Inclusions (5 items)</label>
+                            {[0, 1, 2, 3, 4].map((idx) => {
+                              const defaults = [
+                                "16 live sessions, 2x weekly",
+                                "Live on Zoom — join via browser/app",
+                                "Live doubt-solving every class",
+                                "7-day replay for missed classes",
+                                "Certificate on batch completion"
+                              ];
+                              const currentVal = drawerForm.inclusions?.[idx] !== undefined ? drawerForm.inclusions[idx] : "";
+                              return (
+                                <input
+                                  key={idx}
+                                  className="text-xs p-2 border border-border-subtle rounded-lg outline-none mb-1"
+                                  type="text"
+                                  placeholder={defaults[idx]}
+                                  value={currentVal}
+                                  onChange={(e) => {
+                                    const newInc = [...(drawerForm.inclusions || ["", "", "", "", ""])];
+                                    newInc[idx] = e.target.value;
+                                    setDrawerForm({ ...drawerForm, inclusions: newInc });
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+
+                          <div className="font-semibold text-[10px] text-text-muted uppercase tracking-wider mt-2 border-b border-border-subtle pb-1">
+                            Live Batch Timings
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-primary uppercase">Batch Start Date</label>
+                              <input
+                                className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                                type="text"
+                                placeholder="22 Jun 2026"
+                                value={drawerForm.batchStartDate || ""}
+                                onChange={(e) => setDrawerForm({ ...drawerForm, batchStartDate: e.target.value })}
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-primary uppercase">Batch End Date</label>
+                              <input
+                                className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                                type="text"
+                                placeholder="14 Aug 2026"
+                                value={drawerForm.batchEndDate || ""}
+                                onChange={(e) => setDrawerForm({ ...drawerForm, batchEndDate: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-primary uppercase">Class Days</label>
+                              <input
+                                className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                                type="text"
+                                placeholder="Mon & Thu"
+                                value={drawerForm.classDays || ""}
+                                onChange={(e) => setDrawerForm({ ...drawerForm, classDays: e.target.value })}
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-primary uppercase">Class Timing</label>
+                              <input
+                                className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                                type="text"
+                                placeholder="6:00–7:30 PM IST"
+                                value={drawerForm.classTiming || ""}
+                                onChange={(e) => setDrawerForm({ ...drawerForm, classTiming: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {drawerForm.format === "Recorded" && (
+                        <>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-primary uppercase">Recorded Inclusions (5 items)</label>
+                            {[0, 1, 2, 3, 4].map((idx) => {
+                              const defaults = [
+                                "32 hours of content",
+                                "Access on mobile & desktop",
+                                "Certificate of completion",
+                                "Lifetime access",
+                                "Weekly live Q&A with mentor"
+                              ];
+                              const currentVal = drawerForm.inclusions?.[idx] !== undefined ? drawerForm.inclusions[idx] : "";
+                              return (
+                                <input
+                                  key={idx}
+                                  className="text-xs p-2 border border-border-subtle rounded-lg outline-none mb-1"
+                                  type="text"
+                                  placeholder={defaults[idx]}
+                                  value={currentVal}
+                                  onChange={(e) => {
+                                    const newInc = [...(drawerForm.inclusions || ["", "", "", "", ""])];
+                                    newInc[idx] = e.target.value;
+                                    setDrawerForm({ ...drawerForm, inclusions: newInc });
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex flex-col gap-2 mt-2">
+                            <label className="text-[10px] font-bold text-primary uppercase">Course Curriculum Syllabus</label>
+                            <div className="space-y-3 p-3 bg-surface rounded-xl border border-border-subtle">
+                              {(drawerForm.curriculum || []).map((mod: any, mIdx: number) => (
+                                <div key={mIdx} className="border border-border-subtle bg-white rounded-lg p-2.5 space-y-2 relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newCurr = [...drawerForm.curriculum];
+                                      newCurr.splice(mIdx, 1);
+                                      setDrawerForm({ ...drawerForm, curriculum: newCurr });
+                                    }}
+                                    className="absolute top-2 right-2 text-xs text-red-600 font-bold hover:underline cursor-pointer"
+                                  >
+                                    Remove
+                                  </button>
+                                  
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold text-slate-400">Module Name</span>
+                                    <input
+                                      className="text-xs p-1.5 border border-border-subtle rounded-md outline-none"
+                                      type="text"
+                                      placeholder="Module 1 — Limits"
+                                      value={mod.name || ""}
+                                      onChange={(e) => {
+                                        const newCurr = [...drawerForm.curriculum];
+                                        newCurr[mIdx] = { ...mod, name: e.target.value };
+                                        setDrawerForm({ ...drawerForm, curriculum: newCurr });
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold text-slate-400">Module Metadata</span>
+                                    <input
+                                      className="text-xs p-1.5 border border-border-subtle rounded-md outline-none"
+                                      type="text"
+                                      placeholder="5 lessons · 6h 20m"
+                                      value={mod.meta || ""}
+                                      onChange={(e) => {
+                                        const newCurr = [...drawerForm.curriculum];
+                                        newCurr[mIdx] = { ...mod, meta: e.target.value };
+                                        setDrawerForm({ ...drawerForm, curriculum: newCurr });
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] font-bold text-slate-400">Lessons</span>
+                                    {(mod.lessons || []).map((les: string, lIdx: number) => (
+                                      <div key={lIdx} className="flex items-center gap-1.5 mb-1">
+                                        <input
+                                          className="text-[11px] p-1.5 border border-border-subtle rounded-md outline-none flex-1"
+                                          type="text"
+                                          placeholder={`Lesson ${lIdx + 1}`}
+                                          value={les}
+                                          onChange={(e) => {
+                                            const newLessons = [...mod.lessons];
+                                            newLessons[lIdx] = e.target.value;
+                                            const newCurr = [...drawerForm.curriculum];
+                                            newCurr[mIdx] = { ...mod, lessons: newLessons };
+                                            setDrawerForm({ ...drawerForm, curriculum: newCurr });
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const newLessons = [...mod.lessons];
+                                            newLessons.splice(lIdx, 1);
+                                            const newCurr = [...drawerForm.curriculum];
+                                            newCurr[mIdx] = { ...mod, lessons: newLessons };
+                                            setDrawerForm({ ...drawerForm, curriculum: newCurr });
+                                          }}
+                                          className="text-red-600 text-xs px-1 hover:underline cursor-pointer"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newLessons = [...(mod.lessons || []), ""];
+                                        const newCurr = [...drawerForm.curriculum];
+                                        newCurr[mIdx] = { ...mod, lessons: newLessons };
+                                        setDrawerForm({ ...drawerForm, curriculum: newCurr });
+                                      }}
+                                      className="text-[10px] font-semibold text-secondary hover:underline self-start mt-1 cursor-pointer"
+                                    >
+                                      + Add Lesson
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                              
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newCurr = [...(drawerForm.curriculum || []), { name: "", meta: "", lessons: [""] }];
+                                  setDrawerForm({ ...drawerForm, curriculum: newCurr });
+                                }}
+                                className="w-full text-xs font-semibold py-2 border border-dashed border-border-subtle rounded-lg text-primary hover:border-secondary hover:text-secondary transition-colors mt-2 cursor-pointer"
+                              >
+                                + Add Module
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
 

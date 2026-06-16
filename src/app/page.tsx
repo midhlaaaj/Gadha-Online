@@ -193,7 +193,7 @@ export default function Home() {
             Courses
           </a>
           <a
-            href="#sessions"
+            href="/sessions"
             className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
           >
             Sessions

@@ -272,8 +272,52 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
   const { course, related } = data;
   const isLive = course.format === "Live batch";
 
-  const syllabus = getDynamicSyllabus(course.subject);
-  const outcomes = getDynamicLearningOutcomes(course.subject);
+  const syllabus = (course.curriculum && course.curriculum.length > 0)
+    ? course.curriculum
+    : getDynamicSyllabus(course.subject);
+
+  const outcomes = (course.learningOutcomes && course.learningOutcomes.length > 0)
+    ? course.learningOutcomes
+    : getDynamicLearningOutcomes(course.subject);
+
+  const inclusionsList = (course.inclusions && course.inclusions.length === 5 && course.inclusions.every((x: string) => x !== ""))
+    ? course.inclusions
+    : (isLive
+        ? [
+            "16 live sessions, 2x weekly",
+            "Live on Zoom — join via browser/app",
+            "Live doubt-solving every class",
+            "7-day replay for missed classes",
+            "Certificate on batch completion"
+          ]
+        : [
+            "32 hours of content",
+            "Access on mobile & desktop",
+            "Certificate of completion",
+            "Lifetime access",
+            "Weekly live Q&A with mentor"
+          ]
+      );
+
+  const getInclusionIcon = (idx: number) => {
+    if (isLive) {
+      switch (idx) {
+        case 0: return <IconBroadcast className="w-4 h-4 text-secondary flex-shrink-0" />;
+        case 1: return <IconDeviceLaptop className="w-4 h-4 text-secondary flex-shrink-0" />;
+        case 2: return <IconMessageCircle className="w-4 h-4 text-secondary flex-shrink-0" />;
+        case 3: return <IconRotate className="w-4 h-4 text-secondary flex-shrink-0" />;
+        default: return <IconCertificate className="w-4 h-4 text-secondary flex-shrink-0" />;
+      }
+    } else {
+      switch (idx) {
+        case 0: return <IconClock className="w-4 h-4 text-secondary flex-shrink-0" />;
+        case 1: return <IconDeviceLaptop className="w-4 h-4 text-secondary flex-shrink-0" />;
+        case 2: return <IconCertificate className="w-4 h-4 text-secondary flex-shrink-0" />;
+        case 3: return <IconInfinity className="w-4 h-4 text-secondary flex-shrink-0" />;
+        default: return <IconMessageCircle className="w-4 h-4 text-secondary flex-shrink-0" />;
+      }
+    }
+  };
 
   // Dynamic old price (40% discount fallback representation)
   const oldPrice = Math.round(course.price * 1.66);
@@ -290,7 +334,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           <a href="/courses" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             Courses
           </a>
-          <a href="/#sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
+          <a href="/sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             Sessions
           </a>
           <a href="/#mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
@@ -329,18 +373,22 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
         <div className="lg:col-span-2 space-y-6">
           
           {/* Cover Hero Banner Image */}
-          <div className={`w-full h-72 rounded-2xl flex items-center justify-center relative shadow-sm ${getSubjectBgColor(course.subject)}`}>
+          <div className={`w-full h-72 rounded-2xl flex items-center justify-center relative shadow-sm overflow-hidden ${getSubjectBgColor(course.subject)}`}>
+            {course.coverImageUrl ? (
+              <img src={course.coverImageUrl} className="w-full h-full object-cover" alt={course.title} />
+            ) : (
+              getDetailsIcon(course.iconName)
+            )}
             {isLive ? (
               <div className="absolute top-4 left-4 bg-primary text-white text-[10px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-                Live batch · Starts Monday, 22 Jun
+                Live batch · Starts {course.batchStartDate || "Monday, 22 Jun"}
               </div>
             ) : (
               <div className="absolute top-4 left-4 bg-amber-100 text-amber-800 text-[10px] font-bold px-3.5 py-1.5 rounded-full">
                 Self-paced recorded content
               </div>
             )}
-            {getDetailsIcon(course.iconName)}
           </div>
 
           {/* Course Title and Header */}
@@ -399,7 +447,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm">
             <h3 className="font-heading text-lg font-bold text-primary mb-4">What you'll learn</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {outcomes.map((item, index) => (
+              {outcomes.map((item: string, index: number) => (
                 <div key={index} className="flex items-start gap-2.5 text-xs text-slate-700 leading-normal">
                   <div className="w-5 h-5 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5 border border-green-150">
                     <IconCheck className="w-3.5 h-3.5 text-green-700 stroke-[3]" />
@@ -415,18 +463,26 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             <h3 className="font-heading text-lg font-bold text-primary">
               About this {isLive ? "live batch" : "course"}
             </h3>
-            <p className="text-xs md:text-sm text-text-muted leading-relaxed">
-              {isLive 
-                ? "This is a fully live, instructor-led batch — there are no pre-recorded videos. Classes happen twice a week with an interactive whiteboard, live polls, and breakout rooms for group problem-solving."
-                : "This course is built for students who want a rock-solid foundation in the subject before tackling school exams and competitive tests. Each module combines concept videos, worked examples, and timed practice worksheets."
-              }
-            </p>
-            <p className="text-xs md:text-sm text-text-muted leading-relaxed">
-              {isLive 
-                ? "Each session is capped at 40 students to ensure everyone gets personal attention. Missed a class? You'll get access to that session's recording for 7 days only, but live attendance is strongly encouraged."
-                : "You'll get lifetime access to all pre-recorded videos, downloadable lecture notes, and weekly live doubt-clearing sessions personally led by the mentor."
-              }
-            </p>
+            {course.aboutCourse ? (
+              <p className="text-xs md:text-sm text-text-muted leading-relaxed whitespace-pre-line">
+                {course.aboutCourse}
+              </p>
+            ) : (
+              <>
+                <p className="text-xs md:text-sm text-text-muted leading-relaxed">
+                  {isLive 
+                    ? "This is a fully live, instructor-led batch — there are no pre-recorded videos. Classes happen twice a week with an interactive whiteboard, live polls, and breakout rooms for group problem-solving."
+                    : "This course is built for students who want a rock-solid foundation in the subject before tackling school exams and competitive tests. Each module combines concept videos, worked examples, and timed practice worksheets."
+                  }
+                </p>
+                <p className="text-xs md:text-sm text-text-muted leading-relaxed">
+                  {isLive 
+                    ? "Each session is capped at 40 students to ensure everyone gets personal attention. Missed a class? You'll get access to that session's recording for 7 days only, but live attendance is strongly encouraged."
+                    : "You'll get lifetime access to all pre-recorded videos, downloadable lecture notes, and weekly live doubt-clearing sessions personally led by the mentor."
+                  }
+                </p>
+              </>
+            )}
           </div>
 
           {/* SYLLABUS ACCORDION (Recorded format only) */}
@@ -434,7 +490,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             <div className="space-y-3">
               <h3 className="font-heading text-lg font-bold text-primary">Course curriculum</h3>
               <div className="space-y-3">
-                {syllabus.map((module, mIdx) => (
+                {syllabus.map((module: { name: string; meta: string; lessons: string[] }, mIdx: number) => (
                   <div key={mIdx} className="border border-border-subtle rounded-xl overflow-hidden shadow-sm">
                     <button
                       onClick={() => toggleModule(mIdx)}
@@ -453,7 +509,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                     
                     {expandedModules[mIdx] && (
                       <div className="bg-white divide-y divide-slate-100 px-4">
-                        {module.lessons.map((lesson, lIdx) => (
+                        {module.lessons.map((lesson: string, lIdx: number) => (
                           <div key={lIdx} className="flex items-center gap-2.5 py-3 text-xs text-text-muted">
                             <IconVideo className="w-4 h-4 text-secondary flex-shrink-0" />
                             <span>{lesson}</span>
@@ -593,53 +649,12 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
 
             {/* Inclusions */}
             <div className="space-y-3">
-              {isLive ? (
-                <>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconBroadcast className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>16 live sessions, 2x weekly</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconDeviceLaptop className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>Live on Zoom — join via browser/app</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconMessageCircle className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>Live doubt-solving every class</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconRotate className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>7-day replay for missed classes</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconCertificate className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>Certificate on batch completion</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconClock className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>32 hours of content</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconDeviceLaptop className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>Access on mobile & desktop</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconCertificate className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>Certificate of completion</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconInfinity className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>Lifetime access</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
-                    <IconMessageCircle className="w-4 h-4 text-secondary flex-shrink-0" />
-                    <span>Weekly live Q&A with mentor</span>
-                  </div>
-                </>
-              )}
+              {inclusionsList.map((incItem: string, idx: number) => (
+                <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-700">
+                  {getInclusionIcon(idx)}
+                  <span>{incItem}</span>
+                </div>
+              ))}
             </div>
 
             {/* Timing parameters (Live batch only) */}
@@ -647,19 +662,19 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
               <div className="bg-surface border border-border-subtle rounded-xl p-3.5 space-y-2.5 mt-4">
                 <div className="flex justify-between items-center text-[11px] text-text-muted">
                   <span>Batch start date</span>
-                  <strong className="text-primary font-bold">22 Jun 2026</strong>
+                  <strong className="text-primary font-bold">{course.batchStartDate || "22 Jun 2026"}</strong>
                 </div>
                 <div className="flex justify-between items-center text-[11px] text-text-muted">
                   <span>Batch end date</span>
-                  <strong className="text-primary font-bold">14 Aug 2026</strong>
+                  <strong className="text-primary font-bold">{course.batchEndDate || "14 Aug 2026"}</strong>
                 </div>
                 <div className="flex justify-between items-center text-[11px] text-text-muted">
                   <span>Class days</span>
-                  <strong className="text-primary font-bold">Mon & Thu</strong>
+                  <strong className="text-primary font-bold">{course.classDays || "Mon & Thu"}</strong>
                 </div>
                 <div className="flex justify-between items-center text-[11px] text-text-muted">
                   <span>Class timing</span>
-                  <strong className="text-primary font-bold">6:00–7:30 PM IST</strong>
+                  <strong className="text-primary font-bold">{course.classTiming || "6:00–7:30 PM IST"}</strong>
                 </div>
               </div>
             )}

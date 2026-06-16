@@ -21,7 +21,7 @@ import {
   IconBrandYoutube,
   IconCheck,
 } from "@tabler/icons-react";
-import { getCoursesPageData } from "../actions";
+import { getSessionsPageData } from "../actions";
 
 // Dynamic Icon Picker Helper
 const getIconComponent = (name: string) => {
@@ -60,20 +60,8 @@ const getSubjectBgColor = (subject: string) => {
   }
 };
 
-// Level determination helper based on title
-function getCourseLevel(title: string) {
-  const t = title.toLowerCase();
-  if (t.includes("beginner") || t.includes("intro") || t.includes("basics") || t.includes("a1")) {
-    return "Beginner";
-  }
-  if (t.includes("advanced") || t.includes("jee") || t.includes("neet") || t.includes("class 12") || t.includes("class 11")) {
-    return "Advanced";
-  }
-  return "Intermediate";
-}
-
-export default function CoursesPage() {
-  const [courses, setCourses] = useState<any[]>([]);
+export default function SessionsPage() {
+  const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter & Search States
@@ -82,11 +70,10 @@ export default function CoursesPage() {
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   
   const [sortOption, setSortOption] = useState("Most popular");
   const [currentPage, setCurrentPage] = useState(1);
@@ -95,10 +82,10 @@ export default function CoursesPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await getCoursesPageData();
-        setCourses(res);
+        const res = await getSessionsPageData();
+        setSessions(res);
       } catch (err) {
-        console.error("Failed to load courses page data:", err);
+        console.error("Failed to load sessions page data:", err);
       } finally {
         setLoading(false);
       }
@@ -108,7 +95,7 @@ export default function CoursesPage() {
 
   // Sync Categories with Tab Strip
   const handleTabSelect = (tab: string) => {
-    if (tab === "All courses") {
+    if (tab === "All sessions") {
       setSelectedCategories([]);
     } else {
       setSelectedCategories(prev => 
@@ -125,27 +112,19 @@ export default function CoursesPage() {
     setCurrentPage(1);
   };
 
-  const handleFormatCheckbox = (format: string) => {
-    setSelectedFormats(prev => 
-      prev.includes(format) ? prev.filter(f => f !== format) : [...prev, format]
-    );
-    setCurrentPage(1);
-  };
-
-  const handleLevelCheckbox = (level: string) => {
-    setSelectedLevels(prev => 
-      prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
+  const handleTypeCheckbox = (type: string) => {
+    setSelectedTypes(prev => 
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
     );
     setCurrentPage(1);
   };
 
   const resetAllFilters = () => {
     setSelectedCategories([]);
-    setSelectedFormats([]);
+    setSelectedTypes([]);
     setMinPrice("");
     setMaxPrice("");
     setSelectedRating(null);
-    setSelectedLevels([]);
     setSearchQuery("");
     setCurrentPage(1);
   };
@@ -154,89 +133,72 @@ export default function CoursesPage() {
     setSelectedCategories(prev => prev.filter(c => c !== cat));
   };
 
-  const removeFormatFilter = (form: string) => {
-    setSelectedFormats(prev => prev.filter(f => f !== form));
-  };
-
-  const removeLevelFilter = (lvl: string) => {
-    setSelectedLevels(prev => prev.filter(l => l !== lvl));
+  const removeTypeFilter = (type: string) => {
+    setSelectedTypes(prev => prev.filter(t => t !== type));
   };
 
   // Filter Logic
-  const filteredCourses = courses.filter((c) => {
+  const filteredSessions = sessions.filter((s) => {
     // Search filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      const matchTitle = c.title.toLowerCase().includes(q);
-      const matchDesc = c.description.toLowerCase().includes(q);
-      const matchMentor = c.mentor.toLowerCase().includes(q);
+      const matchTitle = s.title.toLowerCase().includes(q);
+      const matchDesc = s.description.toLowerCase().includes(q);
+      const matchMentor = s.mentor.toLowerCase().includes(q);
       if (!matchTitle && !matchDesc && !matchMentor) return false;
     }
 
     // Category filter
     if (selectedCategories.length > 0) {
-      if (!selectedCategories.includes(c.subject)) return false;
+      if (!selectedCategories.includes(s.subject)) return false;
     }
 
-    // Format filter
-    if (selectedFormats.length > 0) {
-      const formatMapped = c.format === "Recorded" ? "Recorded course" : c.format === "Hourly" ? "Hourly 1-on-1" : c.format;
-      if (!selectedFormats.includes(formatMapped)) return false;
+    // Type filter
+    if (selectedTypes.length > 0) {
+      if (!selectedTypes.includes(s.type)) return false;
     }
 
     // Price range filter
-    if (minPrice && c.price < Number(minPrice)) return false;
-    if (maxPrice && c.price > Number(maxPrice)) return false;
+    if (minPrice && s.price < Number(minPrice)) return false;
+    if (maxPrice && s.price > Number(maxPrice)) return false;
 
-    // Rating filter
-    if (selectedRating !== null && c.rating < selectedRating) return false;
-
-    // Level filter
-    if (selectedLevels.length > 0) {
-      const level = getCourseLevel(c.title);
-      if (!selectedLevels.includes(level)) return false;
-    }
+    // Rating filter (simulated fallback to 5.0 for default reviews)
+    if (selectedRating !== null && 5.0 < selectedRating) return false;
 
     return true;
   });
 
   // Sorting Logic
-  const sortedCourses = [...filteredCourses].sort((a, b) => {
+  const sortedSessions = [...filteredSessions].sort((a, b) => {
     if (sortOption === "Price: Low to High") return a.price - b.price;
     if (sortOption === "Price: High to Low") return b.price - a.price;
-    if (sortOption === "Highest rated") return b.rating - a.rating;
-    // Fallback/Default: Most popular (sort by student count desc)
-    return b.students - a.students;
+    // Fallback/Default: Most popular / Highest Rated (sort by bookings count desc)
+    return b.bookings - a.bookings;
   });
 
   // Pagination Logic
-  const totalItems = sortedCourses.length;
+  const totalItems = sortedSessions.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const currentCourses = sortedCourses.slice(startIndex, endIndex);
+  const currentSessions = sortedSessions.slice(startIndex, endIndex);
 
   // Active Filter Count calculation
   const activeFilterCount = 
     selectedCategories.length +
-    selectedFormats.length +
+    selectedTypes.length +
     (minPrice || maxPrice ? 1 : 0) +
-    (selectedRating !== null ? 1 : 0) +
-    selectedLevels.length;
+    (selectedRating !== null ? 1 : 0);
 
-  // Counts for checkboxes (calculated on raw active courses list)
-  const getCountByCategory = (cat: string) => courses.filter(c => c.subject === cat).length;
-  const getCountByFormat = (form: string) => courses.filter(c => {
-    const formatMapped = c.format === "Recorded" ? "Recorded course" : c.format === "Hourly" ? "Hourly 1-on-1" : c.format;
-    return formatMapped === form;
-  }).length;
-  const getCountByLevel = (lvl: string) => courses.filter(c => getCourseLevel(c.title) === lvl).length;
+  // Counts for checkboxes
+  const getCountByCategory = (cat: string) => sessions.filter(s => s.subject === cat).length;
+  const getCountByType = (type: string) => sessions.filter(s => s.type === type).length;
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
         <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Courses...</p>
+        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Sessions...</p>
       </div>
     );
   }
@@ -281,20 +243,20 @@ export default function CoursesPage() {
           <nav className="text-xs text-text-muted mb-3 flex items-center gap-1.5 font-medium">
             <a href="/" className="hover:text-secondary transition-colors">Home</a>
             <span className="text-slate-300">/</span>
-            <span className="text-primary font-semibold">Courses</span>
+            <span className="text-primary font-semibold">Sessions</span>
           </nav>
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-primary mb-1">
-                Explore Courses
+                Explore Hourly Sessions
               </h1>
               <p className="text-xs md:text-sm text-text-muted">
-                Browse 320+ courses and live batches taught by verified mentors
+                Book flexible 1-on-1 private lessons or group review sessions on your own schedule
               </p>
             </div>
 
-            {/* EXPANDABLE SEARCH & FILTER BUTTON (Placed right next to search icon) */}
+            {/* EXPANDABLE SEARCH & FILTER BUTTON */}
             <div className="flex items-center gap-3 self-end md:self-center flex-shrink-0">
               <div className="flex items-center">
                 <div className={`flex items-center overflow-hidden transition-all duration-300 ${isSearchExpanded ? "w-[240px] opacity-100 mr-2" : "w-0 opacity-0"}`}>
@@ -306,11 +268,11 @@ export default function CoursesPage() {
                         setSearchQuery(e.target.value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Search subject, mentor, keyword..."
+                      placeholder="Search subject, mentor, topic..."
                       className="flex-1 text-xs outline-none text-primary"
                     />
                     {searchQuery && (
-                      <button onClick={() => setSearchQuery("")} className="text-slate-400 hover:text-primary p-0.5">
+                      <button onClick={() => setSearchQuery("")} className="text-slate-400 hover:text-primary p-0.5 animate-fade-in">
                         <IconX className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -321,7 +283,7 @@ export default function CoursesPage() {
                 <button
                   onClick={() => setIsSearchExpanded(!isSearchExpanded)}
                   className="w-10 h-10 rounded-xl border border-border-subtle bg-white flex items-center justify-center cursor-pointer hover:border-secondary hover:bg-[#F0F6FF] transition-all focus:outline-none"
-                  title="Search courses"
+                  title="Search sessions"
                 >
                   <IconSearch className="w-5 h-5 text-primary" />
                 </button>
@@ -344,15 +306,11 @@ export default function CoursesPage() {
 
                 {showFilterPanel && (
                   <>
-                    {/* Transparent overlay backdrop to capture clicks outside */}
                     <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowFilterPanel(false)} />
                     
-                    {/* Floating popover modal */}
                     <div className="absolute right-0 top-12 mt-2 w-[320px] bg-white border border-border-subtle rounded-2xl shadow-xl z-50 p-5 origin-top-right animate-fade-in">
-                      {/* Triangle pointer arrow pointing up at the filter button */}
                       <div className="w-3 h-3 bg-white rotate-45 border-t border-l border-border-subtle absolute -top-1.5 right-3.5 z-10"></div>
                       
-                      {/* Body */}
                       <div className="max-h-[350px] overflow-y-auto -mr-5 pr-4 space-y-6 premium-scrollbar relative z-20">
                         {/* Category Section */}
                         <div>
@@ -360,7 +318,7 @@ export default function CoursesPage() {
                             Category
                           </div>
                           <div className="flex flex-col">
-                            {["Mathematics", "Science", "Programming", "English", "Test Prep"].map((cat) => (
+                            {["Mathematics", "Science", "Programming", "English"].map((cat) => (
                               <div
                                 key={cat}
                                 onClick={() => handleCategoryCheckbox(cat)}
@@ -380,27 +338,27 @@ export default function CoursesPage() {
                           </div>
                         </div>
 
-                        {/* Format Section */}
+                        {/* Type Section */}
                         <div>
                           <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Format
+                            Session Type
                           </div>
                           <div className="flex flex-col">
-                            {["Live batch", "Recorded course", "Hourly 1-on-1"].map((form) => (
+                            {["1-on-1", "Group"].map((type) => (
                               <div
-                                key={form}
-                                onClick={() => handleFormatCheckbox(form)}
+                                key={type}
+                                onClick={() => handleTypeCheckbox(type)}
                                 className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer group"
                               >
                                 <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center border transition-all ${
-                                  selectedFormats.includes(form)
+                                  selectedTypes.includes(type)
                                     ? "bg-secondary border-secondary text-white"
                                     : "bg-white border-slate-300 group-hover:border-secondary"
                                 }`}>
-                                  {selectedFormats.includes(form) && <IconCheck className="w-3 h-3 stroke-[3]" />}
+                                  {selectedTypes.includes(type) && <IconCheck className="w-3 h-3 stroke-[3]" />}
                                 </div>
-                                <span className="text-[13px] font-semibold text-primary">{form}</span>
-                                <span className="ml-auto text-[11px] font-semibold text-slate-400">{getCountByFormat(form)}</span>
+                                <span className="text-[13px] font-semibold text-primary">{type}</span>
+                                <span className="ml-auto text-[11px] font-semibold text-slate-400">{getCountByType(type)}</span>
                               </div>
                             ))}
                           </div>
@@ -409,7 +367,7 @@ export default function CoursesPage() {
                         {/* Price Range Section */}
                         <div>
                           <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Price range
+                            Hourly Rate
                           </div>
                           <div className="flex items-center gap-2 pt-1">
                             <input
@@ -460,32 +418,6 @@ export default function CoursesPage() {
                             ))}
                           </div>
                         </div>
-
-                        {/* Level Section */}
-                        <div>
-                          <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Level
-                          </div>
-                          <div className="flex flex-col">
-                            {["Beginner", "Intermediate", "Advanced"].map((level) => (
-                              <div
-                                key={level}
-                                onClick={() => handleLevelCheckbox(level)}
-                                className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer group"
-                              >
-                                <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center border transition-all ${
-                                  selectedLevels.includes(level)
-                                    ? "bg-secondary border-secondary text-white"
-                                    : "bg-white border-slate-300 group-hover:border-secondary"
-                                }`}>
-                                  {selectedLevels.includes(level) && <IconCheck className="w-3 h-3 stroke-[3]" />}
-                                </div>
-                                <span className="text-[13px] font-semibold text-primary">{level}</span>
-                                <span className="ml-auto text-[11px] font-semibold text-slate-400">{getCountByLevel(level)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
                       </div>
 
                       {/* Footer Actions */}
@@ -517,12 +449,12 @@ export default function CoursesPage() {
         {/* TOPBAR (Tabs & Sort) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-subtle mb-6">
           <div className="flex items-center gap-1.5 overflow-x-auto premium-scrollbar pb-2 sm:pb-0">
-            {["All courses", "Mathematics", "Science", "Programming", "English", "Test Prep"].map((tab) => (
+            {["All sessions", "Mathematics", "Science", "Programming", "English"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabSelect(tab)}
                 className={`text-xs font-semibold px-4 py-2 rounded-full border transition-all cursor-pointer whitespace-nowrap ${
-                  (tab === "All courses" ? selectedCategories.length === 0 : selectedCategories.includes(tab))
+                  (tab === "All sessions" ? selectedCategories.length === 0 : selectedCategories.includes(tab))
                     ? "bg-primary text-white border-primary"
                     : "bg-white text-text-muted border-border-subtle hover:bg-slate-50"
                 }`}
@@ -542,7 +474,6 @@ export default function CoursesPage() {
               <option>Most popular</option>
               <option>Price: Low to High</option>
               <option>Price: High to Low</option>
-              <option>Highest rated</option>
             </select>
           </div>
         </div>
@@ -560,21 +491,11 @@ export default function CoursesPage() {
               </div>
             ))}
             
-            {/* Format pills */}
-            {selectedFormats.map((form) => (
-              <div key={form} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                {form}
-                <button onClick={() => removeFormatFilter(form)} className="hover:text-red-600 transition-colors">
-                  <IconX className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-
-            {/* Level pills */}
-            {selectedLevels.map((lvl) => (
-              <div key={lvl} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                {lvl}
-                <button onClick={() => removeLevelFilter(lvl)} className="hover:text-red-600 transition-colors">
+            {/* Type pills */}
+            {selectedTypes.map((type) => (
+              <div key={type} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
+                {type}
+                <button onClick={() => removeTypeFilter(type)} className="hover:text-red-600 transition-colors">
                   <IconX className="w-3 h-3" />
                 </button>
               </div>
@@ -612,14 +533,14 @@ export default function CoursesPage() {
           </div>
 
           <div className="text-xs text-text-muted font-medium self-end sm:self-auto">
-            Showing <strong className="text-primary font-bold">{totalItems === 0 ? 0 : startIndex + 1}–{endIndex}</strong> of <strong className="text-primary font-bold">{totalItems}</strong> courses
+            Showing <strong className="text-primary font-bold">{totalItems === 0 ? 0 : startIndex + 1}–{endIndex}</strong> of <strong className="text-primary font-bold">{totalItems}</strong> sessions
           </div>
         </div>
 
-        {/* COURSES GRID */}
-        {currentCourses.length === 0 ? (
+        {/* SESSIONS GRID */}
+        {currentSessions.length === 0 ? (
           <div className="text-center py-20 bg-slate-50 border border-dashed border-border-subtle rounded-2xl">
-            <p className="text-sm text-text-muted mb-4 font-medium">No courses matches your filters.</p>
+            <p className="text-sm text-text-muted mb-4 font-medium">No sessions match your filters.</p>
             <button
               onClick={resetAllFilters}
               className="text-xs font-semibold px-5 py-2.5 bg-primary text-white rounded-lg hover:shadow-md transition-all cursor-pointer"
@@ -629,57 +550,39 @@ export default function CoursesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {currentCourses.map((c) => (
+            {currentSessions.map((s) => (
               <div
-                key={c.id}
+                key={s.id}
                 className="bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between"
               >
-                <div className={`w-full h-36 flex items-center justify-center relative ${getSubjectBgColor(c.subject)}`}>
-                  {c.format === "Live batch" && (
-                    <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-                      LIVE
-                    </div>
-                  )}
-                  {getIconComponent(c.iconName)}
+                <div className={`w-full h-32 flex items-center justify-center ${getSubjectBgColor(s.subject)}`}>
+                  {getIconComponent(s.iconName)}
                 </div>
 
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-badge-bg text-badge-text">
-                        {c.subject}
-                      </span>
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        c.format === "Live batch"
-                          ? "bg-green-50 text-green-700 border border-green-150"
-                          : c.format === "Recorded"
-                          ? "bg-amber-50 text-amber-700 border border-amber-150"
-                          : "bg-purple-50 text-purple-700 border border-purple-150"
-                      }`}>
-                        {c.format}
-                      </span>
-                    </div>
-                    
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 mb-3 inline-block">
+                      {s.type} Session
+                    </span>
                     <h3 className="font-heading text-base font-bold text-primary mb-1 leading-tight">
-                      {c.title}
+                      {s.title}
                     </h3>
                     <p className="text-xs text-text-muted mb-1 font-medium">
-                      Course by {c.mentor}
+                      Led by {s.mentor}
                     </p>
                     <p className="text-xs text-text-muted/85 leading-relaxed line-clamp-2 mb-4">
-                      {c.description || `Structured course program in ${c.subject}.`}
+                      {s.description || `1-on-1 private lesson in ${s.subject}.`}
                     </p>
                   </div>
 
                   <div>
                     <div className="flex items-center gap-2 border-t border-border-subtle pt-3 mb-4">
                       <span className="text-xs font-bold text-accent flex items-center gap-0.5">
-                        <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> {c.rating}
+                        <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> 5.0
                       </span>
-                      <span className="text-[10px] text-text-muted font-medium">({c.students} students)</span>
+                      <span className="text-[10px] text-text-muted font-medium">({s.bookings} reviews)</span>
                       <span className="ml-auto font-heading font-extrabold text-primary text-lg">
-                        ₹{c.price.toLocaleString("en-IN")}
+                        ₹{s.price.toLocaleString("en-IN")}/hr
                       </span>
                     </div>
 
@@ -687,9 +590,9 @@ export default function CoursesPage() {
                       <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer">
                         Book now
                       </button>
-                      <a href={`/courses/${c.id}`} className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center">
+                      <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center">
                         Details
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -733,8 +636,6 @@ export default function CoursesPage() {
           </div>
         )}
       </main>
-
-
 
       {/* FOOTER */}
       <footer className="bg-[#0f2347] text-white py-12 mt-auto">

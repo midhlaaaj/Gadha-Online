@@ -191,6 +191,9 @@ export async function getAdminData() {
     return {
       id: c.id,
       title: c.title,
+      description: c.description || "",
+      aboutCourse: c.about_course || "",
+      coverImageUrl: c.cover_image_url || "",
       subject: c.subject,
       format: c.format,
       price: Number(c.price),
@@ -198,6 +201,13 @@ export async function getAdminData() {
       students: c.students_count,
       rating: Number(c.rating),
       status: c.status,
+      learningOutcomes: c.learning_outcomes || [],
+      curriculum: c.curriculum || [],
+      inclusions: c.inclusions || [],
+      batchStartDate: c.batch_start_date || "",
+      batchEndDate: c.batch_end_date || "",
+      classDays: c.class_days || "",
+      classTiming: c.class_timing || "",
       colorBg: style.colorBg,
       iconName: style.iconName,
     };
@@ -342,11 +352,22 @@ export async function upsertCourse(course: any) {
   const courseData = {
     title: course.title,
     description: course.description || `Structured course program in ${course.subject}.`,
+    about_course: course.aboutCourse || "",
     subject: course.subject,
     format: course.format,
     price: Number(course.price),
     mentor_id: mentorId,
     status: course.status,
+    cover_image_url: course.coverImageUrl || "",
+    students_count: Number(course.students || 0),
+    rating: Number(course.rating || 5.0),
+    learning_outcomes: course.learningOutcomes || [],
+    curriculum: course.curriculum || [],
+    inclusions: course.inclusions || [],
+    batch_start_date: course.batchStartDate || "",
+    batch_end_date: course.batchEndDate || "",
+    class_days: course.classDays || "",
+    class_timing: course.classTiming || "",
     updated_at: new Date().toISOString(),
   };
 
@@ -1169,6 +1190,7 @@ export async function getCourseDetails(id: string) {
     id: c.id,
     title: c.title,
     description: c.description || "",
+    aboutCourse: c.about_course || "",
     subject: c.subject,
     format: c.format,
     price: Number(c.price),
@@ -1186,6 +1208,14 @@ export async function getCourseDetails(id: string) {
     },
     students: c.students_count,
     rating: Number(c.rating),
+    learningOutcomes: c.learning_outcomes || [],
+    curriculum: c.curriculum || [],
+    inclusions: c.inclusions || [],
+    batchStartDate: c.batch_start_date || "",
+    batchEndDate: c.batch_end_date || "",
+    classDays: c.class_days || "",
+    classTiming: c.class_timing || "",
+    coverImageUrl: c.cover_image_url || "",
     colorBg: style.colorBg,
     iconName: style.iconName,
   };
@@ -1253,4 +1283,82 @@ export async function getCourseDetails(id: string) {
     course: courseMapped,
     related: relatedMapped,
   };
+}
+
+export async function uploadCourseCover(formData: FormData) {
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("No file provided");
+
+  const supabase = createAdminClient();
+
+  // Ensure bucket exists
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.error("Storage list error:", listError);
+  }
+  
+  const bucketName = "course-covers";
+  const bucketExists = buckets?.some(b => b.name === bucketName);
+
+  if (!bucketExists) {
+    const { error: createError } = await supabase.storage.createBucket(bucketName, {
+      public: true,
+      fileSizeLimit: 5242880, // 5MB
+    });
+    if (createError) {
+      console.warn("Storage bucket creation error or warning:", createError);
+    }
+  }
+
+  // Upload file
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+  
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, buffer, {
+      contentType: file.type,
+      duplex: "half",
+    } as any);
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  return { publicUrl };
+}
+
+export async function getSessionsPageData() {
+  const supabase = await createClient();
+  const { data: dbSessions, error } = await supabase
+    .from("sessions")
+    .select("*, mentor:mentors(profile:profiles(full_name, avatar_url))")
+    .eq("status", "Active")
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return (dbSessions || []).map((s: any) => {
+    const name = s.mentor?.profile?.full_name || "Unknown Mentor";
+    const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+    return {
+      id: s.id,
+      title: s.title,
+      description: s.description || "",
+      mentor: name,
+      mentorAvatar: init,
+      mentorColor: s.color_bg || "#1B3A6B",
+      type: s.type,
+      bookings: s.bookings_count,
+      subject: s.subject,
+      price: Number(s.price),
+      status: s.status,
+      colorBg: s.color_bg || "#ede9fe",
+      iconName: s.icon_name || "writing",
+    };
+  });
 }
