@@ -327,16 +327,25 @@ export default function Home() {
       {/* POPULAR COURSES */}
       <section id="courses" className="py-16">
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
-          <div className="mb-10 text-left">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider block mb-1">
-              What we offer
-            </span>
-            <h2 className="font-heading text-3xl font-extrabold text-primary">
-              Popular courses
-            </h2>
-            <p className="text-sm text-text-muted mt-1">
-              Structured programs taught by verified educators
-            </p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 text-left gap-4">
+            <div>
+              <span className="text-[11px] font-bold text-secondary uppercase tracking-wider block mb-1">
+                What we offer
+              </span>
+              <h2 className="font-heading text-3xl font-extrabold text-primary">
+                Popular courses
+              </h2>
+              <p className="text-sm text-text-muted mt-1">
+                Structured programs taught by verified educators
+              </p>
+            </div>
+            <a 
+              href="/courses" 
+              className="text-sm font-bold text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors whitespace-nowrap self-start md:self-auto group"
+            >
+              <span>Explore all courses</span>
+              <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
+            </a>
           </div>
           {courses.length === 0 ? (
             <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
@@ -388,16 +397,25 @@ export default function Home() {
       {/* HOURLY SESSIONS */}
       <section id="sessions" className="bg-surface py-16">
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
-          <div className="mb-10 text-left">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider block mb-1">
-              Flexible learning
-            </span>
-            <h2 className="font-heading text-3xl font-extrabold text-primary">
-              Hourly sessions
-            </h2>
-            <p className="text-sm text-text-muted mt-1">
-              Pay per session — no long-term commitment required
-            </p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 text-left gap-4">
+            <div>
+              <span className="text-[11px] font-bold text-secondary uppercase tracking-wider block mb-1">
+                Flexible learning
+              </span>
+              <h2 className="font-heading text-3xl font-extrabold text-primary">
+                Hourly sessions
+              </h2>
+              <p className="text-sm text-text-muted mt-1">
+                Pay per session — no long-term commitment required
+              </p>
+            </div>
+            <a 
+              href="/sessions" 
+              className="text-sm font-bold text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors whitespace-nowrap self-start md:self-auto group"
+            >
+              <span>Explore all sessions</span>
+              <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
+            </a>
           </div>
           {sessions.length === 0 ? (
             <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200">
