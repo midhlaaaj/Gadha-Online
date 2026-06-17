@@ -337,18 +337,26 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           <a href="/sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             Sessions
           </a>
-          <a href="/#mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
+          <a href="/mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             Mentors
           </a>
           <a href="/#about" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             About
           </a>
-          <a
-            href="/admin"
-            className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 hover:shadow-md transition-all cursor-pointer"
-          >
-            Admin Panel
-          </a>
+          <div className="flex items-center gap-3 ml-2">
+            <a
+              href="#"
+              className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer"
+            >
+              Sign In
+            </a>
+            <a
+              href="#"
+              className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer"
+            >
+              Sign Up
+            </a>
+          </div>
         </div>
         <button className="md:hidden text-xs font-semibold px-4 py-2 rounded-lg bg-secondary text-white cursor-pointer">
           Menu

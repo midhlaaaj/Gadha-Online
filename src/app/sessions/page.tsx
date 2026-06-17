@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   IconSearch,
   IconAdjustmentsHorizontal,
@@ -60,12 +61,15 @@ const getSubjectBgColor = (subject: string) => {
   }
 };
 
-export default function SessionsPage() {
+function SessionsPageContent() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const searchParams = useSearchParams();
+  const mentorParam = searchParams.get("mentor") || "";
+
   // Filter & Search States
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(mentorParam);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
@@ -218,18 +222,26 @@ export default function SessionsPage() {
           <a href="/sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             Sessions
           </a>
-          <a href="/#mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
+          <a href="/mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             Mentors
           </a>
           <a href="/#about" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             About
           </a>
-          <a
-            href="/admin"
-            className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 hover:shadow-md transition-all cursor-pointer"
-          >
-            Admin Panel
-          </a>
+          <div className="flex items-center gap-3 ml-2">
+            <a
+              href="#"
+              className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer"
+            >
+              Sign In
+            </a>
+            <a
+              href="#"
+              className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer"
+            >
+              Sign Up
+            </a>
+          </div>
         </div>
         <button className="md:hidden text-xs font-semibold px-4 py-2 rounded-lg bg-secondary text-white cursor-pointer">
           Menu
@@ -243,16 +255,27 @@ export default function SessionsPage() {
           <nav className="text-xs text-text-muted mb-3 flex items-center gap-1.5 font-medium">
             <a href="/" className="hover:text-secondary transition-colors">Home</a>
             <span className="text-slate-300">/</span>
-            <span className="text-primary font-semibold">Sessions</span>
+            {mentorParam ? (
+              <>
+                <a href="/sessions" className="hover:text-secondary transition-colors">Sessions</a>
+                <span className="text-slate-300">/</span>
+                <span className="text-primary font-semibold">{mentorParam}</span>
+              </>
+            ) : (
+              <span className="text-primary font-semibold">Sessions</span>
+            )}
           </nav>
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-primary mb-1">
-                Explore Hourly Sessions
+                {mentorParam ? `Explore sessions by ${mentorParam}` : "Explore Hourly Sessions"}
               </h1>
               <p className="text-xs md:text-sm text-text-muted">
-                Book flexible 1-on-1 private lessons or group review sessions on your own schedule
+                {mentorParam 
+                  ? `Browse hourly sessions conducted by ${mentorParam}`
+                  : "Book flexible 1-on-1 private lessons or group review sessions on your own schedule"
+                }
               </p>
             </div>
 
@@ -590,9 +613,12 @@ export default function SessionsPage() {
                       <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer">
                         Book now
                       </button>
-                      <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center">
+                      <a
+                        href={`/sessions/${s.id}`}
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center"
+                      >
                         Details
-                      </button>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -685,4 +711,22 @@ export default function SessionsPage() {
 
     </div>
   );
+}
+
+export default function SessionsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
+        <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Sessions...</p>
+      </div>
+    }>
+      <CoursesPageContentWrapper />
+    </Suspense>
+  );
+}
+
+// Rename CoursesPageContentWrapper to match component or just write SessionsPageContent
+function CoursesPageContentWrapper() {
+  return <SessionsPageContent />;
 }

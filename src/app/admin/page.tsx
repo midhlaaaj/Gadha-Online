@@ -224,6 +224,7 @@ export default function AdminPanel() {
   const [drawerEditId, setDrawerEditId] = useState<string | null>(null);
   const [drawerForm, setDrawerForm] = useState<any>({});
   const [showMoreCourseDetails, setShowMoreCourseDetails] = useState(false);
+  const [showMoreSessionDetails, setShowMoreSessionDetails] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,6 +291,14 @@ export default function AdminPanel() {
           price: 0,
           type: "1-on-1",
           status: "Active",
+          aboutSession: "",
+          whatsCovered: [],
+          inclusions: ["", "", "", "", ""],
+          durationOptions: "60 or 90 min",
+          platform: "Zoom",
+          language: "English / Hindi",
+          days: "Mon – Sat",
+          reschedulePolicy: "Up to 4 hrs before",
         });
       } else if (mode === "mentor") {
         setDrawerForm({
@@ -319,6 +328,7 @@ export default function AdminPanel() {
     setDrawerMode(null);
     setDrawerEditId(null);
     setShowMoreCourseDetails(false);
+    setShowMoreSessionDetails(false);
   };
 
   // CRUD Save changes
@@ -2318,6 +2328,129 @@ export default function AdminPanel() {
                       <option>Inactive</option>
                     </select>
                   </div>
+
+                  {/* Advanced Options Toggler */}
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreSessionDetails(!showMoreSessionDetails)}
+                    className="w-full text-xs font-bold py-2 border border-secondary rounded-lg text-secondary hover:bg-[#F0F6FF] transition-colors mt-2 cursor-pointer"
+                  >
+                    {showMoreSessionDetails ? "Hide Details" : "Show More"}
+                  </button>
+
+                  {/* Advanced Custom Fields */}
+                  {showMoreSessionDetails && (
+                    <div className="space-y-4 border-t border-border-subtle pt-4 mt-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-primary uppercase">About Session description</label>
+                        <textarea
+                          className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none resize-none h-20"
+                          placeholder="e.g. A focused 1-on-1 session covering..."
+                          value={drawerForm.aboutSession || ""}
+                          onChange={(e) => setDrawerForm({ ...drawerForm, aboutSession: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-primary uppercase">What's Covered (one item per line)</label>
+                        <textarea
+                          className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none resize-none h-20"
+                          placeholder="e.g. Confidence intervals & margin of error&#10;Hypothesis testing"
+                          value={drawerForm.whatsCovered ? drawerForm.whatsCovered.join("\n") : ""}
+                          onChange={(e) => setDrawerForm({ ...drawerForm, whatsCovered: e.target.value.split("\n").filter(Boolean) })}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-primary uppercase">Inclusions (5 items)</label>
+                        {[0, 1, 2, 3, 4].map((idx) => {
+                          const defaults = [
+                            "Live on Zoom — any device",
+                            "Summary notes after session",
+                            "Free reschedule up to 4 hrs before",
+                            "Pre-session topic form",
+                            "Secure payment via Razorpay"
+                          ];
+                          const currentVal = drawerForm.inclusions?.[idx] !== undefined ? drawerForm.inclusions[idx] : "";
+                          return (
+                            <input
+                              key={idx}
+                              className="text-xs p-2 border border-border-subtle rounded-lg outline-none mb-1"
+                              type="text"
+                              placeholder={defaults[idx]}
+                              value={currentVal}
+                              onChange={(e) => {
+                                const newInc = [...(drawerForm.inclusions || ["", "", "", "", ""])];
+                                newInc[idx] = e.target.value;
+                                setDrawerForm({ ...drawerForm, inclusions: newInc });
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      <div className="font-semibold text-[10px] text-text-muted uppercase tracking-wider mt-2 border-b border-border-subtle pb-1">
+                        Session Timing & Details Parameters
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[9px] font-bold text-primary uppercase">Duration Options</label>
+                          <input
+                            className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                            type="text"
+                            placeholder="60 or 90 min"
+                            value={drawerForm.durationOptions || ""}
+                            onChange={(e) => setDrawerForm({ ...drawerForm, durationOptions: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[9px] font-bold text-primary uppercase">Platform</label>
+                          <input
+                            className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                            type="text"
+                            placeholder="Zoom"
+                            value={drawerForm.platform || ""}
+                            onChange={(e) => setDrawerForm({ ...drawerForm, platform: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[9px] font-bold text-primary uppercase">Language</label>
+                          <input
+                            className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                            type="text"
+                            placeholder="English / Hindi"
+                            value={drawerForm.language || ""}
+                            onChange={(e) => setDrawerForm({ ...drawerForm, language: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[9px] font-bold text-primary uppercase">Days</label>
+                          <input
+                            className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                            type="text"
+                            placeholder="Mon – Sat"
+                            value={drawerForm.days || ""}
+                            onChange={(e) => setDrawerForm({ ...drawerForm, days: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-bold text-primary uppercase">Reschedule Policy</label>
+                        <input
+                          className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                          type="text"
+                          placeholder="Up to 4 hrs before"
+                          value={drawerForm.reschedulePolicy || ""}
+                          onChange={(e) => setDrawerForm({ ...drawerForm, reschedulePolicy: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 

@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { useState, useEffect } from "react";
 import {
   IconSearch,
   IconAdjustmentsHorizontal,
@@ -9,100 +8,45 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconStar,
-  IconMath,
-  IconCode,
-  IconFlask,
-  IconPencil,
-  IconMap,
-  IconCalculator,
-  IconBook,
+  IconCheck,
   IconBrandInstagram,
   IconBrandTwitter,
   IconBrandLinkedin,
   IconBrandYoutube,
-  IconCheck,
+  IconSchool,
+  IconUsers,
+  IconBook,
 } from "@tabler/icons-react";
-import { getCoursesPageData } from "../actions";
+import { getMentorsPageData } from "../actions";
 
-// Dynamic Icon Picker Helper
-const getIconComponent = (name: string) => {
-  switch (name) {
-    case "math":
-    case "calculator":
-      return <IconMath className="w-12 h-12 text-secondary" />;
-    case "code":
-      return <IconCode className="w-12 h-12 text-green-700" />;
-    case "flask":
-    case "science":
-      return <IconFlask className="w-12 h-12 text-yellow-700" />;
-    case "writing":
-    case "pencil":
-      return <IconPencil className="w-12 h-12 text-purple-700" />;
-    case "map":
-      return <IconMap className="w-12 h-12 text-pink-700" />;
-    default:
-      return <IconBook className="w-12 h-12 text-primary" />;
-  }
-};
-
-// Subject Color Class Mapper
-const getSubjectBgColor = (subject: string) => {
-  switch (subject) {
-    case "Mathematics":
-      return "bg-blue-50";
-    case "Programming":
-      return "bg-green-50";
-    case "Science":
-      return "bg-yellow-50";
-    case "English":
-      return "bg-purple-50";
-    default:
-      return "bg-slate-50";
-  }
-};
-
-// Level determination helper based on title
-function getCourseLevel(title: string) {
-  const t = title.toLowerCase();
-  if (t.includes("beginner") || t.includes("intro") || t.includes("basics") || t.includes("a1")) {
-    return "Beginner";
-  }
-  if (t.includes("advanced") || t.includes("jee") || t.includes("neet") || t.includes("class 12") || t.includes("class 11")) {
-    return "Advanced";
-  }
-  return "Intermediate";
-}
-
-function CoursesPageContent() {
-  const [courses, setCourses] = useState<any[]>([]);
+export default function MentorsPage() {
+  const [mentors, setMentors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const searchParams = useSearchParams();
-  const mentorParam = searchParams.get("mentor") || "";
-
   // Filter & Search States
-  const [searchQuery, setSearchQuery] = useState(mentorParam);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [selectedExperiences, setSelectedExperiences] = useState<string[]>([]);
+  const [minRate, setMinRate] = useState("");
+  const [maxRate, setMaxRate] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-  
+
   const [sortOption, setSortOption] = useState("Most popular");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await getCoursesPageData();
-        setCourses(res);
+        const res = await getMentorsPageData();
+        setMentors(res);
       } catch (err) {
-        console.error("Failed to load courses page data:", err);
+        console.error("Failed to load mentors data:", err);
       } finally {
         setLoading(false);
       }
@@ -110,143 +54,140 @@ function CoursesPageContent() {
     loadData();
   }, []);
 
-  // Sync Categories with Tab Strip
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
+
+  // Sync subjects with tab selection
   const handleTabSelect = (tab: string) => {
-    if (tab === "All courses") {
-      setSelectedCategories([]);
+    if (tab === "All mentors") {
+      setSelectedSubjects([]);
     } else {
-      setSelectedCategories(prev => 
-        prev.includes(tab) ? prev.filter(c => c !== tab) : [...prev, tab]
+      setSelectedSubjects(prev =>
+        prev.includes(tab) ? prev.filter(s => s !== tab) : [...prev, tab]
       );
     }
     setCurrentPage(1);
   };
 
-  const handleCategoryCheckbox = (category: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
+  const handleSubjectCheckbox = (subject: string) => {
+    setSelectedSubjects(prev =>
+      prev.includes(subject) ? prev.filter(s => s !== subject) : [...prev, subject]
     );
     setCurrentPage(1);
   };
 
-  const handleFormatCheckbox = (format: string) => {
-    setSelectedFormats(prev => 
-      prev.includes(format) ? prev.filter(f => f !== format) : [...prev, format]
-    );
-    setCurrentPage(1);
-  };
-
-  const handleLevelCheckbox = (level: string) => {
-    setSelectedLevels(prev => 
-      prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
+  const handleExperienceCheckbox = (expRange: string) => {
+    setSelectedExperiences(prev =>
+      prev.includes(expRange) ? prev.filter(e => e !== expRange) : [...prev, expRange]
     );
     setCurrentPage(1);
   };
 
   const resetAllFilters = () => {
-    setSelectedCategories([]);
-    setSelectedFormats([]);
-    setMinPrice("");
-    setMaxPrice("");
+    setSelectedSubjects([]);
+    setSelectedExperiences([]);
+    setMinRate("");
+    setMaxRate("");
     setSelectedRating(null);
-    setSelectedLevels([]);
     setSearchQuery("");
     setCurrentPage(1);
   };
 
-  const removeCategoryFilter = (cat: string) => {
-    setSelectedCategories(prev => prev.filter(c => c !== cat));
+  const removeSubjectFilter = (sub: string) => {
+    setSelectedSubjects(prev => prev.filter(s => s !== sub));
   };
 
-  const removeFormatFilter = (form: string) => {
-    setSelectedFormats(prev => prev.filter(f => f !== form));
+  const removeExperienceFilter = (exp: string) => {
+    setSelectedExperiences(prev => prev.filter(e => e !== exp));
   };
 
-  const removeLevelFilter = (lvl: string) => {
-    setSelectedLevels(prev => prev.filter(l => l !== lvl));
+  // Check if a mentor has experience within a range
+  const matchesExperienceRange = (expYears: number, range: string) => {
+    if (range === "1-3 years") return expYears >= 1 && expYears <= 3;
+    if (range === "4-7 years") return expYears >= 4 && expYears <= 7;
+    if (range === "8+ years") return expYears >= 8;
+    return true;
   };
 
   // Filter Logic
-  const filteredCourses = courses.filter((c) => {
+  const filteredMentors = mentors.filter((m) => {
     // Search filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      const matchTitle = c.title.toLowerCase().includes(q);
-      const matchDesc = c.description.toLowerCase().includes(q);
-      const matchMentor = c.mentor.toLowerCase().includes(q);
-      if (!matchTitle && !matchDesc && !matchMentor) return false;
+      const matchName = m.name.toLowerCase().includes(q);
+      const matchBio = m.bio.toLowerCase().includes(q);
+      const matchQual = m.qualification.toLowerCase().includes(q);
+      const matchExpertise = m.expertise.some((s: string) => s.toLowerCase().includes(q));
+      if (!matchName && !matchBio && !matchQual && !matchExpertise) return false;
     }
 
-    // Category filter
-    if (selectedCategories.length > 0) {
-      if (!selectedCategories.includes(c.subject)) return false;
+    // Subject/Category filter
+    if (selectedSubjects.length > 0) {
+      const matchesSubject = m.expertise.some((s: string) => selectedSubjects.includes(s));
+      if (!matchesSubject) return false;
     }
 
-    // Format filter
-    if (selectedFormats.length > 0) {
-      const formatMapped = c.format === "Recorded" ? "Recorded course" : c.format === "Hourly" ? "Hourly 1-on-1" : c.format;
-      if (!selectedFormats.includes(formatMapped)) return false;
+    // Experience filter
+    if (selectedExperiences.length > 0) {
+      const matchesExp = selectedExperiences.some(range => matchesExperienceRange(m.experience, range));
+      if (!matchesExp) return false;
     }
 
-    // Price range filter
-    if (minPrice && c.price < Number(minPrice)) return false;
-    if (maxPrice && c.price > Number(maxPrice)) return false;
+    // Rate filter
+    if (minRate && m.rate < Number(minRate)) return false;
+    if (maxRate && m.rate > Number(maxRate)) return false;
 
     // Rating filter
-    if (selectedRating !== null && c.rating < selectedRating) return false;
-
-    // Level filter
-    if (selectedLevels.length > 0) {
-      const level = getCourseLevel(c.title);
-      if (!selectedLevels.includes(level)) return false;
-    }
+    if (selectedRating !== null && m.rating < selectedRating) return false;
 
     return true;
   });
 
   // Sorting Logic
-  const sortedCourses = [...filteredCourses].sort((a, b) => {
-    if (sortOption === "Price: Low to High") return a.price - b.price;
-    if (sortOption === "Price: High to Low") return b.price - a.price;
+  const sortedMentors = [...filteredMentors].sort((a, b) => {
+    if (sortOption === "Hourly Rate: Low to High") return a.rate - b.rate;
+    if (sortOption === "Hourly Rate: High to Low") return b.rate - a.rate;
     if (sortOption === "Highest rated") return b.rating - a.rating;
-    // Fallback/Default: Most popular (sort by student count desc)
+    if (sortOption === "Most experienced") return b.experience - a.experience;
+    // Default: Most popular (student count)
     return b.students - a.students;
   });
 
   // Pagination Logic
-  const totalItems = sortedCourses.length;
+  const totalItems = sortedMentors.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const currentCourses = sortedCourses.slice(startIndex, endIndex);
+  const currentMentors = sortedMentors.slice(startIndex, endIndex);
 
-  // Active Filter Count calculation
-  const activeFilterCount = 
-    selectedCategories.length +
-    selectedFormats.length +
-    (minPrice || maxPrice ? 1 : 0) +
-    (selectedRating !== null ? 1 : 0) +
-    selectedLevels.length;
+  // Active filter count
+  const activeFilterCount =
+    selectedSubjects.length +
+    selectedExperiences.length +
+    (minRate || maxRate ? 1 : 0) +
+    (selectedRating !== null ? 1 : 0);
 
-  // Counts for checkboxes (calculated on raw active courses list)
-  const getCountByCategory = (cat: string) => courses.filter(c => c.subject === cat).length;
-  const getCountByFormat = (form: string) => courses.filter(c => {
-    const formatMapped = c.format === "Recorded" ? "Recorded course" : c.format === "Hourly" ? "Hourly 1-on-1" : c.format;
-    return formatMapped === form;
-  }).length;
-  const getCountByLevel = (lvl: string) => courses.filter(c => getCourseLevel(c.title) === lvl).length;
+  // Counts for checkboxes (calculated on raw active mentors list)
+  const getCountBySubject = (sub: string) => mentors.filter(m => m.expertise.includes(sub)).length;
+  const getCountByExperience = (range: string) => mentors.filter(m => matchesExperienceRange(m.experience, range)).length;
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
         <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Courses...</p>
+        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Mentors...</p>
       </div>
     );
   }
 
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
+      <title>Explore Mentors | Tutoboard</title>
+      <meta name="description" content="Connect and learn 1-on-1 with verified educators and subject matter experts on Tutoboard." />
       
       {/* NAVIGATION */}
       <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-50">
@@ -260,7 +201,7 @@ function CoursesPageContent() {
           <a href="/sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
             Sessions
           </a>
-          <a href="/mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
+          <a href="/mentors" className="text-sm font-semibold text-secondary hover:text-secondary/90 transition-colors">
             Mentors
           </a>
           <a href="/#about" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
@@ -293,31 +234,20 @@ function CoursesPageContent() {
           <nav className="text-xs text-text-muted mb-3 flex items-center gap-1.5 font-medium">
             <a href="/" className="hover:text-secondary transition-colors">Home</a>
             <span className="text-slate-300">/</span>
-            {mentorParam ? (
-              <>
-                <a href="/courses" className="hover:text-secondary transition-colors">Courses</a>
-                <span className="text-slate-300">/</span>
-                <span className="text-primary font-semibold">{mentorParam}</span>
-              </>
-            ) : (
-              <span className="text-primary font-semibold">Courses</span>
-            )}
+            <span className="text-primary font-semibold">Mentors</span>
           </nav>
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-primary mb-1">
-                {mentorParam ? `Explore courses by ${mentorParam}` : "Explore Courses"}
+                Explore Mentors
               </h1>
               <p className="text-xs md:text-sm text-text-muted">
-                {mentorParam 
-                  ? `Browse courses taught by ${mentorParam}`
-                  : "Browse 320+ courses and live batches taught by verified mentors"
-                }
+                Connect and learn 1-on-1 with verified educators and subject matter experts
               </p>
             </div>
 
-            {/* EXPANDABLE SEARCH & FILTER BUTTON (Placed right next to search icon) */}
+            {/* EXPANDABLE SEARCH & FILTER BUTTON */}
             <div className="flex items-center gap-3 self-end md:self-center flex-shrink-0">
               <div className="flex items-center">
                 <div className={`flex items-center overflow-hidden transition-all duration-300 ${isSearchExpanded ? "w-[240px] opacity-100 mr-2" : "w-0 opacity-0"}`}>
@@ -329,7 +259,7 @@ function CoursesPageContent() {
                         setSearchQuery(e.target.value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Search subject, mentor, keyword..."
+                      placeholder="Search name, bio, subject..."
                       className="flex-1 text-xs outline-none text-primary"
                     />
                     {searchQuery && (
@@ -344,7 +274,7 @@ function CoursesPageContent() {
                 <button
                   onClick={() => setIsSearchExpanded(!isSearchExpanded)}
                   className="w-10 h-10 rounded-xl border border-border-subtle bg-white flex items-center justify-center cursor-pointer hover:border-secondary hover:bg-[#F0F6FF] transition-all focus:outline-none"
-                  title="Search courses"
+                  title="Search mentors"
                 >
                   <IconSearch className="w-5 h-5 text-primary" />
                 </button>
@@ -372,88 +302,88 @@ function CoursesPageContent() {
                     
                     {/* Floating popover modal */}
                     <div className="absolute right-0 top-12 mt-2 w-[320px] bg-white border border-border-subtle rounded-2xl shadow-xl z-50 p-5 origin-top-right animate-fade-in">
-                      {/* Triangle pointer arrow pointing up at the filter button */}
+                      {/* Triangle pointer arrow */}
                       <div className="w-3 h-3 bg-white rotate-45 border-t border-l border-border-subtle absolute -top-1.5 right-3.5 z-10"></div>
                       
                       {/* Body */}
                       <div className="max-h-[350px] overflow-y-auto -mr-5 pr-4 space-y-6 premium-scrollbar relative z-20">
-                        {/* Category Section */}
+                        {/* Subjects Section */}
                         <div>
                           <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Category
+                            Subject
                           </div>
                           <div className="flex flex-col">
-                            {["Mathematics", "Science", "Programming", "English", "Test Prep"].map((cat) => (
+                            {["Mathematics", "Science", "Programming", "English", "Test Prep"].map((sub) => (
                               <div
-                                key={cat}
-                                onClick={() => handleCategoryCheckbox(cat)}
+                                key={sub}
+                                onClick={() => handleSubjectCheckbox(sub)}
                                 className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer group"
                               >
                                 <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center border transition-all ${
-                                  selectedCategories.includes(cat)
+                                  selectedSubjects.includes(sub)
                                     ? "bg-secondary border-secondary text-white"
                                     : "bg-white border-slate-300 group-hover:border-secondary"
                                 }`}>
-                                  {selectedCategories.includes(cat) && <IconCheck className="w-3 h-3 stroke-[3]" />}
+                                  {selectedSubjects.includes(sub) && <IconCheck className="w-3 h-3 stroke-[3]" />}
                                 </div>
-                                <span className="text-[13px] font-semibold text-primary">{cat}</span>
-                                <span className="ml-auto text-[11px] font-semibold text-slate-400">{getCountByCategory(cat)}</span>
+                                <span className="text-[13px] font-semibold text-primary">{sub}</span>
+                                <span className="ml-auto text-[11px] font-semibold text-slate-400">{getCountBySubject(sub)}</span>
                               </div>
                             ))}
                           </div>
                         </div>
 
-                        {/* Format Section */}
+                        {/* Experience Section */}
                         <div>
                           <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Format
+                            Experience
                           </div>
                           <div className="flex flex-col">
-                            {["Live batch", "Recorded course", "Hourly 1-on-1"].map((form) => (
+                            {["1-3 years", "4-7 years", "8+ years"].map((range) => (
                               <div
-                                key={form}
-                                onClick={() => handleFormatCheckbox(form)}
+                                key={range}
+                                onClick={() => handleExperienceCheckbox(range)}
                                 className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer group"
                               >
                                 <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center border transition-all ${
-                                  selectedFormats.includes(form)
+                                  selectedExperiences.includes(range)
                                     ? "bg-secondary border-secondary text-white"
                                     : "bg-white border-slate-300 group-hover:border-secondary"
                                 }`}>
-                                  {selectedFormats.includes(form) && <IconCheck className="w-3 h-3 stroke-[3]" />}
+                                  {selectedExperiences.includes(range) && <IconCheck className="w-3 h-3 stroke-[3]" />}
                                 </div>
-                                <span className="text-[13px] font-semibold text-primary">{form}</span>
-                                <span className="ml-auto text-[11px] font-semibold text-slate-400">{getCountByFormat(form)}</span>
+                                <span className="text-[13px] font-semibold text-primary">{range}</span>
+                                <span className="ml-auto text-[11px] font-semibold text-slate-400">{getCountByExperience(range)}</span>
                               </div>
                             ))}
                           </div>
                         </div>
 
-                        {/* Price Range Section */}
+                        {/* Hourly Rate Range Section */}
                         <div>
                           <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Price range
+                            Hourly Rate (₹)
                           </div>
                           <div className="flex items-center gap-2 pt-1">
                             <input
                               type="number"
-                              value={minPrice}
+                              value={minRate}
                               onChange={(e) => {
-                                setMinPrice(e.target.value);
+                                setMinRate(e.target.value);
                                 setCurrentPage(1);
                               }}
-                              placeholder="₹ Min"
+                              placeholder="Min"
                               className="w-full text-xs p-2.5 border border-border-subtle rounded-lg outline-none focus:border-secondary text-primary"
                             />
                             <span className="text-slate-300">—</span>
                             <input
                               type="number"
-                              value={maxPrice}
+                              value={maxRate}
                               onChange={(e) => {
-                                setMaxPrice(e.target.value);
+                                setMaxRate(e.target.value);
                                 setCurrentPage(1);
                               }}
-                              placeholder="₹ Max"
+                              placeholder="Max"
                               className="w-full text-xs p-2.5 border border-border-subtle rounded-lg outline-none focus:border-secondary text-primary"
                             />
                           </div>
@@ -480,32 +410,6 @@ function CoursesPageContent() {
                               >
                                 <span className="text-accent font-bold">★ {rating} & up</span>
                               </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Level Section */}
-                        <div>
-                          <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Level
-                          </div>
-                          <div className="flex flex-col">
-                            {["Beginner", "Intermediate", "Advanced"].map((level) => (
-                              <div
-                                key={level}
-                                onClick={() => handleLevelCheckbox(level)}
-                                className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer group"
-                              >
-                                <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center border transition-all ${
-                                  selectedLevels.includes(level)
-                                    ? "bg-secondary border-secondary text-white"
-                                    : "bg-white border-slate-300 group-hover:border-secondary"
-                                }`}>
-                                  {selectedLevels.includes(level) && <IconCheck className="w-3 h-3 stroke-[3]" />}
-                                </div>
-                                <span className="text-[13px] font-semibold text-primary">{level}</span>
-                                <span className="ml-auto text-[11px] font-semibold text-slate-400">{getCountByLevel(level)}</span>
-                              </div>
                             ))}
                           </div>
                         </div>
@@ -540,12 +444,12 @@ function CoursesPageContent() {
         {/* TOPBAR (Tabs & Sort) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-subtle mb-6">
           <div className="flex items-center gap-1.5 overflow-x-auto premium-scrollbar pb-2 sm:pb-0">
-            {["All courses", "Mathematics", "Science", "Programming", "English", "Test Prep"].map((tab) => (
+            {["All mentors", "Mathematics", "Science", "Programming", "English", "Test Prep"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabSelect(tab)}
                 className={`text-xs font-semibold px-4 py-2 rounded-full border transition-all cursor-pointer whitespace-nowrap ${
-                  (tab === "All courses" ? selectedCategories.length === 0 : selectedCategories.includes(tab))
+                  (tab === "All mentors" ? selectedSubjects.length === 0 : selectedSubjects.includes(tab))
                     ? "bg-primary text-white border-primary"
                     : "bg-white text-text-muted border-border-subtle hover:bg-slate-50"
                 }`}
@@ -563,9 +467,10 @@ function CoursesPageContent() {
               className="text-xs font-semibold px-3 py-2 rounded-lg border border-border-subtle bg-white text-primary outline-none focus:border-secondary cursor-pointer"
             >
               <option>Most popular</option>
-              <option>Price: Low to High</option>
-              <option>Price: High to Low</option>
               <option>Highest rated</option>
+              <option>Hourly Rate: Low to High</option>
+              <option>Hourly Rate: High to Low</option>
+              <option>Most experienced</option>
             </select>
           </div>
         </div>
@@ -573,41 +478,31 @@ function CoursesPageContent() {
         {/* SUBBAR (Active Filter Pills & Result Count) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 min-h-[32px]">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Category pills */}
-            {selectedCategories.map((cat) => (
-              <div key={cat} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                {cat}
-                <button onClick={() => removeCategoryFilter(cat)} className="hover:text-red-600 transition-colors">
+            {/* Subject pills */}
+            {selectedSubjects.map((sub) => (
+              <div key={sub} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
+                {sub}
+                <button onClick={() => removeSubjectFilter(sub)} className="hover:text-red-600 transition-colors">
                   <IconX className="w-3 h-3" />
                 </button>
               </div>
             ))}
             
-            {/* Format pills */}
-            {selectedFormats.map((form) => (
-              <div key={form} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                {form}
-                <button onClick={() => removeFormatFilter(form)} className="hover:text-red-600 transition-colors">
+            {/* Experience pills */}
+            {selectedExperiences.map((exp) => (
+              <div key={exp} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
+                {exp}
+                <button onClick={() => removeExperienceFilter(exp)} className="hover:text-red-600 transition-colors">
                   <IconX className="w-3 h-3" />
                 </button>
               </div>
             ))}
 
-            {/* Level pills */}
-            {selectedLevels.map((lvl) => (
-              <div key={lvl} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                {lvl}
-                <button onClick={() => removeLevelFilter(lvl)} className="hover:text-red-600 transition-colors">
-                  <IconX className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-
-            {/* Price range pills */}
-            {(minPrice || maxPrice) && (
+            {/* Rate pills */}
+            {(minRate || maxRate) && (
               <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                Price: {minPrice ? `₹${minPrice}` : "0"} — {maxPrice ? `₹${maxPrice}` : "Max"}
-                <button onClick={() => { setMinPrice(""); setMaxPrice(""); }} className="hover:text-red-600 transition-colors">
+                Rate: {minRate ? `₹${minRate}` : "0"} — {maxRate ? `₹${maxRate}` : "Max"}
+                <button onClick={() => { setMinRate(""); setMaxRate(""); }} className="hover:text-red-600 transition-colors">
                   <IconX className="w-3 h-3" />
                 </button>
               </div>
@@ -635,14 +530,22 @@ function CoursesPageContent() {
           </div>
 
           <div className="text-xs text-text-muted font-medium self-end sm:self-auto">
-            Showing <strong className="text-primary font-bold">{totalItems === 0 ? 0 : startIndex + 1}–{endIndex}</strong> of <strong className="text-primary font-bold">{totalItems}</strong> courses
+            Showing <strong className="text-primary font-bold">{totalItems === 0 ? 0 : startIndex + 1}–{endIndex}</strong> of <strong className="text-primary font-bold">{totalItems}</strong> mentors
           </div>
         </div>
 
-        {/* COURSES GRID */}
-        {currentCourses.length === 0 ? (
+        {/* TOAST MESSAGE */}
+        {toastMessage && (
+          <div className="fixed bottom-5 right-5 bg-primary text-white border border-secondary text-xs px-4 py-3 rounded-xl shadow-xl z-50 animate-fade-in flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+            {toastMessage}
+          </div>
+        )}
+
+        {/* MENTORS GRID */}
+        {currentMentors.length === 0 ? (
           <div className="text-center py-20 bg-slate-50 border border-dashed border-border-subtle rounded-2xl">
-            <p className="text-sm text-text-muted mb-4 font-medium">No courses matches your filters.</p>
+            <p className="text-sm text-text-muted mb-4 font-medium">No mentors match your filters.</p>
             <button
               onClick={resetAllFilters}
               className="text-xs font-semibold px-5 py-2.5 bg-primary text-white rounded-lg hover:shadow-md transition-all cursor-pointer"
@@ -652,66 +555,89 @@ function CoursesPageContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {currentCourses.map((c) => (
+            {currentMentors.map((m: any) => (
               <div
-                key={c.id}
-                className="bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between"
+                key={m.id}
+                className="bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
               >
-                <div className={`w-full h-36 flex items-center justify-center relative ${getSubjectBgColor(c.subject)}`}>
-                  {c.format === "Live batch" && (
-                    <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-                      LIVE
-                    </div>
-                  )}
-                  {getIconComponent(c.iconName)}
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col justify-between">
+                <div className="p-6 flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-badge-bg text-badge-text">
-                        {c.subject}
-                      </span>
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        c.format === "Live batch"
-                          ? "bg-green-50 text-green-700 border border-green-150"
-                          : c.format === "Recorded"
-                          ? "bg-amber-50 text-amber-700 border border-amber-150"
-                          : "bg-purple-50 text-purple-700 border border-purple-150"
-                      }`}>
-                        {c.format}
-                      </span>
+                    {/* Card Header Profile Block */}
+                    <div className="flex items-start gap-4 mb-4">
+                      <div
+                        className="w-14 h-14 rounded-full flex items-center justify-center font-heading text-xl font-bold text-accent shadow-inner shrink-0"
+                        style={{ backgroundColor: m.avatarBg || "#1B3A6B" }}
+                      >
+                        {m.avatarText}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-heading text-base font-bold text-primary flex items-center gap-1.5 truncate">
+                          {m.name}
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-150 shrink-0">
+                            Verified
+                          </span>
+                        </h3>
+                        <p className="text-xs text-text-muted truncate mt-0.5">
+                          {m.qualification}
+                        </p>
+                        <p className="text-[10px] text-secondary font-bold uppercase tracking-wider mt-0.5">
+                          {m.experience} Years Exp
+                        </p>
+                      </div>
                     </div>
-                    
-                    <h3 className="font-heading text-base font-bold text-primary mb-1 leading-tight">
-                      {c.title}
-                    </h3>
-                    <p className="text-xs text-text-muted mb-1 font-medium">
-                      Course by {c.mentor}
-                    </p>
-                    <p className="text-xs text-text-muted/85 leading-relaxed line-clamp-2 mb-4">
-                      {c.description || `Structured course program in ${c.subject}.`}
+
+                    {/* Subject/Expertise Badges */}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {m.expertise.map((subject: string, idx: number) => (
+                        <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-badge-bg text-badge-text border border-badge-border">
+                          {subject}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Bio snippet */}
+                    <p className="text-xs text-text-muted/85 leading-relaxed line-clamp-3 mb-4 min-h-[54px]">
+                      {m.bio || `${m.name} is a verified Tutoboard educator specialized in ${m.subject} tutoring.`}
                     </p>
                   </div>
 
                   <div>
-                    <div className="flex items-center gap-2 border-t border-border-subtle pt-3 mb-4">
+                    {/* Stats block */}
+                    <div className="grid grid-cols-2 gap-2 py-3 border-t border-b border-border-subtle mb-4 text-center">
+                      <div>
+                        <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Students</div>
+                        <div className="text-xs font-bold text-primary">{m.students}+</div>
+                      </div>
+                      <div className="border-l border-border-subtle">
+                        <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Courses</div>
+                        <div className="text-xs font-bold text-primary">{m.courses}+</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-4">
                       <span className="text-xs font-bold text-accent flex items-center gap-0.5">
-                        <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> {c.rating}
+                        <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> {m.rating}
                       </span>
-                      <span className="text-[10px] text-text-muted font-medium">({c.students} students)</span>
-                      <span className="ml-auto font-heading font-extrabold text-primary text-lg">
-                        ₹{c.price.toLocaleString("en-IN")}
-                      </span>
+                      <div className="text-right">
+                        <span className="text-[10px] text-text-muted font-medium block">Hourly rate</span>
+                        <span className="font-heading font-extrabold text-primary text-base">
+                          ₹{m.rate}/hr
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex gap-2">
-                      <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer">
-                        Book now
+                      <button 
+                        onClick={() => triggerToast("Booking function coming soon!")}
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
+                      >
+                        Book 1-on-1
                       </button>
-                      <a href={`/courses/${c.id}`} className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center">
-                        Details
+                      <a
+                        href={`/mentors/${m.id}`}
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center"
+                      >
+                        View Profile
                       </a>
                     </div>
                   </div>
@@ -756,8 +682,6 @@ function CoursesPageContent() {
           </div>
         )}
       </main>
-
-
 
       {/* FOOTER */}
       <footer className="bg-[#0f2347] text-white py-12 mt-auto">
@@ -806,18 +730,5 @@ function CoursesPageContent() {
       </footer>
 
     </div>
-  );
-}
-
-export default function CoursesPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
-        <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Courses...</p>
-      </div>
-    }>
-      <CoursesPageContent />
-    </Suspense>
   );
 }

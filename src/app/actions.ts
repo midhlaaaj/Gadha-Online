@@ -236,6 +236,14 @@ export async function getAdminData() {
       status: s.status,
       colorBg: s.color_bg || "#ede9fe",
       iconName: s.icon_name || "writing",
+      aboutSession: s.about_session || "",
+      whatsCovered: s.whats_covered || [],
+      inclusions: s.inclusions || [],
+      durationOptions: s.duration_options || "60 or 90 min",
+      platform: s.platform || "Zoom",
+      language: s.language || "English / Hindi",
+      days: s.days || "Mon – Sat",
+      reschedulePolicy: s.reschedule_policy || "Up to 4 hrs before",
     };
   });
 
@@ -439,6 +447,14 @@ export async function upsertSession(session: any) {
     status: session.status,
     color_bg: session.colorBg || "#ede9fe",
     icon_name: session.iconName || "writing",
+    about_session: session.aboutSession || "",
+    whats_covered: session.whatsCovered || [],
+    inclusions: session.inclusions || [],
+    duration_options: session.durationOptions || "60 or 90 min",
+    platform: session.platform || "Zoom",
+    language: session.language || "English / Hindi",
+    days: session.days || "Mon – Sat",
+    reschedule_policy: session.reschedulePolicy || "Up to 4 hrs before",
   };
 
   const isNew = !session.id || session.id.startsWith("s-");
@@ -1362,3 +1378,243 @@ export async function getSessionsPageData() {
     };
   });
 }
+
+export async function getSessionDetails(id: string) {
+  const supabase = await createClient();
+
+  // 1. Fetch Session details
+  const { data: s, error } = await supabase
+    .from("sessions")
+    .select("*, mentor:mentors(profile:profiles(full_name, avatar_url, email), expertise, rating, qualification, experience, bio)")
+    .eq("id", id)
+    .single();
+
+  if (error || !s) {
+    throw new Error(error ? error.message : "Session not found");
+  }
+
+  // Resolve initials for avatar fallback
+  const mentorName = s.mentor?.profile?.full_name || "Unknown Mentor";
+  const initials = mentorName.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+
+  const sessionMapped = {
+    id: s.id,
+    title: s.title,
+    description: s.description || "",
+    subject: s.subject,
+    type: s.type,
+    price: Number(s.price),
+    bookings: s.bookings_count,
+    colorBg: s.color_bg || "#ede9fe",
+    iconName: s.icon_name || "writing",
+    aboutSession: s.about_session || "",
+    whatsCovered: s.whats_covered || [],
+    inclusions: s.inclusions || [],
+    durationOptions: s.duration_options || "60 or 90 min",
+    platform: s.platform || "Zoom",
+    language: s.language || "English / Hindi",
+    days: s.days || "Mon – Sat",
+    reschedulePolicy: s.reschedule_policy || "Up to 4 hrs before",
+    mentor: {
+      id: s.mentor_id,
+      name: mentorName,
+      email: s.mentor?.profile?.email || "",
+      avatarUrl: s.mentor?.profile?.avatar_url || "",
+      avatarText: initials,
+      expertise: s.mentor?.expertise ? s.mentor.expertise.join(" & ") : "Educator",
+      rating: Number(s.mentor?.rating || 5.0),
+      qualification: s.mentor?.qualification || "Educator",
+      experience: s.mentor?.experience || 5,
+      bio: s.mentor?.bio || "",
+    },
+  };
+
+  // 2. Fetch Related Sessions (same subject, excluding current session)
+  const { data: dbRelated } = await supabase
+    .from("sessions")
+    .select("*, mentor:mentors(profile:profiles(full_name))")
+    .eq("status", "Active")
+    .eq("subject", s.subject)
+    .neq("id", id)
+    .limit(3);
+
+  let relatedMapped = (dbRelated || []).map((rs: any) => {
+    return {
+      id: rs.id,
+      title: rs.title,
+      subject: rs.subject,
+      type: rs.type,
+      price: Number(rs.price),
+      mentor: rs.mentor?.profile?.full_name || "Unknown Mentor",
+      bookings: rs.bookings_count,
+      colorBg: rs.color_bg || "#ede9fe",
+      iconName: rs.icon_name || "writing",
+    };
+  });
+
+  // Safe fallback if not enough related sessions in same subject
+  if (relatedMapped.length < 3) {
+    const { data: dbBackup } = await supabase
+      .from("sessions")
+      .select("*, mentor:mentors(profile:profiles(full_name))")
+      .eq("status", "Active")
+      .neq("id", id)
+      .limit(3 - relatedMapped.length);
+
+    const backupMapped = (dbBackup || []).map((rs: any) => {
+      return {
+        id: rs.id,
+        title: rs.title,
+        subject: rs.subject,
+        type: rs.type,
+        price: Number(rs.price),
+        mentor: rs.mentor?.profile?.full_name || "Unknown Mentor",
+        bookings: rs.bookings_count,
+        colorBg: rs.color_bg || "#ede9fe",
+        iconName: rs.icon_name || "writing",
+      };
+    });
+
+    const merged = [...relatedMapped, ...backupMapped];
+    const seen = new Set();
+    relatedMapped = merged.filter(item => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    }).slice(0, 3);
+  }
+
+  return {
+    session: sessionMapped,
+    related: relatedMapped,
+  };
+}
+
+export async function getMentorsPageData() {
+  const supabase = await createClient();
+
+  const { data: dbMentors, error } = await supabase
+    .from("mentors")
+    .select("*, profile:profiles(full_name, avatar_url, email)")
+    .eq("is_active", true)
+    .order("rating", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return (dbMentors || []).map((m: any) => {
+    const name = m.profile?.full_name || "Unknown Mentor";
+    const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+    return {
+      id: m.id,
+      name,
+      expertise: m.expertise || [],
+      subject: (m.expertise || []).join(" & "),
+      rating: Number(m.rating),
+      students: 420,
+      courses: 10,
+      rate: Number(m.hourly_rate),
+      verified: m.verified || false,
+      avatarText: init,
+      avatarBg: "#1B3A6B",
+      qualification: m.qualification || "Educator",
+      experience: m.experience || 5,
+      bio: m.bio || "",
+    };
+  });
+}
+
+export async function getMentorDetailsData(mentorId: string) {
+  const supabase = await createClient();
+
+  // 1. Fetch Mentor Profile
+  const { data: m, error } = await supabase
+    .from("mentors")
+    .select("*, profile:profiles(full_name, avatar_url, email)")
+    .eq("id", mentorId)
+    .single();
+
+  if (error || !m) {
+    throw new Error(error ? error.message : "Mentor not found");
+  }
+
+  const name = m.profile?.full_name || "Unknown Mentor";
+  const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+  const mentorMapped = {
+    id: m.id,
+    name,
+    expertise: m.expertise || [],
+    subject: (m.expertise || []).join(" & "),
+    rating: Number(m.rating),
+    students: 420,
+    courses: 10,
+    rate: Number(m.hourly_rate),
+    verified: m.verified || false,
+    avatarText: init,
+    avatarBg: "#1B3A6B",
+    qualification: m.qualification || "Educator",
+    experience: m.experience || 5,
+    bio: m.bio || "",
+  };
+
+  // 2. Fetch Mentor Courses
+  const { data: dbCourses } = await supabase
+    .from("courses")
+    .select("*, mentor:mentors(profile:profiles(full_name))")
+    .eq("mentor_id", mentorId)
+    .eq("status", "Active")
+    .order("created_at", { ascending: false });
+
+  const coursesMapped = (dbCourses || []).map((c: any) => {
+    const style = mapSubjectToStyle(c.subject);
+    return {
+      id: c.id,
+      title: c.title,
+      description: c.description || "",
+      subject: c.subject,
+      format: c.format,
+      price: Number(c.price),
+      mentor: c.mentor?.profile?.full_name || "Unknown Mentor",
+      students: c.students_count,
+      rating: Number(c.rating),
+      status: c.status,
+      colorBg: style.colorBg,
+      iconName: style.iconName,
+    };
+  });
+
+  // 3. Fetch Mentor Sessions
+  const { data: dbSessions } = await supabase
+    .from("sessions")
+    .select("*, mentor:mentors(profile:profiles(full_name, avatar_url))")
+    .eq("mentor_id", mentorId)
+    .eq("status", "Active")
+    .order("created_at", { ascending: false });
+
+  const sessionsMapped = (dbSessions || []).map((s: any) => {
+    const name = s.mentor?.profile?.full_name || "Unknown Mentor";
+    const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+    return {
+      id: s.id,
+      title: s.title,
+      description: s.description || "",
+      mentor: name,
+      mentorAvatar: init,
+      mentorColor: s.color_bg || "#1B3A6B",
+      type: s.type,
+      bookings: s.bookings_count,
+      subject: s.subject,
+      price: Number(s.price),
+      status: s.status,
+      colorBg: s.color_bg || "#ede9fe",
+      iconName: s.icon_name || "writing",
+    };
+  });
+
+  return {
+    mentor: mentorMapped,
+    courses: coursesMapped,
+    sessions: sessionsMapped,
+  };
+}
+
+

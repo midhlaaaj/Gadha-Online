@@ -199,7 +199,7 @@ export default function Home() {
             Sessions
           </a>
           <a
-            href="#mentors"
+            href="/mentors"
             className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
           >
             Mentors
@@ -210,12 +210,20 @@ export default function Home() {
           >
             About
           </a>
-          <a
-            href="/admin"
-            className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 hover:shadow-md transition-all cursor-pointer"
-          >
-            Admin Panel
-          </a>
+          <div className="flex items-center gap-3 ml-2">
+            <a
+              href="#"
+              className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer"
+            >
+              Sign In
+            </a>
+            <a
+              href="#"
+              className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer"
+            >
+              Sign Up
+            </a>
+          </div>
         </div>
         
         {/* Mobile Nav Button */}
@@ -485,20 +493,18 @@ export default function Home() {
             <div className="grid grid-flow-col grid-rows-2 gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar auto-cols-[calc(100%)] md:auto-cols-[calc(50%-12px)]">
               {mentors.map((m: any) => (
                 <div key={m.id} className="bg-white border border-border-subtle rounded-2xl overflow-hidden flex flex-col sm:flex-row hover:shadow-md transition-shadow snap-start shrink-0">
-                  <div className="w-full sm:w-[130px] bg-blue-50 flex items-center justify-center p-6">
+                  <a href={`/mentors/${m.id}`} className="w-full sm:w-[130px] bg-blue-50 flex items-center justify-center p-6 hover:bg-blue-100/70 transition-colors">
                     <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center font-heading text-2xl font-extrabold text-accent">
                       {m.avatarText}
                     </div>
-                  </div>
+                  </a>
                   <div className="p-6 flex-1 flex flex-col justify-between">
                     <div>
-                      <h3 className="font-heading text-base font-bold text-primary flex items-center gap-1.5">
-                        {m.name}
-                        {m.verified && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
-                            Vetted
-                          </span>
-                        )}
+                      <h3 className="font-heading text-base font-bold text-primary flex items-center gap-1.5 hover:text-secondary transition-colors">
+                        <a href={`/mentors/${m.id}`}>{m.name}</a>
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-150 shrink-0">
+                          Verified
+                        </span>
                       </h3>
                       <p className="text-xs text-secondary font-semibold mb-2">
                         {m.subject}

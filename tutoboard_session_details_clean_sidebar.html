@@ -1,0 +1,424 @@
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Poppins',sans-serif;background:#F0F4FA;color:#1B3A6B;}
+.site{width:100%;background:#F0F4FA;}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:60px;background:#fff;border-bottom:0.5px solid #d0dcf5;position:sticky;top:0;z-index:50;}
+.nav-logo{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1B3A6B;}
+.nav-logo span{color:#2F7FE8;}
+.nav-links{display:flex;gap:20px;align-items:center;}
+.nav-links a{font-size:13px;font-weight:500;color:#4a5a7a;text-decoration:none;}
+.btn-nav{font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;padding:8px 18px;border-radius:8px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;}
+
+/* BREADCRUMB */
+.breadcrumb{padding:13px 28px;font-size:12px;color:#4a5a7a;background:#fff;border-bottom:0.5px solid #d0dcf5;}
+.breadcrumb a{color:#2F7FE8;text-decoration:none;font-weight:500;}
+.breadcrumb span{margin:0 6px;color:#b9c5dd;}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:2fr 1fr;gap:20px;padding:24px 28px 48px;align-items:start;}
+
+/* LEFT COLUMN */
+.left{display:flex;flex-direction:column;gap:16px;}
+
+/* SHARED CARD */
+.card{background:#fff;border:0.5px solid #d0dcf5;border-radius:14px;padding:22px;}
+
+/* SESSION IMAGE */
+.session-img{width:100%;height:240px;border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;margin-bottom:0;}
+.hourly-img-tag{position:absolute;top:14px;left:14px;display:flex;align-items:center;gap:5px;background:#FFC107;color:#3a2700;font-size:10px;font-weight:700;padding:4px 10px;border-radius:99px;}
+
+/* SESSION HEADER */
+.tag-row{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;}
+.c-tag{font-size:10px;font-weight:600;padding:3px 9px;border-radius:99px;background:#E6F1FB;color:#0C447C;}
+.c-tag-gold{background:#FFF3CD;color:#7a4d00;}
+.session-title{font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;color:#1B3A6B;margin-bottom:6px;line-height:1.25;}
+.session-sub{font-size:12.5px;color:#4a5a7a;line-height:1.7;margin-bottom:14px;}
+.meta-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+.meta-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#4a5a7a;}
+.meta-rating{color:#FFC107;font-weight:700;}
+.meta-div{width:1px;height:14px;background:#d0dcf5;}
+
+/* MENTOR STRIP */
+.mentor-strip{display:flex;align-items:center;gap:12px;}
+.mentor-avatar{width:48px;height:48px;border-radius:50%;background:#1B3A6B;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#FFC107;flex-shrink:0;}
+.mentor-strip-info{flex:1;}
+.mentor-strip-label{font-size:10px;color:#2F7FE8;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1px;}
+.mentor-strip-name{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:#1B3A6B;}
+.mentor-strip-role{font-size:11px;color:#4a5a7a;}
+.mentor-strip-stats{display:flex;gap:14px;}
+.ms-stat strong{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1B3A6B;display:block;line-height:1.2;}
+.ms-stat span{font-size:10px;color:#4a5a7a;}
+.btn-profile{font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;padding:7px 14px;border-radius:7px;background:transparent;color:#1B3A6B;border:1px solid #d0dcf5;cursor:pointer;white-space:nowrap;}
+.btn-profile:hover{border-color:#1B3A6B;}
+
+/* SECTION TITLE */
+.section-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#1B3A6B;margin-bottom:14px;}
+
+/* DETAILS GRID */
+.details-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.detail-item{background:#F5F8FF;border:0.5px solid #eef2fb;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;}
+.detail-icon-wrap{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
+.detail-label{font-size:10px;color:#4a5a7a;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;}
+.detail-value{font-size:12px;font-weight:600;color:#1B3A6B;}
+
+/* LEARN GRID */
+.learn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.learn-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#33415c;line-height:1.5;}
+.learn-check{width:16px;height:16px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:9px;color:#3B6D11;}
+
+/* HOW IT WORKS */
+.steps{display:flex;flex-direction:column;}
+.step{display:flex;gap:12px;}
+.step-col{display:flex;flex-direction:column;align-items:center;}
+.step-num{width:26px;height:26px;border-radius:50%;background:#1B3A6B;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;color:#FFC107;flex-shrink:0;}
+.step-line{width:1.5px;flex:1;background:#eef2fb;margin:4px 0;}
+.step:last-child .step-line{display:none;}
+.step-body{padding-bottom:18px;flex:1;}
+.step-head{font-size:13px;font-weight:600;color:#1B3A6B;margin-bottom:3px;}
+.step-desc{font-size:11.5px;color:#4a5a7a;line-height:1.6;}
+
+/* AVAILABILITY */
+.avail-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:10px;}
+.avail-col .avail-day-label{font-size:9px;color:#4a5a7a;font-weight:700;text-align:center;margin-bottom:5px;text-transform:uppercase;}
+.avail-slot{font-size:9.5px;padding:4px 0;border-radius:6px;text-align:center;cursor:pointer;border:0.5px solid transparent;margin-bottom:4px;}
+.avail-slot.open{background:#E6F1FB;color:#0C447C;border-color:#b5d0f0;}
+.avail-slot.open:hover{background:#2F7FE8;color:#fff;}
+.avail-slot.picked{background:#1B3A6B;color:#fff;}
+.avail-slot.booked{background:#f0f0f0;color:#bbb;cursor:not-allowed;}
+.avail-legend{display:flex;gap:14px;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:#4a5a7a;}
+.leg-dot{width:10px;height:10px;border-radius:3px;}
+
+/* REVIEWS */
+.review-sum{display:flex;gap:20px;align-items:center;background:#F5F8FF;border:0.5px solid #eef2fb;border-radius:10px;padding:16px;margin-bottom:14px;}
+.rscore{text-align:center;flex-shrink:0;}
+.rscore-num{font-family:'Outfit',sans-serif;font-size:34px;font-weight:800;color:#1B3A6B;line-height:1;}
+.rscore-stars{font-size:14px;color:#FFC107;margin:4px 0;}
+.rscore-count{font-size:10px;color:#4a5a7a;}
+.rbars{flex:1;}
+.rbar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.rbar-lbl{font-size:10px;color:#4a5a7a;width:10px;text-align:right;}
+.rbar-track{flex:1;height:5px;background:#E6F1FB;border-radius:99px;overflow:hidden;}
+.rbar-fill{height:100%;background:#2F7FE8;border-radius:99px;}
+.rbar-count{font-size:10px;color:#4a5a7a;width:20px;}
+
+.review-item{border-bottom:0.5px solid #eef2fb;padding:14px 0;}
+.review-item:last-child{border-bottom:none;padding-bottom:0;}
+.rev-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.rev-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#FFC107;font-family:'Outfit',sans-serif;flex-shrink:0;}
+.rev-name{font-size:12px;font-weight:600;color:#1B3A6B;}
+.rev-date{font-size:10px;color:#4a5a7a;}
+.rev-stars{margin-left:auto;font-size:11px;color:#FFC107;font-weight:700;}
+.rev-text{font-size:12px;color:#4a5a7a;line-height:1.6;}
+
+/* ───── SIDEBAR ───── */
+.sidebar{position:sticky;top:76px;display:flex;flex-direction:column;gap:14px;}
+
+/* PRICE CARD */
+.sb-price-card{background:#fff;border:0.5px solid #d0dcf5;border-radius:14px;padding:20px;box-shadow:0 4px 20px rgba(27,58,107,0.06);}
+.sb-price-row{display:flex;align-items:baseline;gap:6px;margin-bottom:2px;}
+.sb-price{font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;color:#1B3A6B;}
+.sb-unit{font-size:13px;color:#4a5a7a;}
+.sb-price-note{font-size:11px;color:#4a5a7a;margin-bottom:18px;}
+.sb-price-note strong{color:#1B3A6B;}
+
+/* NEXT SLOT */
+.sb-next{display:flex;align-items:center;gap:10px;background:#F5F8FF;border:0.5px solid #d0dcf5;border-radius:9px;padding:11px 14px;margin-bottom:18px;}
+.sb-next-icon{width:32px;height:32px;border-radius:8px;background:#1B3A6B;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sb-next-icon i{font-size:15px;color:#FFC107;}
+.sb-next-label{font-size:10px;color:#2F7FE8;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1px;}
+.sb-next-time{font-size:12px;font-weight:600;color:#1B3A6B;}
+
+/* DURATION */
+.sb-section-label{font-size:10px;font-weight:700;color:#1B3A6B;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
+.sb-duration-row{display:flex;gap:8px;margin-bottom:18px;}
+.sb-dur{flex:1;border:1.5px solid #d0dcf5;border-radius:9px;padding:10px 8px;text-align:center;cursor:pointer;}
+.sb-dur:hover{border-color:#2F7FE8;}
+.sb-dur.active{border-color:#1B3A6B;background:#F5F8FF;}
+.sb-dur-time{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1B3A6B;}
+.sb-dur-price{font-size:11px;color:#4a5a7a;margin-top:2px;}
+
+/* TIME SLOTS */
+.sb-slots{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:18px;}
+.sb-slot{font-size:11px;font-weight:600;padding:9px 0;border-radius:8px;border:1px solid #d0dcf5;text-align:center;cursor:pointer;color:#4a5a7a;background:#fff;transition:all 0.15s;}
+.sb-slot:hover{border-color:#2F7FE8;color:#2F7FE8;}
+.sb-slot.active{background:#1B3A6B;color:#fff;border-color:#1B3A6B;}
+.sb-slot.full{background:#f5f5f5;color:#ccc;cursor:not-allowed;border-color:#ebebeb;}
+
+/* BUTTONS */
+.sb-btn-book{width:100%;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;padding:13px 0;border-radius:9px;background:#2F7FE8;color:#fff;border:none;cursor:pointer;margin-bottom:8px;}
+.sb-btn-save{width:100%;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;padding:10px 0;border-radius:9px;background:transparent;color:#1B3A6B;border:1.5px solid #d0dcf5;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.sb-btn-save:hover{border-color:#1B3A6B;}
+
+/* INCLUDES CARD */
+.sb-includes-card{background:#fff;border:0.5px solid #d0dcf5;border-radius:14px;padding:18px;}
+.sb-include-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid #f5f7fc;font-size:12px;color:#33415c;}
+.sb-include-row:last-child{border-bottom:none;padding-bottom:0;}
+.sb-include-row i{font-size:15px;color:#2F7FE8;flex-shrink:0;width:18px;text-align:center;}
+
+/* GUARANTEE CARD */
+.sb-guarantee{background:#dcfce7;border:0.5px solid #bbf7d0;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;}
+.sb-guarantee i{font-size:18px;color:#0F6E56;flex-shrink:0;margin-top:1px;}
+.sb-guarantee-title{font-size:12px;font-weight:700;color:#0F6E56;margin-bottom:2px;}
+.sb-guarantee-sub{font-size:11px;color:#166534;line-height:1.5;}
+</style>
+
+<div class="site">
+  <nav class="nav">
+    <div class="nav-logo">Tuto<span>board</span></div>
+    <div class="nav-links">
+      <a href="#">Mentors</a><a href="#">Courses</a><a href="#">Sessions</a><a href="#">About</a>
+      <button class="btn-nav">Sign up</button>
+    </div>
+  </nav>
+
+  <div class="breadcrumb">
+    <a href="#">Home</a><span>/</span><a href="#">Sessions</a><span>/</span><a href="#">Mathematics</a><span>/</span>Statistics & Probability
+  </div>
+
+  <div class="layout">
+
+    <!-- LEFT -->
+    <div class="left">
+
+      <!-- IMAGE -->
+      <div class="session-img" style="background:#d1fae5;">
+        <div class="hourly-img-tag"><i class="ti ti-clock" aria-hidden="true"></i> Hourly · 1-on-1</div>
+        <i class="ti ti-calculator" aria-hidden="true" style="font-size:72px;color:#085041;opacity:0.85;"></i>
+      </div>
+
+      <!-- HEADER CARD -->
+      <div class="card">
+        <div class="tag-row">
+          <span class="c-tag">Mathematics</span>
+          <span class="c-tag c-tag-gold"><i class="ti ti-clock" aria-hidden="true" style="font-size:10px;"></i> Hourly Session</span>
+        </div>
+        <div class="session-title">Statistics & Probability</div>
+        <div class="session-sub">A focused 1-on-1 session covering confidence intervals, hypothesis testing, probability distributions and data interpretation — tailored entirely to your level and exam needs.</div>
+        <div class="meta-row">
+          <div class="meta-item"><span class="meta-rating">★ 4.9</span>&nbsp;(115 reviews)</div>
+          <div class="meta-div"></div>
+          <div class="meta-item"><i class="ti ti-users" aria-hidden="true"></i>&nbsp;115 completed</div>
+          <div class="meta-div"></div>
+          <div class="meta-item"><i class="ti ti-clock" aria-hidden="true"></i>&nbsp;60 or 90 min</div>
+          <div class="meta-div"></div>
+          <div class="meta-item"><i class="ti ti-world" aria-hidden="true"></i>&nbsp;English · IST</div>
+        </div>
+      </div>
+
+      <!-- MENTOR CARD -->
+      <div class="card">
+        <div class="mentor-strip">
+          <div class="mentor-avatar">AK</div>
+          <div class="mentor-strip-info">
+            <div class="mentor-strip-label">Your mentor</div>
+            <div class="mentor-strip-name">Arjun Kapoor</div>
+            <div class="mentor-strip-role">Mathematics & Physics · IIT Delhi · 8 yrs exp</div>
+          </div>
+          <div class="mentor-strip-stats">
+            <div class="ms-stat"><strong>420</strong><span>Students</span></div>
+            <div class="ms-stat"><strong>★ 4.9</strong><span>Rating</span></div>
+          </div>
+          <button class="btn-profile">View profile</button>
+        </div>
+      </div>
+
+      <!-- SESSION DETAILS -->
+      <div class="card">
+        <div class="section-title">Session details</div>
+        <div class="details-grid">
+          <div class="detail-item">
+            <div class="detail-icon-wrap" style="background:#E6F1FB;"><i class="ti ti-clock" style="color:#2F7FE8;font-size:16px;" aria-hidden="true"></i></div>
+            <div class="detail-label">Duration</div>
+            <div class="detail-value">60 or 90 min</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-icon-wrap" style="background:#dcfce7;"><i class="ti ti-device-laptop" style="color:#0F6E56;font-size:16px;" aria-hidden="true"></i></div>
+            <div class="detail-label">Platform</div>
+            <div class="detail-value">Zoom</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-icon-wrap" style="background:#fef9c3;"><i class="ti ti-users" style="color:#854F0B;font-size:16px;" aria-hidden="true"></i></div>
+            <div class="detail-label">Session type</div>
+            <div class="detail-value">1-on-1 only</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-icon-wrap" style="background:#fce7f3;"><i class="ti ti-language" style="color:#993556;font-size:16px;" aria-hidden="true"></i></div>
+            <div class="detail-label">Language</div>
+            <div class="detail-value">English / Hindi</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-icon-wrap" style="background:#ede9fe;"><i class="ti ti-calendar" style="color:#534AB7;font-size:16px;" aria-hidden="true"></i></div>
+            <div class="detail-label">Days</div>
+            <div class="detail-value">Mon – Sat</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-icon-wrap" style="background:#E6F1FB;"><i class="ti ti-rotate" style="color:#2F7FE8;font-size:16px;" aria-hidden="true"></i></div>
+            <div class="detail-label">Reschedule</div>
+            <div class="detail-value">Up to 4 hrs before</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WHAT'S COVERED -->
+      <div class="card">
+        <div class="section-title">What's covered</div>
+        <div class="learn-grid">
+          <div class="learn-item"><div class="learn-check">✓</div>Confidence intervals & margin of error</div>
+          <div class="learn-item"><div class="learn-check">✓</div>Hypothesis testing (Z-test, T-test)</div>
+          <div class="learn-item"><div class="learn-check">✓</div>Probability distributions explained</div>
+          <div class="learn-item"><div class="learn-check">✓</div>Past paper question walkthroughs</div>
+          <div class="learn-item"><div class="learn-check">✓</div>Live problem-solving with feedback</div>
+          <div class="learn-item"><div class="learn-check">✓</div>Summary notes sent after session</div>
+        </div>
+      </div>
+
+      <!-- HOW IT WORKS -->
+      <div class="card">
+        <div class="section-title">How it works</div>
+        <div class="steps">
+          <div class="step"><div class="step-col"><div class="step-num">1</div><div class="step-line"></div></div><div class="step-body"><div class="step-head">Pick a time slot</div><div class="step-desc">Choose from the mentor's live availability calendar in the booking panel.</div></div></div>
+          <div class="step"><div class="step-col"><div class="step-num">2</div><div class="step-line"></div></div><div class="step-body"><div class="step-head">Share your goals</div><div class="step-desc">After booking, fill a short form about your exam board, syllabus, and weak topics.</div></div></div>
+          <div class="step"><div class="step-col"><div class="step-num">3</div><div class="step-line"></div></div><div class="step-body"><div class="step-head">Join live on Zoom</div><div class="step-desc">You'll receive a Zoom link 30 minutes before the session. Join from any device.</div></div></div>
+          <div class="step"><div class="step-col"><div class="step-num">4</div><div class="step-line"></div></div><div class="step-body"><div class="step-head">Get your summary notes</div><div class="step-desc">Within 2 hours, Arjun shares key points and practice problems over chat.</div></div></div>
+        </div>
+      </div>
+
+      <!-- AVAILABILITY -->
+      <div class="card">
+        <div class="section-title">Availability this week</div>
+        <div class="avail-grid">
+          <div class="avail-col"><div class="avail-day-label">Mon</div><div class="avail-slot booked">5 PM</div><div class="avail-slot booked">7 PM</div><div class="avail-slot open">8 PM</div></div>
+          <div class="avail-col"><div class="avail-day-label">Tue</div><div class="avail-slot open">5 PM</div><div class="avail-slot open">6 PM</div><div class="avail-slot open">8 PM</div></div>
+          <div class="avail-col"><div class="avail-day-label">Wed</div><div class="avail-slot booked">5 PM</div><div class="avail-slot open">6 PM</div><div class="avail-slot picked">7 PM</div></div>
+          <div class="avail-col"><div class="avail-day-label">Thu</div><div class="avail-slot open">5 PM</div><div class="avail-slot open">7 PM</div><div class="avail-slot booked">8 PM</div></div>
+          <div class="avail-col"><div class="avail-day-label">Fri</div><div class="avail-slot open">5 PM</div><div class="avail-slot open">6 PM</div><div class="avail-slot open">8 PM</div></div>
+          <div class="avail-col"><div class="avail-day-label">Sat</div><div class="avail-slot open">10 AM</div><div class="avail-slot open">11 AM</div><div class="avail-slot open">12 PM</div></div>
+          <div class="avail-col"><div class="avail-day-label">Sun</div><div class="avail-slot booked">10 AM</div><div class="avail-slot booked">11 AM</div><div class="avail-slot booked">12 PM</div></div>
+        </div>
+        <div class="avail-legend">
+          <div class="leg-item"><div class="leg-dot" style="background:#E6F1FB;border:0.5px solid #b5d0f0;"></div>Available</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#1B3A6B;"></div>Selected</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#f0f0f0;"></div>Booked</div>
+        </div>
+      </div>
+
+      <!-- REVIEWS -->
+      <div class="card">
+        <div class="section-title">Student reviews</div>
+        <div class="review-sum">
+          <div class="rscore">
+            <div class="rscore-num">4.9</div>
+            <div class="rscore-stars">★★★★★</div>
+            <div class="rscore-count">115 reviews</div>
+          </div>
+          <div class="rbars">
+            <div class="rbar-row"><div class="rbar-lbl">5</div><div class="rbar-track"><div class="rbar-fill" style="width:88%;"></div></div><div class="rbar-count">101</div></div>
+            <div class="rbar-row"><div class="rbar-lbl">4</div><div class="rbar-track"><div class="rbar-fill" style="width:10%;background:#9aaecf;"></div></div><div class="rbar-count">11</div></div>
+            <div class="rbar-row"><div class="rbar-lbl">3</div><div class="rbar-track"><div class="rbar-fill" style="width:2%;background:#d0dcf5;"></div></div><div class="rbar-count">3</div></div>
+            <div class="rbar-row"><div class="rbar-lbl">2</div><div class="rbar-track"><div class="rbar-fill" style="width:0%;"></div></div><div class="rbar-count">0</div></div>
+            <div class="rbar-row"><div class="rbar-lbl">1</div><div class="rbar-track"><div class="rbar-fill" style="width:0%;"></div></div><div class="rbar-count">0</div></div>
+          </div>
+        </div>
+        <div class="review-item">
+          <div class="rev-top"><div class="rev-avatar" style="background:#1B3A6B;">RA</div><div><div class="rev-name">Rohan Agarwal</div><div class="rev-date">1 week ago</div></div><div class="rev-stars">★★★★★</div></div>
+          <div class="rev-text">Arjun sir explained confidence intervals in a way that finally clicked for me. Booked a second session the next day.</div>
+        </div>
+        <div class="review-item">
+          <div class="rev-top"><div class="rev-avatar" style="background:#0F6E56;">KP</div><div><div class="rev-name">Karan Patel</div><div class="rev-date">2 weeks ago</div></div><div class="rev-stars">★★★★★</div></div>
+          <div class="rev-text">Super focused and tailored. He knew exactly which JEE topics to prioritise. Notes were incredibly concise.</div>
+        </div>
+        <div class="review-item">
+          <div class="rev-top"><div class="rev-avatar" style="background:#993556;">MV</div><div><div class="rev-name">Meera Verma</div><div class="rev-date">3 weeks ago</div></div><div class="rev-stars">★★★★★</div></div>
+          <div class="rev-text">One 90-minute session completely changed my perspective on statistics. Highly recommend.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="sidebar">
+
+      <!-- PRICE + BOOKING -->
+      <div class="sb-price-card">
+        <div class="sb-price-row">
+          <span class="sb-price">₹449</span>
+          <span class="sb-unit">/ hour</span>
+        </div>
+        <div class="sb-price-note">90-min session → <strong>₹674</strong></div>
+
+        <!-- NEXT AVAILABLE -->
+        <div class="sb-next">
+          <div class="sb-next-icon"><i class="ti ti-calendar" aria-hidden="true"></i></div>
+          <div>
+            <div class="sb-next-label">Next available</div>
+            <div class="sb-next-time">Wed, 25 Jun · 7:00 PM IST</div>
+          </div>
+        </div>
+
+        <!-- DURATION -->
+        <div class="sb-section-label">Duration</div>
+        <div class="sb-duration-row">
+          <div class="sb-dur active" onclick="selectDur(this)">
+            <div class="sb-dur-time">60 min</div>
+            <div class="sb-dur-price">₹449</div>
+          </div>
+          <div class="sb-dur" onclick="selectDur(this)">
+            <div class="sb-dur-time">90 min</div>
+            <div class="sb-dur-price">₹674</div>
+          </div>
+        </div>
+
+        <!-- TIME SLOTS -->
+        <div class="sb-section-label">Pick a slot</div>
+        <div class="sb-slots">
+          <div class="sb-slot full">Mon · 5 PM</div>
+          <div class="sb-slot" onclick="selectSlot(this)">Tue · 5 PM</div>
+          <div class="sb-slot active" onclick="selectSlot(this)">Wed · 7 PM</div>
+          <div class="sb-slot" onclick="selectSlot(this)">Thu · 5 PM</div>
+          <div class="sb-slot" onclick="selectSlot(this)">Fri · 5 PM</div>
+          <div class="sb-slot" onclick="selectSlot(this)">Sat · 10 AM</div>
+        </div>
+
+        <button class="sb-btn-book">Book session</button>
+        <button class="sb-btn-save"><i class="ti ti-heart" aria-hidden="true"></i> Save for later</button>
+      </div>
+
+      <!-- WHAT'S INCLUDED -->
+      <div class="sb-includes-card">
+        <div class="sb-section-label" style="margin-bottom:12px;">What's included</div>
+        <div class="sb-include-row"><i class="ti ti-device-laptop" aria-hidden="true"></i> Live on Zoom — any device</div>
+        <div class="sb-include-row"><i class="ti ti-file-text" aria-hidden="true"></i> Summary notes after session</div>
+        <div class="sb-include-row"><i class="ti ti-rotate" aria-hidden="true"></i> Free reschedule up to 4 hrs before</div>
+        <div class="sb-include-row"><i class="ti ti-message-circle" aria-hidden="true"></i> Pre-session topic form</div>
+        <div class="sb-include-row"><i class="ti ti-shield-check" aria-hidden="true"></i> Secure payment via Razorpay</div>
+      </div>
+
+      <!-- GUARANTEE -->
+      <div class="sb-guarantee">
+        <i class="ti ti-shield-check" aria-hidden="true"></i>
+        <div>
+          <div class="sb-guarantee-title">Money-back guarantee</div>
+          <div class="sb-guarantee-sub">Not satisfied? Get a full refund within 24 hours of your session, no questions asked.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function selectSlot(el){
+  if(el.classList.contains('full')) return;
+  document.querySelectorAll('.sb-slot').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+}
+function selectDur(el){
+  document.querySelectorAll('.sb-dur').forEach(d=>d.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
