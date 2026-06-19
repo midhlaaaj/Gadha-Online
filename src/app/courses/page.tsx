@@ -23,6 +23,7 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import { getCoursesPageData } from "../actions";
+import Navbar from "@/components/Navbar";
 
 // Dynamic Icon Picker Helper
 const getIconComponent = (name: string) => {
@@ -236,55 +237,13 @@ function CoursesPageContent() {
   }).length;
   const getCountByLevel = (lvl: string) => courses.filter(c => getCourseLevel(c.title) === lvl).length;
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
-        <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Courses...</p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
       
       {/* NAVIGATION */}
-      <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-50">
-        <a href="/" className="font-heading text-2xl font-extrabold tracking-tight text-primary">
-          Tuto<span className="text-secondary">board</span>
-        </a>
-        <div className="hidden md:flex items-center gap-8">
-          <a href="/courses" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Courses
-          </a>
-          <a href="/sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Sessions
-          </a>
-          <a href="/mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Mentors
-          </a>
-          <a href="/#about" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            About
-          </a>
-          <div className="flex items-center gap-3 ml-2">
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer"
-            >
-              Sign In
-            </a>
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer"
-            >
-              Sign Up
-            </a>
-          </div>
-        </div>
-        <button className="md:hidden text-xs font-semibold px-4 py-2 rounded-lg bg-secondary text-white cursor-pointer">
-          Menu
-        </button>
-      </nav>
+      <Navbar />
 
       {/* PAGE HEADER */}
       <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
@@ -640,7 +599,29 @@ function CoursesPageContent() {
         </div>
 
         {/* COURSES GRID */}
-        {currentCourses.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10 w-full">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white border border-border-subtle rounded-2xl overflow-hidden p-5 space-y-4">
+                <div className="w-full h-36 bg-slate-100 rounded-xl animate-shimmer"></div>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-16 bg-slate-100 rounded animate-shimmer"></div>
+                  <div className="h-4 w-16 bg-slate-100 rounded animate-shimmer"></div>
+                </div>
+                <div className="h-6 w-3/4 bg-slate-200 rounded animate-shimmer"></div>
+                <div className="h-4 w-1/2 bg-slate-100 rounded animate-shimmer"></div>
+                <div className="border-t border-border-subtle pt-3 flex items-center justify-between">
+                  <div className="h-4 w-20 bg-slate-100 rounded animate-shimmer"></div>
+                  <div className="h-6 w-16 bg-slate-200 rounded animate-shimmer"></div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-grow h-10 bg-slate-200 rounded-lg animate-shimmer"></div>
+                  <div className="flex-grow h-10 bg-slate-100 rounded-lg animate-shimmer"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : currentCourses.length === 0 ? (
           <div className="text-center py-20 bg-slate-50 border border-dashed border-border-subtle rounded-2xl">
             <p className="text-sm text-text-muted mb-4 font-medium">No courses matches your filters.</p>
             <button

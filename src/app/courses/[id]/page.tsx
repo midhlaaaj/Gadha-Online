@@ -30,6 +30,7 @@ import {
   IconBrandYoutube,
 } from "@tabler/icons-react";
 import { getCourseDetails } from "../../actions";
+import Navbar from "@/components/Navbar";
 
 // Dynamic Icon Picker Helper
 const getDetailsIcon = (name: string) => {
@@ -246,122 +247,141 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
     setExpandedModules((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
-        <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Course Details...</p>
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-white font-sans text-primary p-6">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
-          <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Course</h2>
-          <p className="text-sm text-text-muted mb-6">{error || "Course not found."}</p>
-          <a href="/courses" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
-            Back to Courses
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  const { course, related } = data;
-  const isLive = course.format === "Live batch";
-
-  const syllabus = (course.curriculum && course.curriculum.length > 0)
-    ? course.curriculum
-    : getDynamicSyllabus(course.subject);
-
-  const outcomes = (course.learningOutcomes && course.learningOutcomes.length > 0)
-    ? course.learningOutcomes
-    : getDynamicLearningOutcomes(course.subject);
-
-  const inclusionsList = (course.inclusions && course.inclusions.length === 5 && course.inclusions.every((x: string) => x !== ""))
-    ? course.inclusions
-    : (isLive
-        ? [
-            "16 live sessions, 2x weekly",
-            "Live on Zoom — join via browser/app",
-            "Live doubt-solving every class",
-            "7-day replay for missed classes",
-            "Certificate on batch completion"
-          ]
-        : [
-            "32 hours of content",
-            "Access on mobile & desktop",
-            "Certificate of completion",
-            "Lifetime access",
-            "Weekly live Q&A with mentor"
-          ]
-      );
-
-  const getInclusionIcon = (idx: number) => {
-    if (isLive) {
-      switch (idx) {
-        case 0: return <IconBroadcast className="w-4 h-4 text-secondary flex-shrink-0" />;
-        case 1: return <IconDeviceLaptop className="w-4 h-4 text-secondary flex-shrink-0" />;
-        case 2: return <IconMessageCircle className="w-4 h-4 text-secondary flex-shrink-0" />;
-        case 3: return <IconRotate className="w-4 h-4 text-secondary flex-shrink-0" />;
-        default: return <IconCertificate className="w-4 h-4 text-secondary flex-shrink-0" />;
-      }
-    } else {
-      switch (idx) {
-        case 0: return <IconClock className="w-4 h-4 text-secondary flex-shrink-0" />;
-        case 1: return <IconDeviceLaptop className="w-4 h-4 text-secondary flex-shrink-0" />;
-        case 2: return <IconCertificate className="w-4 h-4 text-secondary flex-shrink-0" />;
-        case 3: return <IconInfinity className="w-4 h-4 text-secondary flex-shrink-0" />;
-        default: return <IconMessageCircle className="w-4 h-4 text-secondary flex-shrink-0" />;
-      }
-    }
-  };
-
-  // Dynamic old price (40% discount fallback representation)
-  const oldPrice = Math.round(course.price * 1.66);
-
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-      
       {/* NAVIGATION */}
-      <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-50">
-        <a href="/" className="font-heading text-2xl font-extrabold tracking-tight text-primary">
-          Tuto<span className="text-secondary">board</span>
-        </a>
-        <div className="hidden md:flex items-center gap-8">
-          <a href="/courses" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Courses
-          </a>
-          <a href="/sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Sessions
-          </a>
-          <a href="/mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Mentors
-          </a>
-          <a href="/#about" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            About
-          </a>
-          <div className="flex items-center gap-3 ml-2">
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer"
-            >
-              Sign In
-            </a>
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer"
-            >
-              Sign Up
+      <Navbar />
+
+      {loading ? (
+        <div className="w-full">
+          {/* Shimmering Breadcrumbs */}
+          <div className="bg-surface border-b border-border-subtle py-4 px-6 md:px-12">
+            <div className="max-w-7xl mx-auto space-y-2">
+              <div className="h-3 w-48 bg-slate-100 rounded animate-shimmer"></div>
+            </div>
+          </div>
+
+          {/* Shimmering Layout Grid */}
+          <div className="max-w-7xl mx-auto w-full px-6 md:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* Left Column Skeletons */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Hero Banner Banner Skeleton */}
+              <div className="w-full h-72 bg-slate-150 rounded-2xl animate-shimmer"></div>
+
+              {/* Title & Info Box Skeleton */}
+              <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex gap-2">
+                  <div className="h-4 w-16 bg-slate-100 rounded animate-shimmer"></div>
+                  <div className="h-4 w-24 bg-slate-100 rounded animate-shimmer"></div>
+                </div>
+                <div className="h-8 w-3/4 bg-slate-200 rounded animate-shimmer"></div>
+                <div className="space-y-2">
+                  <div className="h-4 w-full bg-slate-100 rounded animate-shimmer"></div>
+                  <div className="h-4 w-full bg-slate-100 rounded animate-shimmer"></div>
+                  <div className="h-4 w-2/3 bg-slate-100 rounded animate-shimmer"></div>
+                </div>
+              </div>
+
+              {/* Syllabus Skeleton */}
+              <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-3">
+                <div className="h-6 w-48 bg-slate-200 rounded animate-shimmer mb-4"></div>
+                {[1, 2, 3].map((m) => (
+                  <div key={m} className="border border-border-subtle rounded-xl p-4 h-12 bg-slate-50 animate-shimmer"></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Column Pricing Card Skeleton */}
+            <div className="space-y-6">
+              <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 animate-shimmer"></div>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-4 w-24 bg-slate-200 rounded animate-shimmer"></div>
+                    <div className="h-3 w-16 bg-slate-100 rounded animate-shimmer"></div>
+                  </div>
+                </div>
+                <div className="space-y-2 border-t border-border-subtle pt-4">
+                  <div className="h-5 w-32 bg-slate-100 rounded animate-shimmer mx-auto"></div>
+                  <div className="h-10 w-full bg-slate-250 rounded-lg animate-shimmer"></div>
+                </div>
+                <div className="space-y-2 border-t border-border-subtle pt-4">
+                  {[1, 2, 3, 4, 5].map((f) => (
+                    <div key={f} className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-slate-100 rounded animate-shimmer"></div>
+                      <div className="h-3 w-3/4 bg-slate-100 rounded animate-shimmer"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : error || !data ? (
+        <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] p-6 bg-white">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
+            <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Course</h2>
+            <p className="text-sm text-text-muted mb-6">{error || "Course not found."}</p>
+            <a href="/courses" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
+              Back to Courses
             </a>
           </div>
         </div>
-        <button className="md:hidden text-xs font-semibold px-4 py-2 rounded-lg bg-secondary text-white cursor-pointer">
-          Menu
-        </button>
-      </nav>
+      ) : (() => {
+        const { course, related } = data;
+        const isLive = course.format === "Live batch";
+
+        const syllabus = (course.curriculum && course.curriculum.length > 0)
+          ? course.curriculum
+          : getDynamicSyllabus(course.subject);
+
+        const outcomes = (course.learningOutcomes && course.learningOutcomes.length > 0)
+          ? course.learningOutcomes
+          : getDynamicLearningOutcomes(course.subject);
+
+        const inclusionsList = (course.inclusions && course.inclusions.length === 5 && course.inclusions.every((x: string) => x !== ""))
+          ? course.inclusions
+          : (isLive
+              ? [
+                  "16 live sessions, 2x weekly",
+                  "Live on Zoom — join via browser/app",
+                  "Live doubt-solving every class",
+                  "7-day replay for missed classes",
+                  "Certificate on batch completion"
+                ]
+              : [
+                  "32 hours of content",
+                  "Access on mobile & desktop",
+                  "Certificate of completion",
+                  "Lifetime access",
+                  "Weekly live Q&A with mentor"
+                ]
+            );
+
+        const getInclusionIcon = (idx: number) => {
+          if (isLive) {
+            switch (idx) {
+              case 0: return <IconBroadcast className="w-4 h-4 text-secondary flex-shrink-0" />;
+              case 1: return <IconDeviceLaptop className="w-4 h-4 text-secondary flex-shrink-0" />;
+              case 2: return <IconMessageCircle className="w-4 h-4 text-secondary flex-shrink-0" />;
+              case 3: return <IconRotate className="w-4 h-4 text-secondary flex-shrink-0" />;
+              default: return <IconCertificate className="w-4 h-4 text-secondary flex-shrink-0" />;
+            }
+          } else {
+            switch (idx) {
+              case 0: return <IconClock className="w-4 h-4 text-secondary flex-shrink-0" />;
+              case 1: return <IconDeviceLaptop className="w-4 h-4 text-secondary flex-shrink-0" />;
+              case 2: return <IconCertificate className="w-4 h-4 text-secondary flex-shrink-0" />;
+              case 3: return <IconInfinity className="w-4 h-4 text-secondary flex-shrink-0" />;
+              default: return <IconMessageCircle className="w-4 h-4 text-secondary flex-shrink-0" />;
+            }
+          }
+        };
+
+        const oldPrice = Math.round(course.price * 1.66);
+
+        return (
+          <>
 
       {/* BREADCRUMB */}
       <div className="bg-surface border-b border-border-subtle py-4 px-6 md:px-12">
@@ -768,7 +788,9 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </footer>
-
+          </>
+        );
+      })()}
     </div>
   );
 }

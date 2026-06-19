@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use, useState, useEffect } from "react";
+import Navbar from "@/components/Navbar";
 import {
   IconCheck,
   IconClock,
@@ -162,138 +163,162 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
     loadData();
   }, [id]);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
-        <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Session Details...</p>
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-white font-sans text-primary p-6">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
-          <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Session</h2>
-          <p className="text-sm text-text-muted mb-6">{error || "Session not found."}</p>
-          <a href="/sessions" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
-            Back to Sessions
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  const { session, related } = data;
-  const coveredTopics = (session.whatsCovered && session.whatsCovered.length > 0)
-    ? session.whatsCovered
-    : getCoveredTopics(session.subject);
-
-  // Inclusions array binding
-  const inclusionsList = (session.inclusions && session.inclusions.length === 5 && session.inclusions.every((x: string) => x !== ""))
-    ? session.inclusions
-    : [
-        "Live on Zoom — any device",
-        "Summary notes after session",
-        "Free reschedule up to 4 hrs before",
-        "Pre-session topic form",
-        "Secure payment via Razorpay"
-      ];
-
-  const getInclusionIcon = (idx: number) => {
-    switch (idx) {
-      case 0: return <IconDeviceLaptop className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
-      case 1: return <IconBook className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
-      case 2: return <IconRotate className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
-      case 3: return <IconMessageCircle className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
-      default: return <IconShieldCheck className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
-    }
-  };
-
-  // Cost calculations
-  const pricePerHour = session.price;
-  const currentPrice = duration === 90 ? Math.round(pricePerHour * 1.5) : pricePerHour;
-
-  const detailGridItems = [
-    {
-      label: "Duration",
-      value: session.durationOptions || "60 or 90 min",
-      icon: <IconClock className="w-5 h-5 text-secondary" />,
-      bg: "bg-blue-50"
-    },
-    {
-      label: "Platform",
-      value: session.platform || "Zoom",
-      icon: <IconDeviceLaptop className="w-5 h-5 text-[#0F6E56]" />,
-      bg: "bg-green-50"
-    },
-    {
-      label: "Session type",
-      value: session.type === "Group" ? "Group session" : "1-on-1 private",
-      icon: <IconUsers className="w-5 h-5 text-[#854F0B]" />,
-      bg: "bg-yellow-50"
-    },
-    {
-      label: "Language",
-      value: session.language || "English / Hindi",
-      icon: <IconWorld className="w-5 h-5 text-[#993556]" />,
-      bg: "bg-pink-50"
-    },
-    {
-      label: "Days",
-      value: session.days || "Mon – Sat",
-      icon: <IconCalendar className="w-5 h-5 text-[#534AB7]" />,
-      bg: "bg-purple-50"
-    },
-    {
-      label: "Reschedule",
-      value: session.reschedulePolicy || "Up to 4 hrs before",
-      icon: <IconRotate className="w-5 h-5 text-secondary" />,
-      bg: "bg-blue-50"
-    }
-  ];
-
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-      
       {/* NAVIGATION */}
-      <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-50">
-        <a href="/" className="font-heading text-2xl font-extrabold tracking-tight text-primary">
-          Tuto<span className="text-secondary">board</span>
-        </a>
-        <div className="hidden md:flex items-center gap-8">
-          <a href="/courses" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Courses
-          </a>
-          <a href="/sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Sessions
-          </a>
-          <a href="/mentors" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Mentors
-          </a>
-          <a href="/#about" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            About
-          </a>
-          <div className="flex items-center gap-3 ml-2">
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer"
-            >
-              Sign In
-            </a>
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer"
-            >
-              Sign Up
+      <Navbar />
+
+      {loading ? (
+        <div className="w-full">
+          {/* Shimmering Breadcrumbs */}
+          <div className="bg-surface border-b border-border-subtle py-4 px-6 md:px-12">
+            <div className="max-w-7xl mx-auto space-y-2">
+              <div className="h-3 w-48 bg-slate-100 rounded animate-shimmer"></div>
+            </div>
+          </div>
+
+          {/* Shimmering Layout Grid */}
+          <div className="max-w-7xl mx-auto w-full px-6 md:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* Left Column Skeletons */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Hero Banner Banner Skeleton */}
+              <div className="w-full h-72 bg-slate-150 rounded-2xl animate-shimmer"></div>
+
+              {/* Title & Info Box Skeleton */}
+              <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex gap-2">
+                  <div className="h-4 w-16 bg-slate-100 rounded animate-shimmer"></div>
+                  <div className="h-4 w-24 bg-slate-100 rounded animate-shimmer"></div>
+                </div>
+                <div className="h-8 w-3/4 bg-slate-200 rounded animate-shimmer"></div>
+                <div className="space-y-2">
+                  <div className="h-4 w-full bg-slate-100 rounded animate-shimmer"></div>
+                  <div className="h-4 w-full bg-slate-100 rounded animate-shimmer"></div>
+                  <div className="h-4 w-2/3 bg-slate-100 rounded animate-shimmer"></div>
+                </div>
+              </div>
+
+              {/* Covered Topics Skeleton */}
+              <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-3">
+                <div className="h-6 w-48 bg-slate-200 rounded animate-shimmer mb-4"></div>
+                {[1, 2, 3].map((m) => (
+                  <div key={m} className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-slate-100 rounded animate-shimmer"></div>
+                    <div className="h-3.5 w-1/2 bg-slate-100 rounded animate-shimmer"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Column Booking Card Skeleton */}
+            <div className="space-y-6">
+              <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 animate-shimmer"></div>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-4 w-24 bg-slate-200 rounded animate-shimmer"></div>
+                    <div className="h-3 w-16 bg-slate-100 rounded animate-shimmer"></div>
+                  </div>
+                </div>
+                <div className="space-y-3 border-t border-border-subtle pt-4">
+                  <div className="h-8 w-full bg-slate-50 rounded animate-shimmer"></div>
+                  <div className="h-5 w-32 bg-slate-100 rounded animate-shimmer mx-auto"></div>
+                  <div className="h-10 w-full bg-slate-250 rounded-lg animate-shimmer"></div>
+                </div>
+                <div className="space-y-2 border-t border-border-subtle pt-4">
+                  {[1, 2, 3, 4, 5].map((f) => (
+                    <div key={f} className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-slate-100 rounded animate-shimmer"></div>
+                      <div className="h-3 w-3/4 bg-slate-100 rounded animate-shimmer"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : error || !data ? (
+        <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] p-6 bg-white">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
+            <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Session</h2>
+            <p className="text-sm text-text-muted mb-6">{error || "Session not found."}</p>
+            <a href="/sessions" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
+              Back to Sessions
             </a>
           </div>
         </div>
-        <button className="md:hidden text-xs font-semibold px-4 py-2 rounded-lg bg-secondary text-white cursor-pointer">
-          Menu
-        </button>
-      </nav>
+      ) : (() => {
+        const { session, related } = data;
+        const coveredTopics = (session.whatsCovered && session.whatsCovered.length > 0)
+          ? session.whatsCovered
+          : getCoveredTopics(session.subject);
+
+        // Inclusions array binding
+        const inclusionsList = (session.inclusions && session.inclusions.length === 5 && session.inclusions.every((x: string) => x !== ""))
+          ? session.inclusions
+          : [
+              "Live on Zoom — any device",
+              "Summary notes after session",
+              "Free reschedule up to 4 hrs before",
+              "Pre-session topic form",
+              "Secure payment via Razorpay"
+            ];
+
+        const getInclusionIcon = (idx: number) => {
+          switch (idx) {
+            case 0: return <IconDeviceLaptop className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
+            case 1: return <IconBook className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
+            case 2: return <IconRotate className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
+            case 3: return <IconMessageCircle className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
+            default: return <IconShieldCheck className="w-4.5 h-4.5 text-secondary flex-shrink-0" />;
+          }
+        };
+
+        // Cost calculations
+        const pricePerHour = session.price;
+        const currentPrice = duration === 90 ? Math.round(pricePerHour * 1.5) : pricePerHour;
+
+        const detailGridItems = [
+          {
+            label: "Duration",
+            value: session.durationOptions || "60 or 90 min",
+            icon: <IconClock className="w-5 h-5 text-secondary" />,
+            bg: "bg-blue-50"
+          },
+          {
+            label: "Platform",
+            value: session.platform || "Zoom",
+            icon: <IconDeviceLaptop className="w-5 h-5 text-[#0F6E56]" />,
+            bg: "bg-green-50"
+          },
+          {
+            label: "Session type",
+            value: session.type === "Group" ? "Group session" : "1-on-1 private",
+            icon: <IconUsers className="w-5 h-5 text-[#854F0B]" />,
+            bg: "bg-yellow-50"
+          },
+          {
+            label: "Language",
+            value: session.language || "English / Hindi",
+            icon: <IconWorld className="w-5 h-5 text-[#993556]" />,
+            bg: "bg-pink-50"
+          },
+          {
+            label: "Days",
+            value: session.days || "Mon – Sat",
+            icon: <IconCalendar className="w-5 h-5 text-[#534AB7]" />,
+            bg: "bg-purple-50"
+          },
+          {
+            label: "Reschedule",
+            value: session.reschedulePolicy || "Up to 4 hrs before",
+            icon: <IconRotate className="w-5 h-5 text-secondary" />,
+            bg: "bg-blue-50"
+          }
+        ];
+
+        return (
+          <>
 
       {/* BREADCRUMB */}
       <div className="bg-surface border-b border-border-subtle py-4 px-6 md:px-12">
@@ -853,7 +878,9 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
       </footer>
-
+          </>
+        );
+      })()}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { getMentorDetailsData } from "../../actions";
+import Navbar from "@/components/Navbar";
 
 // Helper for subject badges colors
 const getSubjectBgColor = (subject: string) => {
@@ -64,24 +65,103 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
     }, 3000);
   };
 
-  if (loading) {
+  if (error || (!loading && !data)) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
-        <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Mentor Profile...</p>
+      <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] p-6 bg-white">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
+            <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Profile</h2>
+            <p className="text-sm text-text-muted mb-6">{error || "Mentor not found."}</p>
+            <a href="/mentors" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
+              Back to Mentors
+            </a>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (error || !data) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-white font-sans text-primary p-6">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
-          <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Profile</h2>
-          <p className="text-sm text-text-muted mb-6">{error || "Mentor not found."}</p>
-          <a href="/mentors" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
-            Back to Mentors
-          </a>
+      <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
+        <Navbar />
+        
+        {/* Shimmering Header */}
+        <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
+          <div className="max-w-7xl mx-auto space-y-3">
+            <div className="h-4 w-32 bg-slate-250 rounded animate-pulse"></div>
+            <div className="h-8 w-64 bg-slate-200 rounded animate-pulse"></div>
+          </div>
+        </header>
+
+        {/* Shimmering Content */}
+        <div className="max-w-7xl mx-auto w-full px-6 md:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start flex-1">
+          {/* Left Column Skeletons */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Bio Box Skeleton */}
+            <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="h-6 w-40 bg-slate-200 rounded animate-shimmer"></div>
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-slate-100 rounded animate-shimmer"></div>
+                <div className="h-4 w-full bg-slate-100 rounded animate-shimmer"></div>
+                <div className="h-4 w-2/3 bg-slate-100 rounded animate-shimmer"></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-border-subtle pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-slate-100 rounded-lg animate-shimmer"></div>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-3 w-16 bg-slate-200 rounded animate-shimmer"></div>
+                    <div className="h-4 w-28 bg-slate-100 rounded animate-shimmer"></div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-slate-100 rounded-lg animate-shimmer"></div>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-3 w-16 bg-slate-200 rounded animate-shimmer"></div>
+                    <div className="h-4 w-28 bg-slate-100 rounded animate-shimmer"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Courses Grid Skeleton */}
+            <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="h-6 w-48 bg-slate-200 rounded animate-shimmer"></div>
+                <div className="h-4 w-24 bg-slate-100 rounded animate-shimmer"></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="border border-border-subtle rounded-xl p-4 space-y-3 bg-white">
+                    <div className="h-4 w-12 bg-slate-100 rounded animate-shimmer"></div>
+                    <div className="h-5 w-full bg-slate-200 rounded animate-shimmer"></div>
+                    <div className="h-4 w-3/4 bg-slate-100 rounded animate-shimmer"></div>
+                    <div className="h-10 w-full bg-slate-50 rounded animate-shimmer"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column (Overview Card) Skeleton */}
+          <div className="space-y-6">
+            <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col items-center text-center space-y-4">
+              <div className="w-24 h-24 rounded-full bg-slate-100 animate-shimmer"></div>
+              <div className="h-6 w-36 bg-slate-200 rounded animate-shimmer"></div>
+              <div className="h-4 w-44 bg-slate-100 rounded animate-shimmer"></div>
+              <div className="w-full grid grid-cols-3 gap-2 py-4 border-t border-b border-border-subtle my-2">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="space-y-1">
+                    <div className="h-3 w-10 bg-slate-100 rounded mx-auto animate-shimmer"></div>
+                    <div className="h-4 w-12 bg-slate-200 rounded mx-auto animate-shimmer"></div>
+                  </div>
+                ))}
+              </div>
+              <div className="h-5 w-32 bg-slate-100 rounded animate-shimmer"></div>
+              <div className="h-12 w-full bg-slate-200 rounded animate-shimmer"></div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -92,8 +172,8 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
       <title>{`${mentor.name} - Expert Subject Tutor | Tutoboard`}</title>
-      <meta name="description" content={`Book 1-on-1 sessions and explore courses taught by ${mentor.name}, verified educator specializing in ${mentor.subject} on Tutoboard.`} />
-      
+      <meta name="description" content={`Book 1-on-1 sessions and explore courses taught by ${mentor.name}, verified educator specializing in ${mentor.subject || "tutoring"} on Tutoboard.`} />
+
       {/* TOAST MESSAGE */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 bg-primary text-white border border-secondary text-xs px-4 py-3 rounded-xl shadow-xl z-50 animate-fade-in flex items-center gap-2">
@@ -103,42 +183,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
       )}
 
       {/* NAVIGATION */}
-      <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-50">
-        <a href="/" className="font-heading text-2xl font-extrabold tracking-tight text-primary">
-          Tuto<span className="text-secondary">board</span>
-        </a>
-        <div className="hidden md:flex items-center gap-8">
-          <a href="/courses" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Courses
-          </a>
-          <a href="/sessions" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            Sessions
-          </a>
-          <a href="/mentors" className="text-sm font-semibold text-secondary hover:text-secondary/90 transition-colors">
-            Mentors
-          </a>
-          <a href="/#about" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
-            About
-          </a>
-          <div className="flex items-center gap-3 ml-2">
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer"
-            >
-              Sign In
-            </a>
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer"
-            >
-              Sign Up
-            </a>
-          </div>
-        </div>
-        <button className="md:hidden text-xs font-semibold px-4 py-2 rounded-lg bg-secondary text-white cursor-pointer">
-          Menu
-        </button>
-      </nav>
+      <Navbar />
 
       {/* HEADER SECTION */}
       <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
@@ -438,7 +483,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </footer>
-
     </div>
   );
 }

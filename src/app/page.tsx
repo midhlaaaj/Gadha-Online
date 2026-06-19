@@ -17,6 +17,7 @@ import {
   IconBook,
 } from "@tabler/icons-react";
 import { getHomepageData, submitContactMessage } from "./actions";
+import Navbar from "@/components/Navbar";
 
 // Dynamic Icon Picker Helper
 const getIconComponent = (name: string) => {
@@ -111,14 +112,6 @@ export default function Home() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
-        <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Tutoboard...</p>
-      </div>
-    );
-  }
 
   const settings = data?.settings || {
     badge_text: "#1 online tutoring platform",
@@ -181,56 +174,7 @@ export default function Home() {
   return (
     <div className="w-full bg-white text-primary flex-1">
       {/* NAVIGATION */}
-      <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-50">
-        <div className="font-heading text-2xl font-extrabold tracking-tight text-primary">
-          Tuto<span className="text-secondary">board</span>
-        </div>
-        <div className="hidden md:flex items-center gap-8">
-          <a
-            href="/courses"
-            className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
-          >
-            Courses
-          </a>
-          <a
-            href="/sessions"
-            className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
-          >
-            Sessions
-          </a>
-          <a
-            href="/mentors"
-            className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
-          >
-            Mentors
-          </a>
-          <a
-            href="#about"
-            className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
-          >
-            About
-          </a>
-          <div className="flex items-center gap-3 ml-2">
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer"
-            >
-              Sign In
-            </a>
-            <a
-              href="#"
-              className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer"
-            >
-              Sign Up
-            </a>
-          </div>
-        </div>
-        
-        {/* Mobile Nav Button */}
-        <button className="md:hidden text-xs font-semibold px-4 py-2 rounded-lg bg-secondary text-white cursor-pointer">
-          Menu
-        </button>
-      </nav>
+      <Navbar />
 
       {/* HERO SECTION */}
       <section className="bg-surface pl-6 pr-6 md:pl-20 md:pr-16 lg:pl-32 lg:pr-24 xl:pl-40 xl:pr-28 py-16 lg:py-0 flex flex-col lg:flex-row items-center gap-12 border-b border-border-subtle min-h-[calc(100vh-70px)]">
