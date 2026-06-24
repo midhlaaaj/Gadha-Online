@@ -18,7 +18,6 @@ import {
   IconBook,
 } from "@tabler/icons-react";
 import { getMentorsPageData } from "../actions";
-import Navbar from "@/components/Navbar";
 
 export default function MentorsPage() {
   const [mentors, setMentors] = useState<any[]>([]);
@@ -183,9 +182,6 @@ export default function MentorsPage() {
       <title>Explore Mentors | Tutoboard</title>
       <meta name="description" content="Connect and learn 1-on-1 with verified educators and subject matter experts on Tutoboard." />
       
-      {/* NAVIGATION */}
-      <Navbar />
-
       {/* PAGE HEADER */}
       <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
         <div className="max-w-7xl mx-auto">

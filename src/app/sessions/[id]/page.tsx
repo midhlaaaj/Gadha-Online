@@ -1,7 +1,6 @@
 "use client";
 
 import React, { use, useState, useEffect } from "react";
-import Navbar from "@/components/Navbar";
 import {
   IconCheck,
   IconClock,
@@ -165,8 +164,6 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-      {/* NAVIGATION */}
-      <Navbar />
 
       {loading ? (
         <div className="w-full">

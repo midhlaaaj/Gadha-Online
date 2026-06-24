@@ -16,7 +16,6 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { getMentorDetailsData } from "../../actions";
-import Navbar from "@/components/Navbar";
 
 // Helper for subject badges colors
 const getSubjectBgColor = (subject: string) => {
@@ -68,7 +67,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
   if (error || (!loading && !data)) {
     return (
       <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-        <Navbar />
         <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] p-6 bg-white">
           <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
             <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Profile</h2>
@@ -85,7 +83,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
   if (loading) {
     return (
       <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-        <Navbar />
         
         {/* Shimmering Header */}
         <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
@@ -181,9 +178,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
           {toastMessage}
         </div>
       )}
-
-      {/* NAVIGATION */}
-      <Navbar />
 
       {/* HEADER SECTION */}
       <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">

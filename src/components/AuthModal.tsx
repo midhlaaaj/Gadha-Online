@@ -126,14 +126,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
         });
         if (err) throw err;
 
-        setSuccess("Registration successful! Please check your email for confirmation link.");
-        // Switch to signin or clear forms after signup
+        setSuccess("Account created! Redirecting you to the home page...");
         setTimeout(() => {
-          setMode("signin");
-          setPassword("");
-          setConfirmPassword("");
-          setSuccess(null);
-        }, 3000);
+          onClose();
+          window.location.href = "/";
+        }, 1500);
       } else if (mode === "forgot") {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/`,

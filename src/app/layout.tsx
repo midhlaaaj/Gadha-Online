@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit, Poppins } from "next/font/google";
+import ClientLayout from "@/components/ClientLayout";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -30,7 +31,7 @@ export default function RootLayout({
       className={`${outfit.variable} ${poppins.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        {children}
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

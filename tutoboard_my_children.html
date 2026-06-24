@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Children · Tutoboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1B3A6B;
+  --blue:#2F7FE8;
+  --gold:#FFC107;
+  --bg:#F5F8FF;
+  --white:#ffffff;
+  --border:#d0dcf5;
+  --text-sec:#4a5a7a;
+  --text-muted:#9aaecf;
+  --radius:12px;
+}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy);font-size:14px;}
+
+/* ── TOP NAV ── */
+.topnav{background:var(--white);border-bottom:0.5px solid var(--border);height:60px;display:flex;align-items:center;padding:0 24px;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topnav-logo{font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:var(--navy);}
+.topnav-logo span{color:var(--blue);}
+.topnav-right{display:flex;align-items:center;gap:18px;}
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--text-sec);font-size:19px;position:relative;}
+.icon-btn:hover{color:var(--navy);}
+.notif-dot{position:absolute;top:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:#E24B4A;border:1.5px solid #fff;}
+.topnav-avatar{width:32px;height:32px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;color:var(--gold);cursor:pointer;}
+
+/* ── PAGE ── */
+.page{max-width:1000px;margin:0 auto;padding:28px 24px 60px;}
+.breadcrumb{font-size:12px;color:var(--text-muted);margin-bottom:14px;}
+.breadcrumb span{color:var(--text-sec);font-weight:500;}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;}
+.page-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--navy);}
+.page-sub{font-size:12px;color:var(--text-sec);margin-top:3px;}
+.btn-primary{font-size:13px;font-weight:600;padding:10px 20px;border-radius:9px;background:var(--navy);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;gap:7px;transition:background 0.15s;}
+.btn-primary:hover{background:var(--blue);}
+
+/* ── CARD GRID ── */
+.children-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.child-card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:box-shadow 0.15s;}
+.child-card:hover{box-shadow:0 6px 20px rgba(27,58,107,0.08);}
+.cc-top{padding:18px 18px 14px;display:flex;align-items:flex-start;gap:14px;}
+.cc-photo{width:54px;height:54px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#fff;overflow:hidden;}
+.cc-photo img{width:100%;height:100%;object-fit:cover;}
+.cc-info{flex:1;min-width:0;}
+.cc-name{font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;color:var(--navy);}
+.cc-meta{font-size:12px;color:var(--text-sec);margin-top:2px;}
+.cc-email{font-size:11px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:5px;}
+.cc-actions{display:flex;gap:6px;flex-shrink:0;}
+.icon-action{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--white);color:var(--text-sec);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all 0.15s;}
+.icon-action:hover{border-color:var(--navy);color:var(--navy);}
+.icon-action.danger:hover{border-color:#E24B4A;color:#A32D2D;}
+
+.link-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:99px;margin-top:8px;}
+.link-active{background:#dcfce7;color:#085041;}
+.link-pending{background:#FFF3CD;color:#7a4d00;}
+.resend-link{font-size:10px;font-weight:600;color:var(--blue);cursor:pointer;margin-left:6px;}
+
+.cc-divider{height:0.5px;background:var(--border);}
+.cc-activity{padding:14px 18px;}
+.cc-act-label{font-size:9px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:9px;}
+.cc-act-row{display:flex;align-items:center;gap:10px;padding:5px 0;}
+.cc-act-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.cc-act-text{font-size:11px;color:var(--navy);flex:1;}
+.cc-act-text strong{font-weight:600;}
+.cc-act-meta{font-size:10px;color:var(--text-muted);}
+.cc-footer{padding:11px 18px;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.cc-stat{font-size:11px;color:var(--text-sec);}
+.cc-stat strong{color:var(--navy);font-weight:700;}
+.view-bookings{font-size:11px;font-weight:600;color:var(--blue);cursor:pointer;display:flex;align-items:center;gap:4px;}
+
+/* ── ADD CHILD TILE ── */
+.add-tile{border:1.5px dashed var(--border);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;min-height:240px;cursor:pointer;background:#F9FBFF;transition:background 0.15s,border-color 0.15s;}
+.add-tile:hover{background:#E6F1FB;border-color:var(--blue);}
+.add-tile-inner{text-align:center;color:var(--text-muted);}
+.add-tile:hover .add-tile-inner{color:var(--blue);}
+.add-tile-inner i{font-size:30px;display:block;margin-bottom:8px;}
+.add-tile-inner div{font-size:13px;font-weight:600;}
+
+/* ── EXPLAINER ── */
+.explainer{background:#E6F1FB;border:0.5px solid #b5d4f4;border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-top:18px;}
+.explainer i{font-size:18px;color:var(--blue);flex-shrink:0;margin-top:1px;}
+.explainer-text{font-size:12px;color:#0C447C;line-height:1.6;}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(27,58,107,0.45);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--white);border-radius:16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
+.modal-header{padding:20px 24px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:700;color:var(--navy);}
+.modal-close{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-sec);font-size:15px;}
+.modal-close:hover{border-color:var(--navy);color:var(--navy);}
+.modal-body{padding:22px 24px;}
+
+.photo-upload{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px;}
+.photo-upload-circle{width:84px;height:84px;border-radius:50%;background:var(--bg);border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);font-size:26px;transition:all 0.15s;position:relative;overflow:hidden;}
+.photo-upload-circle:hover{border-color:var(--blue);color:var(--blue);}
+.photo-upload-label{font-size:11px;color:var(--text-muted);font-weight:500;}
+
+.form-group{margin-bottom:16px;}
+.form-label{font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:6px;display:block;}
+.form-input{width:100%;font-family:'Poppins',sans-serif;font-size:13px;padding:10px 13px;border:1px solid var(--border);border-radius:8px;color:var(--navy);outline:none;transition:border-color 0.15s;}
+.form-input:focus{border-color:var(--blue);}
+.form-hint{font-size:10px;color:var(--text-muted);margin-top:5px;}
+.modal-footer{padding:16px 24px 22px;display:flex;gap:10px;}
+.btn-ghost{flex:1;font-size:13px;font-weight:600;padding:11px;border-radius:9px;background:transparent;color:var(--navy);border:1.5px solid var(--border);cursor:pointer;}
+.btn-ghost:hover{border-color:var(--navy);}
+.btn-save{flex:1;font-size:13px;font-weight:600;padding:11px;border-radius:9px;background:var(--navy);color:#fff;border:none;cursor:pointer;}
+.btn-save:hover{background:var(--blue);}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="topnav">
+  <div class="topnav-logo">Tuto<span>board</span></div>
+  <div class="topnav-right">
+    <button class="icon-btn" aria-label="Search"><i class="ti ti-search"></i></button>
+    <button class="icon-btn" aria-label="Notifications"><i class="ti ti-bell"></i><div class="notif-dot"></div></button>
+    <div class="topnav-avatar">SK</div>
+  </div>
+</div>
+
+<div class="page">
+  <div class="breadcrumb">Home &rsaquo; <span>My children</span></div>
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">My children</div>
+      <div class="page-sub">Manage your children's profiles and view their recent activity</div>
+    </div>
+    <button class="btn-primary" onclick="openModal('add')"><i class="ti ti-plus"></i> Add a child</button>
+  </div>
+
+  <div class="children-grid">
+
+    <!-- CHILD 1: Aarav -->
+    <div class="child-card">
+      <div class="cc-top">
+        <div class="cc-photo" style="background:#2F7FE8;">AA</div>
+        <div class="cc-info">
+          <div class="cc-name">Aarav Kumar</div>
+          <div class="cc-meta">Class 11</div>
+          <div class="cc-email"><i class="ti ti-mail" style="font-size:11px;"></i> aarav@gmail.com</div>
+          <div class="link-badge link-active"><i class="ti ti-check" style="font-size:10px;"></i> Joined dashboard</div>
+        </div>
+        <div class="cc-actions">
+          <button class="icon-action" onclick="openModal('edit','Aarav Kumar','Class 11','aarav@gmail.com','AA','#2F7FE8')"><i class="ti ti-edit"></i></button>
+          <button class="icon-action danger"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      <div class="cc-divider"></div>
+      <div class="cc-activity">
+        <div class="cc-act-label">Recent activity</div>
+        <div class="cc-act-row">
+          <div class="cc-act-icon" style="background:#dbeafe;color:#2F7FE8;"><i class="ti ti-calendar-event"></i></div>
+          <div class="cc-act-text">Next: <strong>Calculus & Algebra</strong></div>
+          <div class="cc-act-meta">Wed, 9 AM</div>
+        </div>
+        <div class="cc-act-row">
+          <div class="cc-act-icon" style="background:#dcfce7;color:#085041;"><i class="ti ti-check"></i></div>
+          <div class="cc-act-text">Attended <strong>Physics</strong> session</div>
+          <div class="cc-act-meta">Yesterday</div>
+        </div>
+      </div>
+      <div class="cc-footer">
+        <div class="cc-stat">Attendance: <strong>94%</strong></div>
+        <div class="view-bookings" onclick="sendPrompt('Show bookings for Aarav Kumar')">View bookings <i class="ti ti-arrow-right" style="font-size:12px;"></i></div>
+      </div>
+    </div>
+
+    <!-- CHILD 2: Preethi -->
+    <div class="child-card">
+      <div class="cc-top">
+        <div class="cc-photo" style="background:#993556;">PK</div>
+        <div class="cc-info">
+          <div class="cc-name">Preethi Kumar</div>
+          <div class="cc-meta">Class 9</div>
+          <div class="cc-email"><i class="ti ti-mail" style="font-size:11px;"></i> preethi@gmail.com</div>
+          <div class="link-badge link-pending"><i class="ti ti-clock" style="font-size:10px;"></i> Link not accepted <span class="resend-link" onclick="event.stopPropagation()">Resend</span></div>
+        </div>
+        <div class="cc-actions">
+          <button class="icon-action" onclick="openModal('edit','Preethi Kumar','Class 9','preethi@gmail.com','PK','#993556')"><i class="ti ti-edit"></i></button>
+          <button class="icon-action danger"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      <div class="cc-divider"></div>
+      <div class="cc-activity">
+        <div class="cc-act-label">Recent activity</div>
+        <div class="cc-act-row">
+          <div class="cc-act-icon" style="background:#ede9fe;color:#534AB7;"><i class="ti ti-clipboard-list"></i></div>
+          <div class="cc-act-text">Essay draft <strong>due soon</strong></div>
+          <div class="cc-act-meta">Jun 20</div>
+        </div>
+        <div class="cc-act-row">
+          <div class="cc-act-icon" style="background:#dcfce7;color:#085041;"><i class="ti ti-check"></i></div>
+          <div class="cc-act-text">Attended <strong>English</strong> session</div>
+          <div class="cc-act-meta">2 days ago</div>
+        </div>
+      </div>
+      <div class="cc-footer">
+        <div class="cc-stat">Attendance: <strong>88%</strong></div>
+        <div class="view-bookings" onclick="sendPrompt('Show bookings for Preethi Kumar')">View bookings <i class="ti ti-arrow-right" style="font-size:12px;"></i></div>
+      </div>
+    </div>
+
+    <!-- ADD TILE -->
+    <div class="add-tile" onclick="openModal('add')">
+      <div class="add-tile-inner">
+        <i class="ti ti-user-plus"></i>
+        <div>Add another child</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="explainer">
+    <i class="ti ti-info-circle"></i>
+    <div class="explainer-text"><strong>How it works:</strong> When you add a child, we send a joining link to their email. Once they accept, they get access to the student dashboard — where they can join sessions, view course materials and track progress.</div>
+  </div>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Add a child</div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="photo-upload">
+        <div class="photo-upload-circle" id="photo-circle"><i class="ti ti-camera-plus"></i></div>
+        <div class="photo-upload-label">Upload photo (optional)</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Child's name</label>
+        <input class="form-input" id="input-name" type="text" placeholder="e.g. Rahul Kumar">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Class / Grade</label>
+        <input class="form-input" id="input-class" type="text" placeholder="e.g. Class 10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Child's email</label>
+        <input class="form-input" id="input-email" type="email" placeholder="child@email.com">
+        <div class="form-hint">A joining link will be sent to this email so they can access the student dashboard.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="save-btn" onclick="closeModal()">Add child</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(mode,name,cls,email,initials,color){
+  document.getElementById('modal-overlay').classList.add('open');
+  const title=document.getElementById('modal-title');
+  const saveBtn=document.getElementById('save-btn');
+  const photoCircle=document.getElementById('photo-circle');
+  if(mode==='edit'){
+    title.textContent='Edit child';
+    saveBtn.textContent='Save changes';
+    document.getElementById('input-name').value=name;
+    document.getElementById('input-class').value=cls;
+    document.getElementById('input-email').value=email;
+    photoCircle.style.background=color;
+    photoCircle.innerHTML='<span style="color:#fff;font-family:Outfit,sans-serif;font-weight:800;font-size:22px;">'+initials+'</span>';
+  } else {
+    title.textContent='Add a child';
+    saveBtn.textContent='Add child';
+    document.getElementById('input-name').value='';
+    document.getElementById('input-class').value='';
+    document.getElementById('input-email').value='';
+    photoCircle.style.background='var(--bg)';
+    photoCircle.innerHTML='<i class="ti ti-camera-plus"></i>';
+  }
+}
+function closeModal(){
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+document.getElementById('modal-overlay').addEventListener('click',e=>{
+  if(e.target.id==='modal-overlay') closeModal();
+});
+</script>
+</body>
+</html>

@@ -1617,4 +1617,542 @@ export async function getMentorDetailsData(mentorId: string) {
   };
 }
 
+// ----------------------------------------------------
+// PARENT DASHBOARD ACTIONS
+// ----------------------------------------------------
 
+export async function getParentProfile() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: profile, error: profileErr } = await supabase
+    .from("profiles")
+    .select("*, parents(*)")
+    .eq("id", user.id)
+    .single();
+
+  if (profileErr) throw new Error(profileErr.message);
+
+  return {
+    id: profile.id,
+    email: profile.email,
+    name: profile.full_name,
+    avatarUrl: profile.avatar_url || "",
+    role: profile.role,
+    phone: profile.parents?.phone || "",
+    address: profile.parents?.address || "",
+    twoFactorEnabled: profile.parents?.two_factor_enabled || false,
+    notificationPreferences: profile.parents?.notification_preferences || {
+      booking_confirmations: true,
+      class_reminders: true,
+      assignment_updates: true,
+      mentor_messages: true,
+      offers_promotions: false
+    },
+    createdAt: profile.created_at,
+    emailConfirmedAt: user.email_confirmed_at || null,
+  };
+}
+
+export async function updateParentProfile(data: { name: string; phone: string }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { error: profileErr } = await supabase
+    .from("profiles")
+    .update({ full_name: data.name })
+    .eq("id", user.id);
+
+  if (profileErr) throw new Error(profileErr.message);
+
+  const { error: parentErr } = await supabase
+    .from("parents")
+    .update({ phone: data.phone })
+    .eq("id", user.id);
+
+  if (parentErr) throw new Error(parentErr.message);
+
+  revalidatePath("/profile");
+  return { success: true };
+}
+
+export async function updateParentSecurityAndNotifications(data: {
+  twoFactorEnabled?: boolean;
+  notificationPreferences?: any;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const updatePayload: any = {};
+  if (data.twoFactorEnabled !== undefined) {
+    updatePayload.two_factor_enabled = data.twoFactorEnabled;
+  }
+  if (data.notificationPreferences !== undefined) {
+    updatePayload.notification_preferences = data.notificationPreferences;
+  }
+
+  const { error } = await supabase
+    .from("parents")
+    .update(updatePayload)
+    .eq("id", user.id);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/profile");
+  return { success: true };
+}
+
+export async function updateParentPassword(password: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+export async function getParentChildren() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // 1. Fetch active students — graceful fallback if RLS blocks
+  const { data: dbStudents } = await supabase
+    .from("students")
+    .select("*, profile:profiles(full_name, email, avatar_url)")
+    .eq("parent_id", user.id);
+
+  const students = ((dbStudents || []) as any[]).map((s: any) => {
+    const name = s.profile?.full_name || "Child User";
+    const initials = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+    return {
+      id: s.id,
+      name,
+      email: s.profile?.email || "",
+      grade: s.grade_level || "Not Specified",
+      school: s.school_name || "",
+      avatarText: initials,
+      joined: true,
+      attendance: null,
+      recentActivity: []
+    };
+  });
+
+  // 2. Fetch pending student invitations — graceful fallback if RLS blocks
+  const { data: dbInvites } = await supabase
+    .from("student_invitations")
+    .select("*")
+    .eq("parent_id", user.id);
+
+  const invitations = ((dbInvites || []) as any[]).map((i: any) => {
+    const name = i.full_name;
+    const initials = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+    return {
+      id: i.id,
+      name,
+      email: i.email,
+      grade: i.grade_level || "Not Specified",
+      school: i.school_name || "",
+      avatarText: initials,
+      joined: false,
+      status: i.status,
+      attendance: null,
+      recentActivity: []
+    };
+  });
+
+  return [...students, ...invitations];
+}
+
+export async function inviteChild(data: {
+  name: string;
+  email: string;
+  grade: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { error } = await supabase
+    .from("student_invitations")
+    .insert([
+      {
+        parent_id: user.id,
+        email: data.email,
+        full_name: data.name,
+        grade_level: data.grade,
+        status: "pending"
+      }
+    ]);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/my-children");
+  return { success: true };
+}
+
+export async function deleteChild(childId: string, isInvitation: boolean) {
+  const supabase = createAdminClient(); // Use admin client to allow user cascading / deletion
+  
+  if (isInvitation) {
+    const { error } = await supabase
+      .from("student_invitations")
+      .delete()
+      .eq("id", childId);
+
+    if (error) throw new Error(error.message);
+  } else {
+    // Delete the student's auth user which cascades to profiles, students, etc.
+    const { error } = await supabase.auth.admin.deleteUser(childId);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/my-children");
+  return { success: true };
+}
+
+export async function resendChildInvitation(invitationId: string) {
+  const supabase = await createClient();
+  // Simulated resend: update created_at timestamp
+  const { error } = await supabase
+    .from("student_invitations")
+    .update({ created_at: new Date().toISOString() })
+    .eq("id", invitationId);
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+export async function getParentBookings() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // Fetch all bookings for this parent
+  const { data: dbBookings, error } = await supabase
+    .from("bookings")
+    .select(`
+      id,
+      status,
+      payment_status,
+      amount_paid,
+      student_id,
+      session_id,
+      course_id,
+      student:students(profile:profiles(full_name)),
+      session:sessions(title, type, price, subject, color_bg, icon_name, mentor:mentors(profile:profiles(full_name))),
+      course:courses(title, format, price, subject, mentor:mentors(profile:profiles(full_name)))
+    `)
+    .eq("parent_id", user.id);
+
+  if (error) throw new Error(error.message);
+
+  return (dbBookings || []).map((b: any) => {
+    const childName = b.student?.profile?.full_name || "Unknown Child";
+    const childInitials = childName.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+
+    const isCourse = !!b.course_id;
+    const target = isCourse ? b.course : b.session;
+
+    const mentorName = target?.mentor?.profile?.full_name || "Unknown Mentor";
+
+    return {
+      id: b.id,
+      studentId: b.student_id,
+      childName,
+      childInitials,
+      title: target?.title || "Untitled",
+      subject: target?.subject || "Subject",
+      type: isCourse ? "Course" : (target?.type || "Session"),
+      format: isCourse ? (target?.format || "Live batch") : (target?.type || "1-on-1"),
+      mentorName,
+      price: Number(b.amount_paid || target?.price || 0),
+      status: b.status, // pending, confirmed, cancelled, completed
+      colorBg: !isCourse ? (target?.color_bg || "#ede9fe") : (target?.subject === "Programming" ? "#dcfce7" : target?.subject === "Mathematics" ? "#dbeafe" : target?.subject === "Science" ? "#fef9c3" : "#ede9fe"),
+      iconName: !isCourse ? (target?.icon_name || "writing") : (target?.subject === "Programming" ? "code" : target?.subject === "Mathematics" ? "math" : target?.subject === "Science" ? "flask" : "book"),
+      dateTime: !isCourse ? "Wed, 18 Jun · 9:00 AM" : "Enrolled · 8 weeks", // Mock default timestamps
+      duration: !isCourse ? "60 min" : "Week 3 of 8",
+    };
+  });
+}
+
+// ----------------------------------------------------
+// PARENT DASHBOARD — PAGE-LEVEL ACTIONS
+// ----------------------------------------------------
+
+export async function getChildOverviewStats(childId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: dbBookings } = await supabase
+    .from("bookings")
+    .select(`
+      id, status, payment_status, amount_paid, student_id, session_id, course_id,
+      session:sessions(title, subject, icon_name, mentor:mentors(profile:profiles(full_name))),
+      course:courses(title, subject, mentor:mentors(profile:profiles(full_name)))
+    `)
+    .eq("student_id", childId)
+    .neq("status", "cancelled");
+
+  const bookings = (dbBookings || []) as any[];
+  const activeCourses = bookings.filter((b: any) => !!b.course_id && b.status === "confirmed").length;
+  const activeSessions = bookings.filter((b: any) => !!b.session_id && b.status === "confirmed").length;
+
+  const { data: dbAttendance } = await supabase
+    .from("attendance_records")
+    .select("id, status, session_date, subject")
+    .eq("student_id", childId);
+
+  const attendance = (dbAttendance || []) as any[];
+  const totalClasses = attendance.length;
+  const attendedClasses = attendance.filter((a: any) => a.status === "present").length;
+  const attendanceRate = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : null;
+
+  const subjectMap: Record<string, { total: number; present: number }> = {};
+  for (const rec of attendance) {
+    const s: string = rec.subject || "General";
+    if (!subjectMap[s]) subjectMap[s] = { total: 0, present: 0 };
+    subjectMap[s].total++;
+    if (rec.status === "present") subjectMap[s].present++;
+  }
+  const subjectAttendance = Object.entries(subjectMap).map(([name, v]) => ({
+    name,
+    pct: Math.round((v.present / v.total) * 100),
+  }));
+
+  const { data: dbUpcoming } = await supabase
+    .from("scheduled_classes")
+    .select("*, mentor:mentors(profile:profiles(full_name))")
+    .eq("student_id", childId)
+    .eq("status", "scheduled")
+    .gte("scheduled_at", new Date().toISOString())
+    .order("scheduled_at", { ascending: true })
+    .limit(1);
+
+  const firstUpcoming = (dbUpcoming as any[])?.[0] ?? null;
+  const upcomingClass = firstUpcoming
+    ? {
+        title: firstUpcoming.title as string,
+        subject: firstUpcoming.subject as string,
+        mentor: (firstUpcoming.mentor as any)?.profile?.full_name as string || "Mentor",
+        dateTime: new Date(firstUpcoming.scheduled_at as string).toLocaleString("en-IN", {
+          weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+        }),
+        iconName: (firstUpcoming.icon_name as string) || "book",
+        joinUrl: (firstUpcoming.join_url as string | null),
+      }
+    : null;
+
+  const { data: dbAssignments } = await supabase
+    .from("assignments")
+    .select("id, title, subject, due_date, status")
+    .eq("student_id", childId)
+    .neq("status", "graded");
+
+  const assignments = (dbAssignments || []) as any[];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const pendingAssignments = assignments.filter((a: any) => a.status !== "submitted" && a.status !== "graded");
+  const overdueAssignments = pendingAssignments.filter(
+    (a: any) => a.due_date && new Date(a.due_date) < today
+  );
+
+  const recentActivity: { text: string; time: string; type: string }[] = [];
+  const recentAttendance = [...attendance]
+    .sort((a: any, b: any) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime())
+    .slice(0, 3);
+  for (const rec of recentAttendance as any[]) {
+    recentActivity.push({
+      text: `${rec.status === "present" ? "Attended" : "Missed"} ${rec.subject as string} session`,
+      time: new Date(rec.session_date as string).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" }),
+      type: rec.status === "present" ? "attended" : "missed",
+    });
+  }
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thisMonthRecords = attendance.filter((r: any) => new Date(r.session_date as string) >= thirtyDaysAgo);
+
+  return {
+    activeCourses,
+    activeSessions,
+    totalEnrolled: activeCourses + activeSessions,
+    attendanceRate,
+    attendedClasses,
+    totalClasses,
+    thisMonthAttended: thisMonthRecords.filter((r: any) => r.status === "present").length,
+    thisMonthTotal: thisMonthRecords.length,
+    subjectAttendance,
+    upcomingClass,
+    pendingAssignmentsCount: pendingAssignments.length,
+    overdueAssignmentsCount: overdueAssignments.length,
+    recentActivity,
+  };
+}
+
+export async function getChildScheduledClasses(childId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: dbClasses, error } = await supabase
+    .from("scheduled_classes")
+    .select("*, mentor:mentors(profile:profiles(full_name))")
+    .eq("student_id", childId)
+    .order("scheduled_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  return ((dbClasses || []) as any[]).map((c: any) => ({
+    id: c.id as string,
+    title: c.title as string,
+    subject: c.subject as string,
+    mentor: (c.mentor as any)?.profile?.full_name as string || "Unknown Mentor",
+    scheduledAt: c.scheduled_at as string,
+    dateTime: new Date(c.scheduled_at as string).toLocaleString("en-IN", {
+      weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+    }),
+    durationMinutes: c.duration_minutes as number,
+    status: c.status as string,
+    joinUrl: (c.join_url as string | null),
+    iconName: (c.icon_name as string) || "book",
+  }));
+}
+
+export async function getChildAttendance(childId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: dbRecords, error } = await supabase
+    .from("attendance_records")
+    .select("*")
+    .eq("student_id", childId)
+    .order("session_date", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const records = (dbRecords || []) as any[];
+  const totalClasses = records.length;
+  const attendedClasses = records.filter((r: any) => r.status === "present").length;
+  const attendanceRate = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : null;
+
+  const subjectMap: Record<string, { total: number; present: number }> = {};
+  for (const rec of records) {
+    const s: string = (rec.subject as string) || "General";
+    if (!subjectMap[s]) subjectMap[s] = { total: 0, present: 0 };
+    subjectMap[s].total++;
+    if (rec.status === "present") subjectMap[s].present++;
+  }
+  const subjectBreakdown = Object.entries(subjectMap).map(([name, v]) => ({
+    name,
+    attended: v.present,
+    total: v.total,
+    pct: Math.round((v.present / v.total) * 100),
+  }));
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thisMonthRecords = records.filter((r: any) => new Date(r.session_date as string) >= thirtyDaysAgo);
+
+  return {
+    attendanceRate,
+    attendedClasses,
+    totalClasses,
+    thisMonthAttended: thisMonthRecords.filter((r: any) => r.status === "present").length,
+    thisMonthTotal: thisMonthRecords.length,
+    subjectBreakdown,
+    records: records.map((r: any) => ({
+      id: r.id as string,
+      date: r.session_date as string,
+      subject: r.subject as string,
+      status: r.status as string,
+      notes: (r.notes as string) || "",
+    })),
+  };
+}
+
+export async function getChildAssignments(childId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: dbAssignments, error } = await supabase
+    .from("assignments")
+    .select("*, mentor:mentors(profile:profiles(full_name))")
+    .eq("student_id", childId)
+    .order("due_date", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return ((dbAssignments || []) as any[]).map((a: any) => {
+    let status = a.status as string;
+    if (status === "pending" && a.due_date && new Date(a.due_date as string) < today) {
+      status = "overdue";
+    }
+    const dueDate = a.due_date ? new Date(a.due_date as string) : null;
+    const dueMeta = dueDate
+      ? status === "overdue"
+        ? `was due ${dueDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+        : `due ${dueDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+      : "No deadline";
+
+    return {
+      id: a.id as string,
+      title: a.title as string,
+      subject: a.subject as string,
+      status: status.charAt(0).toUpperCase() + status.slice(1),
+      dueMeta,
+      score: a.score as number | null,
+      feedback: (a.feedback as string) || "",
+      mentor: (a.mentor as any)?.profile?.full_name as string || "Mentor",
+    };
+  });
+}
+
+export async function getChildEnrolledMentors(childId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: dbBookings, error } = await supabase
+    .from("bookings")
+    .select(`
+      id, session_id, course_id, status,
+      session:sessions(title, subject, icon_name, mentor:mentors(id, profile:profiles(full_name, avatar_url))),
+      course:courses(title, subject, mentor:mentors(id, profile:profiles(full_name, avatar_url)))
+    `)
+    .eq("student_id", childId)
+    .eq("status", "confirmed");
+
+  if (error) throw new Error(error.message);
+
+  const mentorMap: Record<string, { id: string; name: string; subject: string; initials: string }> = {};
+
+  for (const b of ((dbBookings || []) as any[])) {
+    const target = b.session_id ? b.session : b.course;
+    if (!target?.mentor) continue;
+
+    const mentorId = target.mentor.id as string;
+    const mentorName = (target.mentor.profile?.full_name as string) || "Unknown Mentor";
+    const subject = (target.subject as string) || "Tutoring";
+
+    if (!mentorMap[mentorId]) {
+      const initials = mentorName
+        .split(" ")
+        .map((w: string) => w[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase();
+
+      mentorMap[mentorId] = { id: mentorId, name: mentorName, subject, initials };
+    }
+  }
+
+  return Object.values(mentorMap);
+}

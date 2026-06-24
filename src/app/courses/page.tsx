@@ -23,7 +23,6 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import { getCoursesPageData } from "../actions";
-import Navbar from "@/components/Navbar";
 
 // Dynamic Icon Picker Helper
 const getIconComponent = (name: string) => {
@@ -242,9 +241,6 @@ function CoursesPageContent() {
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
       
-      {/* NAVIGATION */}
-      <Navbar />
-
       {/* PAGE HEADER */}
       <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
         <div className="max-w-7xl mx-auto">

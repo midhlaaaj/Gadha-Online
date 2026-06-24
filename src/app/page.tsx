@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   IconSparkles,
   IconCode,
@@ -17,7 +17,6 @@ import {
   IconBook,
 } from "@tabler/icons-react";
 import { getHomepageData, submitContactMessage } from "./actions";
-import Navbar from "@/components/Navbar";
 
 // Dynamic Icon Picker Helper
 const getIconComponent = (name: string) => {
@@ -55,6 +54,81 @@ const getSubjectBgColor = (subject: string) => {
       return "bg-slate-50";
   }
 };
+
+// Animated scroll-triggered counter component
+function AnimatedCounter({ value }: { value: string }) {
+  const [count, setCount] = useState(0);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const elementRef = useRef<HTMLSpanElement>(null);
+
+  const match = value.match(/^([\d,]+)(.*)$/);
+  if (!match) {
+    return <span>{value}</span>;
+  }
+
+  const numStr = match[1];
+  const suffix = match[2];
+  const target = parseInt(numStr.replace(/,/g, ""), 10);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (elementRef.current) {
+      observer.observe(elementRef.current);
+    }
+
+    return () => {
+      if (elementRef.current) {
+        observer.unobserve(elementRef.current);
+      }
+    };
+  }, [hasAnimated]);
+
+  useEffect(() => {
+    if (!hasAnimated || isNaN(target)) return;
+
+    const duration = 2000; // 2 seconds animation duration
+    const frameRate = 1000 / 60; // 60 fps
+    const totalFrames = Math.round(duration / frameRate);
+    let frame = 0;
+
+    const timer = setInterval(() => {
+      frame++;
+      const progress = frame / totalFrames;
+      // Easing out quadratic: f(t) = t * (2 - t)
+      const easeProgress = progress * (2 - progress);
+      const current = Math.round(easeProgress * target);
+      
+      setCount(current);
+
+      if (frame >= totalFrames) {
+        clearInterval(timer);
+        setCount(target);
+      }
+    }, frameRate);
+
+    return () => clearInterval(timer);
+  }, [hasAnimated, target]);
+
+  const formattedCount = numStr.includes(",") 
+    ? count.toLocaleString("en-US")
+    : count.toString();
+
+  return (
+    <span ref={elementRef}>
+      {formattedCount}
+      {suffix}
+    </span>
+  );
+}
 
 export default function Home() {
   const [data, setData] = useState<any>(null);
@@ -173,9 +247,6 @@ export default function Home() {
 
   return (
     <div className="w-full bg-white text-primary flex-1">
-      {/* NAVIGATION */}
-      <Navbar />
-
       {/* HERO SECTION */}
       <section className="bg-surface pl-6 pr-6 md:pl-20 md:pr-16 lg:pl-32 lg:pr-24 xl:pl-40 xl:pr-28 py-16 lg:py-0 flex flex-col lg:flex-row items-center gap-12 border-b border-border-subtle min-h-[calc(100vh-70px)]">
         <div className="flex-1 flex flex-col items-start gap-6">
@@ -244,7 +315,7 @@ export default function Home() {
       <section className="bg-primary px-6 md:px-12 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-0">
         <div className="text-center md:border-r border-white/15 py-2">
           <div className="font-heading text-3xl md:text-4xl font-extrabold text-accent">
-            {settings.c1}
+            <AnimatedCounter value={settings.c1} />
           </div>
           <div className="text-xs text-white/70 mt-1 font-medium">
             {settings.cl1}
@@ -252,7 +323,7 @@ export default function Home() {
         </div>
         <div className="text-center md:border-r border-white/15 py-2">
           <div className="font-heading text-3xl md:text-4xl font-extrabold text-accent">
-            {settings.c2}
+            <AnimatedCounter value={settings.c2} />
           </div>
           <div className="text-xs text-white/70 mt-1 font-medium">
             {settings.cl2}
@@ -260,7 +331,7 @@ export default function Home() {
         </div>
         <div className="text-center md:border-r border-white/15 py-2">
           <div className="font-heading text-3xl md:text-4xl font-extrabold text-accent">
-            {settings.c3}
+            <AnimatedCounter value={settings.c3} />
           </div>
           <div className="text-xs text-white/70 mt-1 font-medium">
             {settings.cl3}
@@ -268,7 +339,7 @@ export default function Home() {
         </div>
         <div className="text-center py-2">
           <div className="font-heading text-3xl md:text-4xl font-extrabold text-accent">
-            {settings.c4}
+            <AnimatedCounter value={settings.c4} />
           </div>
           <div className="text-xs text-white/70 mt-1 font-medium">
             {settings.cl4}
@@ -418,16 +489,25 @@ export default function Home() {
       {/* TOP MENTORS */}
       <section id="mentors" className="py-16">
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
-          <div className="mb-10 text-left">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider block mb-1">
-              Meet the team
-            </span>
-            <h2 className="font-heading text-3xl font-extrabold text-primary">
-              Our top mentors
-            </h2>
-            <p className="text-sm text-text-muted mt-1">
-              Verified experts with proven teaching track records
-            </p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 text-left gap-4">
+            <div>
+              <span className="text-[11px] font-bold text-secondary uppercase tracking-wider block mb-1">
+                Meet the team
+              </span>
+              <h2 className="font-heading text-3xl font-extrabold text-primary">
+                Our top mentors
+              </h2>
+              <p className="text-sm text-text-muted mt-1">
+                Verified experts with proven teaching track records
+              </p>
+            </div>
+            <a 
+              href="/mentors" 
+              className="text-sm font-bold text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors whitespace-nowrap self-start md:self-auto group"
+            >
+              <span>Explore all mentors</span>
+              <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
+            </a>
           </div>
           {mentors.length === 0 ? (
             <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">

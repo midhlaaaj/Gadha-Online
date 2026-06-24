@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { IconMenu2, IconX, IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 import AuthModal from "./AuthModal";
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">("signin");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -14,16 +17,77 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const supabase = createClient();
+  const pathname = usePathname();
+
+  const getDropdownItemClass = (path: string) => {
+    const base = "block px-5 py-2.5 text-sm transition-all";
+    if (pathname === path) {
+      return `${base} font-semibold text-[#2F7FE8] bg-blue-50/40 hover:bg-blue-50/60`;
+    }
+    return `${base} font-medium text-slate-700 hover:bg-slate-50 hover:text-[#0f2347]`;
+  };
+
+  const getMobileDropdownItemClass = (path: string) => {
+    const base = "text-sm font-semibold py-2 border-b border-slate-50 transition-colors";
+    if (pathname === path) {
+      return `${base} text-[#2F7FE8] hover:text-[#2F7FE8]/80`;
+    }
+    return `${base} text-slate-700 hover:text-primary`;
+  };
+
+  const getHeaderLinkClass = (path: string) => {
+    const base = "text-sm font-medium transition-colors";
+    const isActive = path === "/" 
+      ? pathname === "/" 
+      : pathname?.startsWith(path);
+    return isActive 
+      ? `${base} text-secondary font-semibold` 
+      : `${base} text-text-muted hover:text-secondary`;
+  };
+
+  const getMobileHeaderLinkClass = (path: string) => {
+    const base = "text-sm font-semibold py-2 border-b border-slate-50 transition-colors";
+    const isActive = path === "/" 
+      ? pathname === "/" 
+      : pathname?.startsWith(path);
+    return isActive 
+      ? `${base} text-secondary` 
+      : `${base} text-primary hover:text-secondary`;
+  };
 
   useEffect(() => {
+    // Try to load cached user instantly to prevent initial network load flicker
+    try {
+      const cached = localStorage.getItem("tutoboard_user_cache");
+      if (cached) {
+        setUser(JSON.parse(cached));
+        setLoading(false);
+      }
+    } catch (e) {
+      console.warn("Failed to parse cached user:", e);
+    }
+
     // Get initial session
     supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
       setUser(currentUser);
+      setLoading(false);
+      if (currentUser) {
+        localStorage.setItem("tutoboard_user_cache", JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem("tutoboard_user_cache");
+      }
     });
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+      setLoading(false);
+      if (currentUser) {
+        localStorage.setItem("tutoboard_user_cache", JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem("tutoboard_user_cache");
+      }
     });
 
     return () => {
@@ -48,6 +112,9 @@ export default function Navbar() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    try {
+      localStorage.removeItem("tutoboard_user_cache");
+    } catch (e) {}
     setMobileMenuOpen(false);
     window.location.reload();
   };
@@ -80,49 +147,51 @@ export default function Navbar() {
     <>
       <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-40 shadow-sm">
         {/* LOGO */}
-        <a href="/" className="font-heading text-2xl font-extrabold tracking-tight text-primary hover:opacity-95 transition-opacity">
+        <Link href="/" className="font-heading text-2xl font-extrabold tracking-tight text-primary hover:opacity-95 transition-opacity">
           Tuto<span className="text-secondary">board</span>
-        </a>
+        </Link>
 
         {/* RIGHT SIDE CONTAINER */}
         <div className="flex items-center gap-4 md:gap-8">
           {/* DESKTOP MENU LINKS */}
           <div className="hidden md:flex items-center gap-8">
-            <a
+            <Link
               href="/"
-              className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
+              className={getHeaderLinkClass("/")}
             >
               Home
-            </a>
-            <a
+            </Link>
+            <Link
               href="/courses"
-              className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
+              className={getHeaderLinkClass("/courses")}
             >
               Courses
-            </a>
-            <a
+            </Link>
+            <Link
               href="/sessions"
-              className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
+              className={getHeaderLinkClass("/sessions")}
             >
               Sessions
-            </a>
-            <a
+            </Link>
+            <Link
               href="/mentors"
-              className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
+              className={getHeaderLinkClass("/mentors")}
             >
               Mentors
-            </a>
-            <a
+            </Link>
+            <Link
               href="/#about"
               className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
             >
               About
-            </a>
+            </Link>
           </div>
 
           {/* AUTHENTICATION ACTION AREA */}
           <div className="flex items-center gap-3">
-            {user ? (
+            {loading ? (
+              <div className="h-9 w-28 bg-slate-100/60 animate-pulse rounded-full" />
+            ) : user ? (
               <div className="relative" ref={dropdownRef}>
                 {/* Pill trigger */}
                 <button
@@ -148,34 +217,34 @@ export default function Navbar() {
                 {/* Dropdown Menu */}
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-slate-100 shadow-xl py-2 z-50 animate-fade-in-up origin-top-right">
-                    <a
+                    <Link
                       href="/profile"
                       onClick={() => setDropdownOpen(false)}
-                      className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-[#0f2347] transition-all"
+                      className={getDropdownItemClass("/profile")}
                     >
                       Profile
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/bookings"
                       onClick={() => setDropdownOpen(false)}
-                      className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-[#0f2347] transition-all"
+                      className={getDropdownItemClass("/bookings")}
                     >
                       Bookings
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/my-children"
                       onClick={() => setDropdownOpen(false)}
-                      className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-[#0f2347] transition-all"
+                      className={getDropdownItemClass("/my-children")}
                     >
                       My children
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/dashboard"
                       onClick={() => setDropdownOpen(false)}
-                      className="block px-5 py-2.5 text-sm font-semibold text-[#2F7FE8] hover:bg-slate-50 transition-all"
+                      className={getDropdownItemClass("/dashboard")}
                     >
                       Dashboard
-                    </a>
+                    </Link>
                     <div className="border-t border-slate-100 my-1"></div>
                     <button
                       onClick={() => {
@@ -220,75 +289,77 @@ export default function Navbar() {
       {/* MOBILE DRAWER MENU */}
       {mobileMenuOpen && (
         <div className="absolute top-[70px] left-0 right-0 bg-white border-b border-border-subtle shadow-lg p-5 flex flex-col gap-4 md:hidden z-50 animate-fade-in">
-          <a
+          <Link
             href="/"
             onClick={() => setMobileMenuOpen(false)}
-            className="text-sm font-semibold text-primary py-2 border-b border-slate-50 hover:text-secondary transition-colors"
+            className={getMobileHeaderLinkClass("/")}
           >
             Home
-          </a>
-          <a
+          </Link>
+          <Link
             href="/courses"
             onClick={() => setMobileMenuOpen(false)}
-            className="text-sm font-semibold text-primary py-2 border-b border-slate-50 hover:text-secondary transition-colors"
+            className={getMobileHeaderLinkClass("/courses")}
           >
             Courses
-          </a>
-          <a
+          </Link>
+          <Link
             href="/sessions"
             onClick={() => setMobileMenuOpen(false)}
-            className="text-sm font-semibold text-primary py-2 border-b border-slate-50 hover:text-secondary transition-colors"
+            className={getMobileHeaderLinkClass("/sessions")}
           >
             Sessions
-          </a>
-          <a
+          </Link>
+          <Link
             href="/mentors"
             onClick={() => setMobileMenuOpen(false)}
-            className="text-sm font-semibold text-primary py-2 border-b border-slate-50 hover:text-secondary transition-colors"
+            className={getMobileHeaderLinkClass("/mentors")}
           >
             Mentors
-          </a>
-          <a
+          </Link>
+          <Link
             href="/#about"
             onClick={() => setMobileMenuOpen(false)}
             className="text-sm font-semibold text-primary py-2 border-b border-slate-50 hover:text-secondary transition-colors"
           >
             About
-          </a>
+          </Link>
 
           {/* MOBILE AUTH */}
           <div className="pt-2">
-            {user ? (
+            {loading ? (
+              <div className="h-10 w-full bg-slate-100/50 animate-pulse rounded-lg" />
+            ) : user ? (
               <div className="flex flex-col gap-3">
                 <div className="border-t border-slate-100 my-1"></div>
-                <a
+                <Link
                   href="/profile"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-semibold text-slate-700 py-2 border-b border-slate-50 hover:text-primary transition-colors"
+                  className={getMobileDropdownItemClass("/profile")}
                 >
                   Profile
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/bookings"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-semibold text-slate-700 py-2 border-b border-slate-50 hover:text-primary transition-colors"
+                  className={getMobileDropdownItemClass("/bookings")}
                 >
                   Bookings
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/my-children"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-semibold text-slate-700 py-2 border-b border-slate-50 hover:text-primary transition-colors"
+                  className={getMobileDropdownItemClass("/my-children")}
                 >
                   My children
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm font-semibold text-[#2F7FE8] py-2 border-b border-slate-50 hover:text-[#2F7FE8]/80 transition-colors"
+                  className={getMobileDropdownItemClass("/dashboard")}
                 >
                   Dashboard
-                </a>
+                </Link>
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

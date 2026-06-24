@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile · Tutoboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1B3A6B;
+  --blue:#2F7FE8;
+  --gold:#FFC107;
+  --bg:#F5F8FF;
+  --white:#ffffff;
+  --border:#d0dcf5;
+  --text-sec:#4a5a7a;
+  --text-muted:#9aaecf;
+  --radius:12px;
+}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy);font-size:14px;}
+
+/* ── TOP NAV ── */
+.topnav{background:var(--white);border-bottom:0.5px solid var(--border);height:60px;display:flex;align-items:center;padding:0 24px;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topnav-logo{font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:var(--navy);}
+.topnav-logo span{color:var(--blue);}
+.topnav-right{display:flex;align-items:center;gap:18px;}
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--text-sec);font-size:19px;position:relative;}
+.icon-btn:hover{color:var(--navy);}
+.notif-dot{position:absolute;top:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:#E24B4A;border:1.5px solid #fff;}
+.topnav-avatar{width:32px;height:32px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;color:var(--gold);cursor:pointer;}
+
+/* ── PAGE ── */
+.page{max-width:760px;margin:0 auto;padding:28px 24px 60px;}
+.breadcrumb{font-size:12px;color:var(--text-muted);margin-bottom:14px;}
+.breadcrumb span{color:var(--text-sec);font-weight:500;}
+.page-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--navy);margin-bottom:3px;}
+.page-sub{font-size:12px;color:var(--text-sec);margin-bottom:20px;}
+
+/* ── VERIFY BANNER ── */
+.verify-banner{display:flex;align-items:center;gap:12px;background:#FFF3CD;border:0.5px solid #FAC775;border-radius:10px;padding:13px 16px;margin-bottom:18px;transition:opacity 0.3s,max-height 0.3s,margin 0.3s,padding 0.3s;overflow:hidden;}
+.verify-banner.hidden{opacity:0;max-height:0;margin-bottom:0;padding-top:0;padding-bottom:0;border-width:0;}
+.verify-banner i{font-size:18px;color:#854F0B;flex-shrink:0;}
+.verify-banner-text{flex:1;font-size:12px;color:#7a4d00;line-height:1.5;}
+.verify-banner-text strong{font-weight:700;}
+.verify-banner-btn{font-size:11px;font-weight:700;padding:7px 14px;border-radius:7px;background:#854F0B;color:#fff;border:none;cursor:pointer;flex-shrink:0;white-space:nowrap;}
+.verify-banner-btn:hover{background:#633806;}
+
+/* ── CARD ── */
+.card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:16px;}
+.card-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.card-title{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:var(--navy);}
+.card-sub{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.btn-small{font-size:12px;font-weight:600;padding:7px 16px;border-radius:8px;cursor:pointer;}
+.btn-outline{background:transparent;color:var(--navy);border:1.5px solid var(--border);}
+.btn-outline:hover{border-color:var(--navy);}
+.btn-primary-sm{background:var(--navy);color:#fff;border:none;}
+.btn-primary-sm:hover{background:var(--blue);}
+
+/* ── VIEW MODE ── */
+.profile-id-row{display:flex;align-items:center;gap:16px;margin-bottom:20px;}
+.profile-avatar{width:60px;height:60px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--gold);flex-shrink:0;position:relative;cursor:pointer;}
+.avatar-edit-badge{position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;background:var(--blue);border:2px solid var(--white);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;}
+.profile-name{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:var(--navy);}
+.profile-since{font-size:11px;color:var(--text-muted);margin-top:2px;}
+
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.detail-label{font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:5px;}
+.detail-value{font-size:13px;font-weight:500;color:var(--navy);display:flex;align-items:center;gap:8px;}
+.verified-tag{font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;background:#dcfce7;color:#085041;display:inline-flex;align-items:center;gap:4px;}
+.unverified-tag{font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;background:#fee2e2;color:#991b1b;display:inline-flex;align-items:center;gap:4px;}
+.verify-inline-btn{font-size:10px;font-weight:700;color:var(--blue);cursor:pointer;background:none;border:none;padding:0;}
+
+/* ── EDIT MODE ── */
+.edit-photo-row{display:flex;align-items:center;gap:16px;margin-bottom:20px;}
+.edit-photo-circle{width:60px;height:60px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--gold);flex-shrink:0;cursor:pointer;position:relative;}
+.edit-photo-hint{font-size:11px;color:var(--text-muted);}
+.edit-photo-hint span{color:var(--blue);font-weight:600;cursor:pointer;}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+.form-label{font-size:11px;font-weight:600;color:var(--text-sec);}
+.form-input{font-family:'Poppins',sans-serif;font-size:13px;padding:10px 13px;border:1px solid var(--border);border-radius:8px;color:var(--navy);outline:none;transition:border-color 0.15s;width:100%;}
+.form-input:focus{border-color:var(--blue);}
+.input-wrap{position:relative;}
+.input-wrap .form-input{padding-right:108px;}
+.email-status-tag{position:absolute;right:8px;top:50%;transform:translateY(-50%);}
+.edit-actions{display:flex;gap:10px;margin-top:18px;}
+
+/* ── SECURITY ── */
+.sec-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:0.5px solid #f0f3fb;}
+.sec-row:last-child{border-bottom:none;}
+.sec-row-title{font-size:13px;font-weight:600;color:var(--navy);}
+.sec-row-sub{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.toggle{width:38px;height:22px;border-radius:99px;background:var(--border);position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;}
+.toggle.on{background:var(--navy);}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform 0.2s;}
+.toggle.on::after{transform:translateX(16px);}
+
+/* ── NOTIFICATIONS ── */
+.notif-group{margin-bottom:18px;}
+.notif-group:last-child{margin-bottom:0;}
+.notif-group-title{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;}
+.notif-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid #f0f3fb;}
+.notif-row:last-child{border-bottom:none;}
+.notif-row-left{display:flex;align-items:center;gap:11px;}
+.notif-icon{width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--text-sec);flex-shrink:0;}
+.notif-row-title{font-size:12px;font-weight:600;color:var(--navy);}
+.notif-row-sub{font-size:10px;color:var(--text-muted);margin-top:1px;}
+
+/* ── PASSWORD MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(27,58,107,0.45);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--white);border-radius:16px;width:100%;max-width:400px;}
+.modal-header{padding:20px 24px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;color:var(--navy);}
+.modal-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-sec);}
+.modal-body{padding:20px 24px;}
+.modal-footer{padding:14px 24px 22px;display:flex;gap:10px;}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="topnav">
+  <div class="topnav-logo">Tuto<span>board</span></div>
+  <div class="topnav-right">
+    <button class="icon-btn" aria-label="Search"><i class="ti ti-search"></i></button>
+    <button class="icon-btn" aria-label="Notifications"><i class="ti ti-bell"></i><div class="notif-dot"></div></button>
+    <div class="topnav-avatar">SK</div>
+  </div>
+</div>
+
+<div class="page">
+  <div class="breadcrumb">Home &rsaquo; <span>My profile</span></div>
+  <div class="page-title">My profile</div>
+  <div class="page-sub">Manage your personal information, security and notification preferences</div>
+
+  <!-- VERIFY BANNER -->
+  <div class="verify-banner" id="verify-banner">
+    <i class="ti ti-alert-triangle"></i>
+    <div class="verify-banner-text"><strong>Your email isn't verified.</strong> Verify it so you never miss booking confirmations or joining links.</div>
+    <button class="verify-banner-btn" onclick="sendVerification()">Verify now</button>
+  </div>
+
+  <!-- PERSONAL INFO -->
+  <div class="card">
+    <div class="card-title-row">
+      <div class="card-title">Personal information</div>
+      <button class="btn-small btn-outline" id="edit-toggle-btn" onclick="toggleEdit()">Edit</button>
+    </div>
+
+    <!-- VIEW MODE -->
+    <div id="view-mode">
+      <div class="profile-id-row">
+        <div class="profile-avatar">SK<div class="avatar-edit-badge"><i class="ti ti-camera" aria-hidden="true"></i></div></div>
+        <div>
+          <div class="profile-name">Suresh Kumar</div>
+          <div class="profile-since">Parent account · Member since Jan 2025</div>
+        </div>
+      </div>
+      <div class="detail-grid">
+        <div>
+          <div class="detail-label">Mobile number</div>
+          <div class="detail-value">+91 98765 43210</div>
+        </div>
+        <div>
+          <div class="detail-label">Email address</div>
+          <div class="detail-value" id="email-view-status">
+            <span>suresh@gmail.com</span>
+            <span class="unverified-tag" id="email-status-tag"><i class="ti ti-alert-circle" style="font-size:10px;"></i> Unverified</span>
+            <button class="verify-inline-btn" onclick="sendVerification()">Verify</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT MODE -->
+    <div id="edit-mode" style="display:none;">
+      <div class="edit-photo-row">
+        <div class="edit-photo-circle">SK</div>
+        <div class="edit-photo-hint">JPG or PNG, up to 2MB <br><span>Change photo</span></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full name</label>
+          <input class="form-input" type="text" value="Suresh Kumar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mobile number</label>
+          <input class="form-input" type="tel" value="+91 98765 43210">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Email address</label>
+          <div class="input-wrap">
+            <input class="form-input" type="email" value="suresh@gmail.com">
+            <span class="unverified-tag email-status-tag"><i class="ti ti-alert-circle" style="font-size:10px;"></i> Unverified</span>
+          </div>
+        </div>
+      </div>
+      <div class="edit-actions">
+        <button class="btn-small btn-primary-sm" onclick="toggleEdit()">Save changes</button>
+        <button class="btn-small btn-outline" onclick="toggleEdit()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECURITY -->
+  <div class="card">
+    <div class="card-title-row">
+      <div class="card-title">Security</div>
+    </div>
+    <div class="sec-row">
+      <div>
+        <div class="sec-row-title">Password</div>
+        <div class="sec-row-sub">Last changed 3 months ago</div>
+      </div>
+      <button class="btn-small btn-outline" onclick="openPasswordModal()">Change</button>
+    </div>
+    <div class="sec-row">
+      <div>
+        <div class="sec-row-title">Two-factor authentication</div>
+        <div class="sec-row-sub">Add an extra layer of security via SMS OTP</div>
+      </div>
+      <div class="toggle" onclick="this.classList.toggle('on')"></div>
+    </div>
+    <div class="sec-row">
+      <div>
+        <div class="sec-row-title">Active sessions</div>
+        <div class="sec-row-sub">You're signed in on 2 devices</div>
+      </div>
+      <button class="btn-small btn-outline">Manage</button>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION PREFERENCES -->
+  <div class="card">
+    <div class="card-title-row">
+      <div class="card-title">Notification preferences</div>
+    </div>
+
+    <div class="notif-group">
+      <div class="notif-group-title">Bookings</div>
+      <div class="notif-row">
+        <div class="notif-row-left">
+          <div class="notif-icon"><i class="ti ti-calendar-event"></i></div>
+          <div>
+            <div class="notif-row-title">Booking confirmations</div>
+            <div class="notif-row-sub">When a session or course is booked</div>
+          </div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="notif-row">
+        <div class="notif-row-left">
+          <div class="notif-icon"><i class="ti ti-bell-ringing"></i></div>
+          <div>
+            <div class="notif-row-title">Class reminders</div>
+            <div class="notif-row-sub">30 minutes before a session starts</div>
+          </div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+
+    <div class="notif-group">
+      <div class="notif-group-title">Children</div>
+      <div class="notif-row">
+        <div class="notif-row-left">
+          <div class="notif-icon"><i class="ti ti-clipboard-list"></i></div>
+          <div>
+            <div class="notif-row-title">Assignment updates</div>
+            <div class="notif-row-sub">New, due soon, or overdue assignments</div>
+          </div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="notif-row">
+        <div class="notif-row-left">
+          <div class="notif-icon"><i class="ti ti-message-circle"></i></div>
+          <div>
+            <div class="notif-row-title">Mentor messages</div>
+            <div class="notif-row-sub">When a mentor sends you a message</div>
+          </div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+
+    <div class="notif-group">
+      <div class="notif-group-title">Marketing</div>
+      <div class="notif-row">
+        <div class="notif-row-left">
+          <div class="notif-icon"><i class="ti ti-discount-2"></i></div>
+          <div>
+            <div class="notif-row-title">Offers & promotions</div>
+            <div class="notif-row-sub">Discounts on courses and sessions</div>
+          </div>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PASSWORD MODAL -->
+<div class="modal-overlay" id="pw-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Change password</div>
+      <button class="modal-close" onclick="closePasswordModal()" aria-label="Close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Current password</label>
+        <input class="form-input" type="password" placeholder="••••••••">
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">New password</label>
+        <input class="form-input" type="password" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm new password</label>
+        <input class="form-input" type="password" placeholder="••••••••">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-small btn-primary-sm" style="flex:1;" onclick="closePasswordModal()">Update password</button>
+      <button class="btn-small btn-outline" style="flex:1;" onclick="closePasswordModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleEdit(){
+  const v=document.getElementById('view-mode');
+  const e=document.getElementById('edit-mode');
+  const btn=document.getElementById('edit-toggle-btn');
+  const isEdit=e.style.display!=='none';
+  v.style.display=isEdit?'block':'none';
+  e.style.display=isEdit?'none':'block';
+  btn.textContent=isEdit?'Edit':'Cancel';
+}
+
+let verificationSent=false;
+function sendVerification(){
+  if(verificationSent)return;
+  verificationSent=true;
+  const banner=document.getElementById('verify-banner');
+  banner.querySelector('.verify-banner-text').innerHTML='<strong>Verification link sent!</strong> Check suresh@gmail.com and click the link to verify.';
+  banner.querySelector('.verify-banner-btn').textContent='Resend';
+  banner.querySelector('.verify-banner-btn').onclick=function(){ resendVerification(); };
+  banner.querySelector('i').className='ti ti-mail-check';
+}
+function resendVerification(){
+  const banner=document.getElementById('verify-banner');
+  const btn=banner.querySelector('.verify-banner-btn');
+  btn.textContent='Sent ✓';
+  setTimeout(()=>{btn.textContent='Resend';},1800);
+}
+
+function openPasswordModal(){document.getElementById('pw-modal').classList.add('open');}
+function closePasswordModal(){document.getElementById('pw-modal').classList.remove('open');}
+document.getElementById('pw-modal').addEventListener('click',e=>{
+  if(e.target.id==='pw-modal')closePasswordModal();
+});
+</script>
+</body>
+</html>

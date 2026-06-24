@@ -30,7 +30,6 @@ import {
   IconBrandYoutube,
 } from "@tabler/icons-react";
 import { getCourseDetails } from "../../actions";
-import Navbar from "@/components/Navbar";
 
 // Dynamic Icon Picker Helper
 const getDetailsIcon = (name: string) => {
@@ -249,8 +248,6 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-      {/* NAVIGATION */}
-      <Navbar />
 
       {loading ? (
         <div className="w-full">
