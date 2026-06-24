@@ -136,11 +136,78 @@ export default function MyChildrenPage() {
 
   return (
     <div className="w-full bg-slate-50 min-h-screen flex flex-col font-sans text-[#1B3A6B]">
+      {/* PAGE HEADER */}
+      <header className="bg-[#f5f8ff] px-6 md:px-12 py-8 border-b border-[#d0dcf5]">
+        <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            {/* Breadcrumb */}
+            <nav className="text-[11px] text-slate-400 mb-3 flex items-center gap-1.5 font-medium">
+              <a href="/" className="hover:text-[#2F7FE8] transition-colors">Home</a>
+              <span className="text-slate-300">/</span>
+              <span className="text-[#1B3A6B] font-semibold">My children</span>
+            </nav>
+            
+            <h1 className="font-heading text-3xl font-extrabold text-[#1B3A6B] mb-1">
+              My children
+            </h1>
+            <p className="text-xs md:text-sm text-slate-500 font-medium">
+              Manage your children's profiles and view their recent activity
+            </p>
+          </div>
+          
+          <button
+            onClick={handleOpenAddModal}
+            className="text-xs font-semibold px-5 py-3 bg-[#1B3A6B] hover:bg-[#2F7FE8] text-white rounded-xl flex items-center gap-2 cursor-pointer transition-colors shadow-sm self-start sm:self-auto"
+          >
+            <IconPlus className="w-4 h-4 stroke-[3]" />
+            <span>Add a child</span>
+          </button>
+        </div>
+      </header>
 
       {loading ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-12">
-          <div className="w-12 h-12 border-4 border-[#1B3A6B]/20 border-t-[#2F7FE8] rounded-full animate-spin mb-4"></div>
-          <span className="text-sm text-slate-500 font-medium">Loading children...</span>
+        <div className="max-w-[1000px] mx-auto w-full px-6 py-8 flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-white border border-[#d0dcf5] rounded-2xl overflow-hidden shadow-sm animate-pulse flex flex-col justify-between"
+              >
+                {/* Top section */}
+                <div className="p-5 flex gap-4 items-start">
+                  <div className="w-13 h-13 rounded-full bg-slate-200 flex-shrink-0" style={{ width: 52, height: 52 }} />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-slate-200 rounded w-32" />
+                    <div className="h-3 bg-slate-100 rounded w-20" />
+                    <div className="h-3 bg-slate-100 rounded w-40" />
+                    <div className="h-5 bg-green-100 rounded-full w-28" />
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-100 mx-5" />
+
+                {/* Activity feed skeleton */}
+                <div className="px-5 py-4 space-y-3">
+                  <div className="h-3 bg-slate-100 rounded w-24" />
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex-shrink-0" />
+                      <div className="flex-1 space-y-1">
+                        <div className="h-3.5 bg-slate-200 rounded w-4/5" />
+                        <div className="h-2.5 bg-slate-100 rounded w-24" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 py-3 border-t border-[#d0dcf5] bg-slate-50 flex items-center justify-between">
+                  <div className="h-3.5 bg-slate-200 rounded w-24" />
+                  <div className="h-3.5 bg-blue-100 rounded w-24" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : error && children.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -157,37 +224,7 @@ export default function MyChildrenPage() {
           </div>
         </div>
       ) : (
-        <>
-          {/* PAGE HEADER */}
-          <header className="bg-[#f5f8ff] px-6 md:px-12 py-8 border-b border-[#d0dcf5]">
-            <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                {/* Breadcrumb */}
-                <nav className="text-[11px] text-slate-400 mb-3 flex items-center gap-1.5 font-medium">
-                  <a href="/" className="hover:text-[#2F7FE8] transition-colors">Home</a>
-                  <span className="text-slate-300">/</span>
-                  <span className="text-[#1B3A6B] font-semibold">My children</span>
-                </nav>
-                
-                <h1 className="font-heading text-3xl font-extrabold text-[#1B3A6B] mb-1">
-                  My children
-                </h1>
-                <p className="text-xs md:text-sm text-slate-500 font-medium">
-                  Manage your children's profiles and view their recent activity
-                </p>
-              </div>
-              
-              <button
-                onClick={handleOpenAddModal}
-                className="text-xs font-semibold px-5 py-3 bg-[#1B3A6B] hover:bg-[#2F7FE8] text-white rounded-xl flex items-center gap-2 cursor-pointer transition-colors shadow-sm self-start sm:self-auto"
-              >
-                <IconPlus className="w-4 h-4 stroke-[3]" />
-                <span>Add a child</span>
-              </button>
-            </div>
-          </header>
-
-          <div className="max-w-[1000px] mx-auto w-full px-6 py-8 flex-1">
+        <div className="max-w-[1000px] mx-auto w-full px-6 py-8 flex-1">
 
           {/* STATUS NOTIFICATIONS */}
           {success && (
@@ -332,6 +369,7 @@ export default function MyChildrenPage() {
             </div>
           </div>
         </div>
+      )}
 
       {/* ADD / EDIT CHILD MODAL */}
       {isModalOpen && (
@@ -414,12 +452,10 @@ export default function MyChildrenPage() {
               >
                 Cancel
               </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
-  </>
-)}
-</div>
+      )}
+    </div>
   );
 }

@@ -370,7 +370,30 @@ export default function Home() {
               <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
             </a>
           </div>
-          {courses.length === 0 ? (
+          {loading ? (
+            <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="w-[calc(100%_-_32px)] md:w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(100%_-_32px)] md:min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden animate-pulse">
+                  <div className="w-full h-32 bg-slate-100" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-5 bg-slate-100 rounded-full w-20" />
+                    <div className="h-5 bg-slate-200 rounded-lg w-3/4" />
+                    <div className="h-3.5 bg-slate-100 rounded w-full" />
+                    <div className="h-3 bg-slate-100 rounded w-1/2" />
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-4 bg-slate-100 rounded w-12" />
+                      <div className="h-4 bg-slate-100 rounded w-24" />
+                      <div className="ml-auto h-5 bg-slate-200 rounded w-14" />
+                    </div>
+                    <div className="flex gap-3 pt-1">
+                      <div className="flex-1 h-9 bg-slate-200 rounded-lg" />
+                      <div className="flex-1 h-9 bg-slate-100 rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : courses.length === 0 ? (
             <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
               <p className="text-sm text-text-muted">No active courses listed currently.</p>
             </div>
@@ -440,7 +463,30 @@ export default function Home() {
               <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
             </a>
           </div>
-          {sessions.length === 0 ? (
+          {loading ? (
+            <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="w-[calc(100%_-_32px)] md:w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(100%_-_32px)] md:min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden animate-pulse">
+                  <div className="w-full h-32 bg-slate-100" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-5 bg-amber-100 rounded-full w-24" />
+                    <div className="h-5 bg-slate-200 rounded-lg w-3/4" />
+                    <div className="h-3.5 bg-slate-100 rounded w-full" />
+                    <div className="h-3.5 bg-slate-100 rounded w-5/6" />
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-4 bg-slate-100 rounded w-12" />
+                      <div className="h-4 bg-slate-100 rounded w-20" />
+                      <div className="ml-auto h-5 bg-slate-200 rounded w-16" />
+                    </div>
+                    <div className="flex gap-3 pt-1">
+                      <div className="flex-1 h-9 bg-slate-200 rounded-lg" />
+                      <div className="flex-1 h-9 bg-slate-100 rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sessions.length === 0 ? (
             <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200">
               <p className="text-sm text-text-muted">No active sessions scheduled currently.</p>
             </div>
@@ -509,7 +555,31 @@ export default function Home() {
               <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
             </a>
           </div>
-          {mentors.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-flow-col grid-rows-2 gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar auto-cols-[calc(100%)] md:auto-cols-[calc(50%-12px)]">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white border border-border-subtle rounded-2xl overflow-hidden flex flex-col sm:flex-row animate-pulse snap-start shrink-0">
+                  <div className="w-full sm:w-[130px] bg-blue-50 flex items-center justify-center p-6">
+                    <div className="w-20 h-20 rounded-full bg-slate-200" />
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 bg-slate-200 rounded w-32" />
+                      <div className="h-4 bg-blue-100 rounded w-14" />
+                    </div>
+                    <div className="h-3.5 bg-slate-100 rounded w-24" />
+                    <div className="h-3 bg-slate-100 rounded w-full" />
+                    <div className="h-3 bg-slate-100 rounded w-4/5" />
+                    <div className="flex items-center gap-4 border-t border-border-subtle pt-3 mt-auto">
+                      <div className="h-3.5 bg-slate-100 rounded w-20" />
+                      <div className="h-3.5 bg-slate-100 rounded w-20" />
+                      <div className="ml-auto h-3.5 bg-slate-200 rounded w-16" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : mentors.length === 0 ? (
             <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
               <p className="text-sm text-text-muted">No mentors available at the moment.</p>
             </div>
@@ -570,7 +640,28 @@ export default function Home() {
               Real results from real learners
             </p>
           </div>
-          {testimonials.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white border border-border-subtle rounded-2xl p-6 flex flex-col justify-between animate-pulse">
+                  <div className="space-y-3 mb-6">
+                    <div className="h-8 bg-slate-100 rounded w-8" />
+                    <div className="h-3.5 bg-slate-100 rounded w-full" />
+                    <div className="h-3.5 bg-slate-100 rounded w-full" />
+                    <div className="h-3.5 bg-slate-100 rounded w-4/5" />
+                    <div className="h-3.5 bg-slate-100 rounded w-3/5" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0" />
+                    <div className="space-y-1.5">
+                      <div className="h-3.5 bg-slate-200 rounded w-24" />
+                      <div className="h-3 bg-slate-100 rounded w-16" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : testimonials.length === 0 ? (
             <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200">
               <p className="text-sm text-text-muted">No testimonials to show.</p>
             </div>

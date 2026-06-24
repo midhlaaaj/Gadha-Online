@@ -176,11 +176,100 @@ export default function BookingsPage() {
 
   return (
     <div className="w-full bg-slate-50 min-h-screen flex flex-col font-sans text-[#1B3A6B]">
+      {/* PAGE HEADER */}
+      <header className="bg-[#f5f8ff] px-6 md:px-12 py-8 border-b border-[#d0dcf5]">
+        <div className="max-w-7xl mx-auto w-full">
+          {/* Breadcrumb */}
+          <nav className="text-[11px] text-slate-400 mb-3 flex items-center gap-1.5 font-medium">
+            <a href="/" className="hover:text-[#2F7FE8] transition-colors">Home</a>
+            <span className="text-slate-300">/</span>
+            <span className="text-[#1B3A6B] font-semibold">My bookings</span>
+          </nav>
+          
+          <h1 className="font-heading text-3xl font-extrabold text-[#1B3A6B] mb-1">
+            My bookings
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 font-medium">
+            All sessions and courses booked for your children
+          </p>
+        </div>
+      </header>
 
       {loading ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-12">
-          <div className="w-12 h-12 border-4 border-[#1B3A6B]/20 border-t-[#2F7FE8] rounded-full animate-spin mb-4"></div>
-          <span className="text-sm text-slate-500 font-medium">Loading bookings...</span>
+        <div className="max-w-[860px] mx-auto w-full px-6 py-8 flex-1">
+          {/* Skeleton toolbar */}
+          <div className="bg-white border border-[#d0dcf5] rounded-2xl p-4 mb-6 flex items-center gap-3 animate-pulse">
+            <div className="h-8 bg-slate-200 rounded-full w-36" />
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-8 bg-slate-100 rounded-full w-20" />
+            ))}
+            <div className="ml-auto h-4 bg-slate-100 rounded w-20" />
+          </div>
+
+          {/* Skeleton section label */}
+          <div className="h-3 bg-slate-200 rounded w-20 mb-3 animate-pulse" />
+
+          {/* Skeleton booking rows */}
+          <div className="flex flex-col gap-2.5">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-white border border-[#d0dcf5] rounded-2xl p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse"
+              >
+                <div className="flex gap-4.5 items-start md:items-center">
+                  <div className="w-11 h-11 rounded-xl bg-slate-100 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3.5 bg-slate-200 rounded w-40" />
+                      <div className="h-3 bg-slate-100 rounded-full w-14" />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <div className="h-3 bg-slate-100 rounded w-20" />
+                      <div className="h-3 bg-slate-100 rounded w-24" />
+                      <div className="h-3 bg-slate-100 rounded w-16" />
+                      <div className="h-4 bg-slate-100 rounded-full w-16" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex md:flex-col items-baseline md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                  <div className="h-5.5 bg-blue-100/50 rounded-full w-16" />
+                  <div className="h-4.5 bg-slate-200 rounded w-12" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Second skeleton section */}
+          <div className="mt-6">
+            <div className="h-3 bg-slate-200 rounded w-28 mb-3 animate-pulse" />
+            <div className="flex flex-col gap-2.5">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-[#d0dcf5] rounded-2xl p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse"
+                >
+                  <div className="flex gap-4.5 items-start md:items-center">
+                    <div className="w-11 h-11 rounded-xl bg-slate-100 flex-shrink-0" />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <div className="h-3.5 bg-slate-200 rounded w-48" />
+                        <div className="h-3 bg-slate-100 rounded-full w-14" />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <div className="h-3 bg-slate-100 rounded w-20" />
+                        <div className="h-3 bg-slate-100 rounded w-24" />
+                        <div className="h-4 bg-slate-100 rounded-full w-16" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex md:flex-col items-baseline md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                    <div className="h-5.5 bg-slate-100 rounded-full w-16" />
+                    <div className="h-4.5 bg-slate-200 rounded w-12" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : error ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -197,28 +286,7 @@ export default function BookingsPage() {
           </div>
         </div>
       ) : (
-        <>
-          {/* PAGE HEADER */}
-          <header className="bg-[#f5f8ff] px-6 md:px-12 py-8 border-b border-[#d0dcf5]">
-            <div className="max-w-7xl mx-auto w-full">
-              {/* Breadcrumb */}
-              <nav className="text-[11px] text-slate-400 mb-3 flex items-center gap-1.5 font-medium">
-                <a href="/" className="hover:text-[#2F7FE8] transition-colors">Home</a>
-                <span className="text-slate-300">/</span>
-                <span className="text-[#1B3A6B] font-semibold">My bookings</span>
-              </nav>
-              
-              <h1 className="font-heading text-3xl font-extrabold text-[#1B3A6B] mb-1">
-                My bookings
-              </h1>
-              <p className="text-xs md:text-sm text-slate-500 font-medium">
-                All sessions and courses booked for your children
-              </p>
-            </div>
-          </header>
-
-          <div className="max-w-[860px] mx-auto w-full px-6 py-8 flex-1">
-
+        <div className="max-w-[860px] mx-auto w-full px-6 py-8 flex-1">
           {/* TOOLBAR */}
           <div className="bg-white border border-[#d0dcf5] rounded-2xl p-4.5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-3">
@@ -544,8 +612,7 @@ export default function BookingsPage() {
             </div>
           )}
         </div>
-      </>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
 }
