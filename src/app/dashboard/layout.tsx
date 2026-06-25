@@ -41,7 +41,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Suspense>
 
         <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full">
-          {children}
+          <Suspense fallback={null}>
+            {children}
+          </Suspense>
         </main>
       </div>
     </div>
