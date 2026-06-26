@@ -26,11 +26,43 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
+      cookieOptions: {
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+      },
     }
   );
 
   // Awaiting getUser() refreshes the session cookie if it is expired
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  console.log(`[MIDDLEWARE LOG] Path: ${pathname} | User: ${user?.email ?? "None"} | Cookies:`, request.cookies.getAll().map(c => c.name));
+
+  if (pathname.startsWith("/lms")) {
+    if (!user) {
+      if (pathname !== "/lms/login") {
+        return NextResponse.redirect(new URL("/lms/login", request.url));
+      }
+    } else {
+      // User is logged in. Fetch role to make sure they are a student.
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "student") {
+        // If they are not a student (e.g. parent/mentor/admin), redirect to main home page
+        return NextResponse.redirect(new URL("/", request.url));
+      } else if (pathname === "/lms/login") {
+        // If they are a student and on the login page, redirect them to overview
+        return NextResponse.redirect(new URL("/lms/overview", request.url));
+      }
+    }
+  }
 
   return supabaseResponse;
 }

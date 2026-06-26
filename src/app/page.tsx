@@ -17,6 +17,7 @@ import {
   IconBook,
 } from "@tabler/icons-react";
 import { getHomepageData, submitContactMessage } from "./actions";
+import { validateEmail, validateName, validatePhone, validateMessage, validateSubject, sanitizeText } from "@/lib/validate";
 
 // Dynamic Icon Picker Helper
 const getIconComponent = (name: string) => {
@@ -167,18 +168,35 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmittingForm(true);
     setFormError(null);
+
+    // Validate all fields before sending
+    const nameCheck = validateName(formData.fullName);
+    if (!nameCheck.valid) { setFormError(nameCheck.error!); return; }
+
+    const emailCheck = validateEmail(formData.email);
+    if (!emailCheck.valid) { setFormError(emailCheck.error!); return; }
+
+    const phoneCheck = validatePhone(formData.phone);
+    if (!phoneCheck.valid) { setFormError(phoneCheck.error!); return; }
+
+    const subjectCheck = validateSubject(formData.subject);
+    if (!subjectCheck.valid) { setFormError(subjectCheck.error!); return; }
+
+    const messageCheck = validateMessage(formData.message);
+    if (!messageCheck.valid) { setFormError(messageCheck.error!); return; }
+
+    setIsSubmittingForm(true);
     try {
-      await submitContactMessage(formData);
-      setFormSubmitted(true);
-      setFormData({
-        fullName: "",
-        email: "",
-        subject: "",
-        phone: "",
-        message: "",
+      await submitContactMessage({
+        fullName: sanitizeText(formData.fullName).trim(),
+        email: formData.email.trim(),
+        subject: sanitizeText(formData.subject).trim(),
+        phone: formData.phone.trim(),
+        message: sanitizeText(formData.message).trim(),
       });
+      setFormSubmitted(true);
+      setFormData({ fullName: "", email: "", subject: "", phone: "", message: "" });
     } catch (err: any) {
       setFormError(err.message || "Failed to send message. Please try again.");
     } finally {

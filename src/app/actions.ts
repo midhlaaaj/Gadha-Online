@@ -1743,7 +1743,8 @@ export async function getParentChildren() {
   const { data: dbInvites } = await supabase
     .from("student_invitations")
     .select("*")
-    .eq("parent_id", user.id);
+    .eq("parent_id", user.id)
+    .neq("status", "accepted");
 
   const invitations = ((dbInvites || []) as any[]).map((i: any) => {
     const name = i.full_name;
@@ -1774,12 +1775,38 @@ export async function inviteChild(data: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
+  const emailLower = data.email.trim().toLowerCase();
+  const adminClient = createAdminClient();
+
+  // 1. Check if email is already in profiles (any registered account)
+  const { data: existingProfile } = await adminClient
+    .from("profiles")
+    .select("email")
+    .eq("email", emailLower)
+    .maybeSingle();
+
+  if (existingProfile) {
+    throw new Error("This email is already in use by another user.");
+  }
+
+  // 2. Check if email is already in student_invitations (pending/invited)
+  const { data: existingInvite } = await adminClient
+    .from("student_invitations")
+    .select("email")
+    .eq("email", emailLower)
+    .neq("status", "accepted")
+    .maybeSingle();
+
+  if (existingInvite) {
+    throw new Error("This child email has already been added.");
+  }
+
   const { error } = await supabase
     .from("student_invitations")
     .insert([
       {
         parent_id: user.id,
-        email: data.email,
+        email: emailLower,
         full_name: data.name,
         grade_level: data.grade,
         status: "pending"
@@ -2154,5 +2181,393 @@ export async function getChildEnrolledMentors(childId: string) {
     }
   }
 
+  return Object.values(mentorMap);
+}
+
+// ============================================================
+// STUDENT DASHBOARD ACTIONS
+// ============================================================
+
+export async function getStudentProfile() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, role, avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  const { data: student } = await supabase
+    .from("students")
+    .select("grade_level, school_name, interests")
+    .eq("id", user.id)
+    .single();
+
+  return {
+    id: profile?.id ?? user.id,
+    name: profile?.full_name ?? "Student",
+    email: profile?.email ?? user.email ?? "",
+    role: profile?.role ?? "student",
+    avatarText: (profile?.full_name ?? "S")
+      .split(" ")
+      .map((w: string) => w[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase(),
+    gradeLevel: (student as any)?.grade_level ?? null,
+    schoolName: (student as any)?.school_name ?? null,
+  };
+}
+
+export async function getStudentOverviewStats() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const studentId = user.id;
+
+  // Attendance
+  const { data: attRows } = await supabase
+    .from("attendance_records")
+    .select("status, session_date, subject")
+    .eq("student_id", studentId)
+    .order("session_date", { ascending: false });
+
+  const allAtt = (attRows || []) as any[];
+  const totalAtt = allAtt.length;
+  const presentAtt = allAtt.filter((r) => r.status === "present").length;
+  const attendanceRate = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 100) : null;
+
+  // Subject attendance breakdown
+  const subjMap: Record<string, { present: number; total: number }> = {};
+  for (const r of allAtt) {
+    if (!subjMap[r.subject]) subjMap[r.subject] = { present: 0, total: 0 };
+    subjMap[r.subject].total++;
+    if (r.status === "present") subjMap[r.subject].present++;
+  }
+  const subjectAttendance = Object.entries(subjMap).map(([name, v]) => ({
+    name,
+    pct: Math.round((v.present / v.total) * 100),
+  }));
+
+  // Next class
+  const now = new Date().toISOString();
+  const { data: nextClassRows } = await supabase
+    .from("scheduled_classes")
+    .select("id, title, subject, scheduled_at, duration_minutes, join_url, mentor:mentors(profile:profiles(full_name))")
+    .eq("student_id", studentId)
+    .eq("status", "scheduled")
+    .gte("scheduled_at", now)
+    .order("scheduled_at", { ascending: true })
+    .limit(1);
+
+  const nc = (nextClassRows || [])[0] as any;
+  const nextClass = nc
+    ? {
+        id: nc.id,
+        title: nc.title,
+        subject: nc.subject,
+        mentor: nc.mentor?.profile?.full_name ?? "Mentor",
+        scheduledAt: nc.scheduled_at,
+        dateTime: new Date(nc.scheduled_at).toLocaleString("en-IN", {
+          weekday: "short", day: "numeric", month: "short",
+          hour: "2-digit", minute: "2-digit",
+        }),
+        joinUrl: nc.join_url ?? null,
+        durationMinutes: nc.duration_minutes,
+      }
+    : null;
+
+  // Today's classes
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const { data: todayRows } = await supabase
+    .from("scheduled_classes")
+    .select("id, title, subject, scheduled_at, duration_minutes, join_url, status, mentor:mentors(profile:profiles(full_name))")
+    .eq("student_id", studentId)
+    .gte("scheduled_at", todayStart.toISOString())
+    .lte("scheduled_at", todayEnd.toISOString())
+    .order("scheduled_at", { ascending: true });
+
+  const todayClasses = ((todayRows || []) as any[]).map((c) => ({
+    id: c.id,
+    title: c.title,
+    subject: c.subject,
+    mentor: c.mentor?.profile?.full_name ?? "Mentor",
+    scheduledAt: c.scheduled_at,
+    timeLabel: new Date(c.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+    joinUrl: c.join_url ?? null,
+    durationMinutes: c.duration_minutes,
+    status: c.status,
+  }));
+
+  // Pending assignments
+  const { data: assignRows } = await supabase
+    .from("assignments")
+    .select("id, title, subject, due_date, status, score, feedback, created_by, mentor:mentors(profile:profiles(full_name))")
+    .eq("student_id", studentId);
+
+  const allAssign = (assignRows || []) as any[];
+  const now2 = new Date();
+  const pendingAssignments = allAssign
+    .filter((a) => a.status === "pending" || a.status === "overdue")
+    .map((a) => {
+      const due = a.due_date ? new Date(a.due_date) : null;
+      const isOverdue = due && due < now2;
+      return {
+        id: a.id,
+        title: a.title,
+        subject: a.subject,
+        status: isOverdue ? "Overdue" : "Pending",
+        dueMeta: due
+          ? isOverdue
+            ? `was due ${due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+            : `due ${due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+          : "No due date",
+        mentor: a.mentor?.profile?.full_name ?? "Mentor",
+      };
+    });
+
+  const overdueCount = pendingAssignments.filter((a) => a.status === "Overdue").length;
+
+  // Recent activity (last 5 attendance records)
+  const recentActivity = allAtt.slice(0, 5).map((r) => ({
+    type: "attendance",
+    text: `${r.status === "present" ? "Attended" : "Missed"} class`,
+    subject: r.subject,
+    date: new Date(r.session_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+    status: r.status,
+  }));
+
+  return {
+    attendanceRate,
+    subjectAttendance,
+    nextClass,
+    todayClasses,
+    pendingAssignments,
+    overdueCount,
+    recentActivity,
+    totalClassesToday: todayClasses.length,
+    pendingCount: pendingAssignments.length,
+  };
+}
+
+export async function getStudentClasses() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const studentId = user.id;
+  const now = new Date();
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+
+  const { data: rows } = await supabase
+    .from("scheduled_classes")
+    .select("id, title, subject, scheduled_at, duration_minutes, status, join_url, recording_url, icon_name, mentor:mentors(id, profile:profiles(full_name))")
+    .eq("student_id", studentId)
+    .order("scheduled_at", { ascending: false });
+
+  const classes = ((rows || []) as any[]).map((c) => {
+    const scheduledAt = new Date(c.scheduled_at);
+    const endAt = new Date(scheduledAt.getTime() + c.duration_minutes * 60000);
+    const isNow = scheduledAt <= now && now <= endAt;
+    const isPast = endAt < now;
+    const isToday = scheduledAt >= todayStart && scheduledAt <= todayEnd;
+    return {
+      id: c.id,
+      title: c.title,
+      subject: c.subject,
+      mentor: c.mentor?.profile?.full_name ?? "Mentor",
+      scheduledAt: c.scheduled_at,
+      dateLabel: scheduledAt.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }),
+      timeLabel: `${scheduledAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} – ${endAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`,
+      durationMinutes: c.duration_minutes,
+      status: isNow ? "live" : c.status,
+      joinUrl: c.join_url ?? null,
+      recordingUrl: c.recording_url ?? null,
+      iconName: c.icon_name ?? null,
+      isToday,
+      isUpcoming: !isPast && !isNow && !isToday,
+      isPast: isPast && !isNow,
+      isLive: isNow,
+    };
+  });
+
+  return {
+    today: classes.filter((c) => c.isToday || c.isLive),
+    upcoming: classes.filter((c) => c.isUpcoming),
+    recorded: classes.filter((c) => c.isPast && c.recordingUrl),
+    history: classes.filter((c) => c.isPast),
+  };
+}
+
+export async function getStudentAssignments() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const studentId = user.id;
+  const now = new Date();
+
+  const { data: rows } = await supabase
+    .from("assignments")
+    .select("id, title, subject, due_date, status, score, feedback, created_at, mentor:mentors(id, profile:profiles(full_name))")
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: false });
+
+  return ((rows || []) as any[]).map((a) => {
+    const due = a.due_date ? new Date(a.due_date) : null;
+    const isOverdue = a.status === "pending" && due && due < now;
+    const computedStatus = isOverdue ? "Overdue" : 
+      a.status === "pending" ? "Pending" :
+      a.status === "submitted" ? "Submitted" :
+      a.status === "graded" ? "Graded" : "Pending";
+    return {
+      id: a.id,
+      title: a.title,
+      subject: a.subject,
+      mentor: a.mentor?.profile?.full_name ?? "Mentor",
+      dueDate: a.due_date,
+      dueMeta: due
+        ? isOverdue
+          ? `was due ${due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+          : `due ${due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+        : "No due date",
+      status: computedStatus,
+      score: a.score ?? null,
+      feedback: a.feedback ?? null,
+    };
+  });
+}
+
+export async function getStudentPerformance() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const studentId = user.id;
+
+  // Attendance
+  const { data: attRows } = await supabase
+    .from("attendance_records")
+    .select("status, session_date, subject")
+    .eq("student_id", studentId)
+    .order("session_date", { ascending: false });
+
+  const allAtt = (attRows || []) as any[];
+  const totalAtt = allAtt.length;
+  const presentAtt = allAtt.filter((r) => r.status === "present").length;
+  const attendanceRate = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 100) : null;
+
+  // Subject attendance
+  const subjMap: Record<string, { present: number; total: number }> = {};
+  for (const r of allAtt) {
+    if (!subjMap[r.subject]) subjMap[r.subject] = { present: 0, total: 0 };
+    subjMap[r.subject].total++;
+    if (r.status === "present") subjMap[r.subject].present++;
+  }
+  const subjectAttendance = Object.entries(subjMap).map(([name, v]) => ({
+    name,
+    pct: Math.round((v.present / v.total) * 100),
+  }));
+
+  // Assignments / scores
+  const { data: assignRows } = await supabase
+    .from("assignments")
+    .select("id, title, subject, due_date, status, score, feedback, created_at, mentor:mentors(id, profile:profiles(full_name))")
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: false });
+
+  const allAssign = (assignRows || []) as any[];
+  const gradedAssign = allAssign.filter((a) => a.status === "graded" && a.score !== null);
+  const submittedCount = allAssign.filter((a) => a.status === "graded" || a.status === "submitted").length;
+  const avgScore = gradedAssign.length > 0
+    ? Math.round(gradedAssign.reduce((sum, a) => sum + Number(a.score), 0) / gradedAssign.length)
+    : null;
+
+  // Best subject by avg score
+  const subjectScores: Record<string, number[]> = {};
+  for (const a of gradedAssign) {
+    if (!subjectScores[a.subject]) subjectScores[a.subject] = [];
+    subjectScores[a.subject].push(Number(a.score));
+  }
+  let bestSubject: string | null = null;
+  let bestAvg = 0;
+  for (const [subj, scores] of Object.entries(subjectScores)) {
+    const avg = scores.reduce((s, n) => s + n, 0) / scores.length;
+    if (avg > bestAvg) { bestAvg = avg; bestSubject = subj; }
+  }
+
+  // Recent scores
+  const recentScores = gradedAssign.slice(0, 6).map((a) => ({
+    id: a.id,
+    title: a.title,
+    subject: a.subject,
+    date: new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+    score: Number(a.score),
+  }));
+
+  // Mentor feedback from graded assignments
+  const mentorFeedback = allAssign
+    .filter((a) => a.feedback && a.mentor?.profile?.full_name)
+    .slice(0, 4)
+    .map((a) => ({
+      mentor: a.mentor.profile.full_name,
+      initials: (a.mentor.profile.full_name as string).split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase(),
+      date: new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      feedback: a.feedback,
+    }));
+
+  return {
+    attendanceRate,
+    subjectAttendance,
+    avgScore,
+    submittedCount,
+    totalAssignments: allAssign.length,
+    bestSubject,
+    bestSubjectAvg: bestSubject ? Math.round(bestAvg) : null,
+    recentScores,
+    mentorFeedback,
+  };
+}
+
+export async function getStudentMentors() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const studentId = user.id;
+
+  const { data: bookings } = await supabase
+    .from("bookings")
+    .select(`
+      session_id, course_id, status,
+      session:sessions(title, subject, mentor:mentors(id, profile:profiles(full_name))),
+      course:courses(title, subject, mentor:mentors(id, profile:profiles(full_name)))
+    `)
+    .eq("student_id", studentId)
+    .eq("status", "confirmed");
+
+  const mentorMap: Record<string, { id: string; name: string; subject: string; initials: string }> = {};
+  for (const b of ((bookings || []) as any[])) {
+    const target = b.session_id ? b.session : b.course;
+    if (!target?.mentor) continue;
+    const mentorId = target.mentor.id;
+    const mentorName = target.mentor.profile?.full_name ?? "Mentor";
+    if (!mentorMap[mentorId]) {
+      mentorMap[mentorId] = {
+        id: mentorId,
+        name: mentorName,
+        subject: target.subject ?? "Tutoring",
+        initials: mentorName.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase(),
+      };
+    }
+  }
   return Object.values(mentorMap);
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSelectedLayoutSegment, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   IconLayoutDashboard,
@@ -23,13 +24,14 @@ const NAV = [
 export function DashboardSidebar() {
   const activeSegment = useSelectedLayoutSegment();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const childId = searchParams.get("child");
   const childParam = childId ? `?child=${childId}` : "";
 
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.href = "/";
+    router.replace("/");
   };
 
   return (
@@ -37,7 +39,7 @@ export function DashboardSidebar() {
       <div className="p-5 pt-6 space-y-5">
         {/* Label */}
         <div className="px-3">
-          <span className="text-[10px] font-extrabold text-[#4A5A7A] uppercase tracking-widest">
+          <span className="text-[9px] font-extrabold text-[#9BA8C0] uppercase tracking-widest">
             Parent Portal
           </span>
         </div>
@@ -50,15 +52,15 @@ export function DashboardSidebar() {
               <Link
                 key={segment}
                 href={`/dashboard/${segment}${childParam}`}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 ${
                   isActive
-                    ? "bg-[#E6F1FB] text-[#0C447C]"
-                    : "text-[#4A5A7A] hover:bg-[#F5F8FF] hover:text-[#1B3A6B]"
+                    ? "bg-[#EBF2FF] text-[#1B3A6B]"
+                    : "text-[#6B7A99] hover:bg-[#F5F7FF] hover:text-[#1B3A6B]"
                 }`}
               >
                 <Icon
-                  className={`w-[17px] h-[17px] shrink-0 ${
-                    isActive ? "text-[#2F7FE8]" : "text-[#4A5A7A]"
+                  className={`w-[17px] h-[17px] shrink-0 transition-colors ${
+                    isActive ? "text-[#2F7FE8]" : "text-[#9BA8C0]"
                   }`}
                 />
                 {label}

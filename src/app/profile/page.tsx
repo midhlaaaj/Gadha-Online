@@ -23,6 +23,7 @@ import {
   updateParentSecurityAndNotifications,
   updateParentPassword,
 } from "../actions";
+import { validateName, validatePhone, validatePassword, sanitizeText } from "@/lib/validate";
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
@@ -112,15 +113,20 @@ export default function ProfilePage() {
   };
 
   const handleSaveProfile = async () => {
-    if (!editName.trim()) {
-      setError("Full name cannot be empty.");
-      return;
-    }
+    const nameCheck = validateName(editName);
+    if (!nameCheck.valid) { setError(nameCheck.error!); return; }
+
+    const phoneCheck = validatePhone(editPhone);
+    if (!phoneCheck.valid) { setError(phoneCheck.error!); return; }
+
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      await updateParentProfile({ name: editName.trim(), phone: editPhone.trim() });
+      await updateParentProfile({
+        name: sanitizeText(editName).trim(),
+        phone: editPhone.trim(),
+      });
       setSuccess("Profile information updated successfully.");
       setIsEditMode(false);
       await loadProfile();
@@ -163,19 +169,14 @@ export default function ProfilePage() {
     setPwError(null);
     setPwSuccess(null);
 
-    // Input validation
     if (!currentPassword) {
       setPwError("Please enter your current password.");
       return;
     }
-    if (!newPassword) {
-      setPwError("Please enter a new password.");
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPwError("New password must be at least 6 characters.");
-      return;
-    }
+
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) { setPwError(pwCheck.error!); return; }
+
     if (newPassword !== confirmPassword) {
       setPwError("New passwords do not match. Please check and try again.");
       return;

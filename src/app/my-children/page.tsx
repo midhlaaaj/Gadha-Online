@@ -24,6 +24,7 @@ import {
   deleteChild,
   resendChildInvitation,
 } from "../actions";
+import { validateName, validateEmail, validateGrade, sanitizeText } from "@/lib/validate";
 
 export default function MyChildrenPage() {
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,13 @@ export default function MyChildrenPage() {
     loadChildren();
   }, []);
 
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   const handleOpenAddModal = () => {
     setModalMode("add");
     setSelectedChildId(null);
@@ -79,21 +87,27 @@ export default function MyChildrenPage() {
   };
 
   const handleAddOrEditChild = async () => {
-    if (!inputName || !inputEmail || !inputClass) {
-      setError("Please fill out all fields.");
-      return;
-    }
     setError(null);
     setSuccess(null);
+
+    const nameCheck = validateName(inputName);
+    if (!nameCheck.valid) { setError(nameCheck.error!); return; }
+
+    const emailCheck = validateEmail(inputEmail);
+    if (!emailCheck.valid) { setError(emailCheck.error!); return; }
+
+    const gradeCheck = validateGrade(inputClass);
+    if (!gradeCheck.valid) { setError(gradeCheck.error!); return; }
+
     try {
       if (modalMode === "add") {
-        await inviteChild({ name: inputName, email: inputEmail, grade: inputClass });
-        setSuccess(`Invitation successfully sent to ${inputEmail}.`);
+        await inviteChild({
+          name: sanitizeText(inputName).trim(),
+          email: inputEmail.trim(),
+          grade: sanitizeText(inputClass).trim(),
+        });
+        setSuccess(`Child ${inputName} added successfully.`);
       } else {
-        // Edit child endpoint (or edit invitation if not joined).
-        // Since we are mocking / using simple upserts or updates, we'll notify.
-        // If a child is already registered (joined), parent can change grade details, name, etc.
-        // For simplicity, we just trigger child profile updates or simulated saves.
         setSuccess(`Child profile changes for ${inputName} saved.`);
       }
       setIsModalOpen(false);
@@ -226,14 +240,6 @@ export default function MyChildrenPage() {
       ) : (
         <div className="max-w-[1000px] mx-auto w-full px-6 py-8 flex-1">
 
-          {/* STATUS NOTIFICATIONS */}
-          {success && (
-            <div className="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-xs font-semibold flex items-center gap-2 animate-fade-in">
-              <IconCheck className="w-4 h-4 text-green-600" />
-              <span>{success}</span>
-            </div>
-          )}
-
           {/* CHILDREN GRID */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {children.map((child) => (
@@ -255,24 +261,11 @@ export default function MyChildrenPage() {
                     </p>
 
                     {/* Joined Status Badge */}
-                    {child.joined ? (
+                    {child.joined && (
                       <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-150 mt-1">
                         <IconCheck className="w-3 h-3 stroke-[3]" />
                         Joined dashboard
                       </span>
-                    ) : (
-                      <div className="flex items-center gap-1 flex-wrap mt-1">
-                        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-[#7a4d00] border border-amber-150">
-                          <IconClock className="w-3 h-3 stroke-[3]" />
-                          Link not accepted
-                        </span>
-                        <button
-                          onClick={(e) => handleResendInvite(e, child.id)}
-                          className="text-[9px] font-bold text-[#2F7FE8] hover:underline cursor-pointer bg-none border-none outline-none"
-                        >
-                          Resend
-                        </button>
-                      </div>
                     )}
                   </div>
 
@@ -365,7 +358,7 @@ export default function MyChildrenPage() {
           <div className="mt-8 bg-[#E6F1FB] border border-[#b5d4f4] rounded-2xl p-4 flex gap-3">
             <IconInfoCircle className="w-5 h-5 text-[#2F7FE8] flex-shrink-0 mt-0.5" />
             <div className="text-xs text-[#0C447C] leading-relaxed">
-              <strong>How it works:</strong> When you add a child, we send a joining link to their email. Once they accept, they get access to the student dashboard — where they can join sessions, view course materials and track progress.
+              <strong>How it works:</strong> Once you add a child, they can create their student account on the LMS login page using the exact email you registered for them here. Once registered, they get full access to join classes, view course materials and submit assignments.
             </div>
           </div>
         </div>
@@ -434,7 +427,7 @@ export default function MyChildrenPage() {
                   className="border border-[#d0dcf5] rounded-xl px-4 py-2.5 text-xs text-[#1B3A6B] font-medium outline-none focus:border-[#2F7FE8] transition-colors"
                 />
                 <span className="text-[9px] text-slate-400 font-medium mt-0.5 leading-normal">
-                  A joining link will be sent to this email so they can access the student dashboard.
+                  Your child must use this exact email when signing up on the LMS login page to link their profile.
                 </span>
               </div>
             </div>
@@ -454,6 +447,13 @@ export default function MyChildrenPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Toast Notification */}
+      {success && (
+        <div className="fixed bottom-5 right-5 bg-[#1B3A6B] text-white border border-[#2F7FE8] text-xs px-4 py-3 rounded-xl shadow-xl z-50 animate-fade-in flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-450 animate-pulse"></span>
+          {success}
         </div>
       )}
     </div>

@@ -1,26 +1,24 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { IconX, IconEye, IconEyeOff, IconMail, IconLock } from "@tabler/icons-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { IconEye, IconEyeOff, IconMail, IconLock } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 import { validateEmail, validatePassword, sanitizeText } from "@/lib/validate";
+import { checkStudentInvitation } from "@/app/lms/actions";
 
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  initialMode?: "signin" | "signup";
-}
-
-export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: AuthModalProps) {
+export default function LMSLoginPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -28,27 +26,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
   const supabase = createClient();
 
   useEffect(() => {
-    if (isOpen) {
-      setMode(initialMode);
-      setError(null);
-      setSuccess(null);
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen, initialMode]);
-
-  if (!isOpen) return null;
-
-  // Input validation uses the shared @/lib/validate utility.
-  // Supabase communicates via parameterized JSON payloads (no raw SQL),
-  // so these validators primarily guard against XSS and data integrity issues.
+    setError(null);
+    setSuccess(null);
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+  }, [mode]);
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -57,7 +40,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/lms/overview`,
         },
       });
       if (err) throw err;
@@ -98,33 +81,41 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
     try {
       if (mode === "signin") {
         const { error: err } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
         if (err) throw err;
-        
+
         setSuccess("Signed in successfully!");
         setTimeout(() => {
-          onClose();
-        }, 1500);
+          router.replace("/lms/overview");
+        }, 1200);
       } else if (mode === "signup") {
+        // Enforce parent-invited email restriction via Server Action
+        const inviteCheck = await checkStudentInvitation(email);
+        if (!inviteCheck.success) {
+          setError(inviteCheck.error!);
+          setLoading(false);
+          return;
+        }
+
+        // Proceed to sign up in Supabase
         const { error: err } = await supabase.auth.signUp({
           email: sanitizeText(email).trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/lms/overview`,
           },
         });
         if (err) throw err;
 
-        setSuccess("Account created! Redirecting you to the home page...");
+        setSuccess("Account created successfully!");
         setTimeout(() => {
-          onClose();
-          window.location.href = "/";
+          router.replace("/lms/overview");
         }, 1500);
       } else if (mode === "forgot") {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/lms/overview`,
         });
         if (err) throw err;
 
@@ -138,47 +129,34 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Blurred Backdrop */}
-      <div 
-        onClick={onClose}
-        className="absolute inset-0 bg-[#0f2347]/65 backdrop-blur-md transition-opacity duration-300 animate-fade-in"
-      />
-      
-      {/* Modal Card */}
-      <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 md:p-8 shadow-2xl border border-slate-100 z-10 animate-scale-up overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Absolute Close Button at top-right corner of card */}
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 hover:bg-slate-100 hover:text-secondary text-text-muted transition-colors cursor-pointer focus:outline-none z-20"
-        >
-          <IconX className="w-4 h-4" />
-        </button>
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[#F5F8FF]">
 
-        {/* Header */}
+      {/* Modal Card container replicating AuthModal design exactly */}
+      <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 md:p-8 shadow-2xl border border-slate-100 z-10 flex flex-col max-h-[95vh] overflow-y-auto premium-scrollbar">
+        
+        {/* Header logo & title matching screenshot */}
         <div className="pb-2 mb-1 flex flex-col items-center">
-          <div className="font-heading text-2xl font-extrabold tracking-tight text-primary mb-1">
-            Tuto<span className="text-secondary">board</span>
+          <div className="font-heading text-2xl font-extrabold tracking-tight text-[#1B3A6B] mb-1">
+            Tuto<span className="text-[#2F7FE8]">board</span>
           </div>
-          {/* Repositioned Divider Line */}
-          <div className="border-b border-slate-100 w-full mb-2"></div>
           
-          <h2 className="font-heading text-base font-bold text-text-muted">
+          {/* Divider Line */}
+          <div className="border-b border-slate-100 w-full mb-3"></div>
+          
+          <h2 className="font-heading text-base font-bold text-[#4A5A7A]">
             {mode === "signin" && "Welcome Back"}
             {mode === "signup" && "Create Account"}
             {mode === "forgot" && "Reset Password"}
           </h2>
         </div>
 
-
-
-        {/* Google Sign In & OR Divider (Static, not scrollable) */}
+        {/* Google Sign In & OR Divider */}
         {mode !== "forgot" && (
           <div className="mb-4 flex-shrink-0">
             <button
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3 border border-slate-200 hover:border-slate-300 rounded-lg bg-white text-primary text-xs font-semibold hover:bg-slate-50 hover:shadow-sm transition-all cursor-pointer mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-3 py-3 border border-slate-200 hover:border-slate-300 rounded-lg bg-white text-[#1B3A6B] text-xs font-semibold hover:bg-slate-50 hover:shadow-sm transition-all cursor-pointer mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -197,12 +175,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
           </div>
         )}
 
-        {/* Scrollable Form Container */}
-        <div className="overflow-y-auto pr-1 flex-1 premium-scrollbar">
+        {/* Form Container */}
+        <div className="flex-1 overflow-y-auto pr-1 premium-scrollbar">
           <form onSubmit={handleSubmit} className="space-y-4">
+            
             {/* Email Field */}
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Email Address</label>
+              <label className="text-[10px] font-bold text-[#4A5A7A] uppercase tracking-wider">Email Address</label>
               <input
                 type="email"
                 value={email}
@@ -210,14 +189,14 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
                 placeholder="name@email.com"
                 disabled={loading}
                 required
-                className="w-full text-xs p-3.5 border border-slate-200 focus:border-secondary focus:ring-1 focus:ring-secondary/20 rounded-lg outline-none text-primary font-sans transition-all disabled:opacity-50"
+                className="w-full text-xs p-3.5 border border-slate-200 focus:border-[#2F7FE8] focus:ring-1 focus:ring-[#2F7FE8]/20 rounded-lg outline-none text-[#1B3A6B] font-sans transition-all disabled:opacity-50"
               />
             </div>
 
             {/* Password Field */}
             {mode !== "forgot" && (
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Password</label>
+                <label className="text-[10px] font-bold text-[#4A5A7A] uppercase tracking-wider">Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -226,12 +205,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
                     placeholder="••••••••"
                     disabled={loading}
                     required
-                    className="w-full text-xs p-3.5 pr-10 border border-slate-200 focus:border-secondary focus:ring-1 focus:ring-secondary/20 rounded-lg outline-none text-primary font-sans transition-all disabled:opacity-50"
+                    className="w-full text-xs p-3.5 pr-10 border border-slate-200 focus:border-[#2F7FE8] focus:ring-1 focus:ring-[#2F7FE8]/20 rounded-lg outline-none text-[#1B3A6B] font-sans transition-all disabled:opacity-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-secondary cursor-pointer focus:outline-none"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-[#2F7FE8] cursor-pointer focus:outline-none"
                   >
                     {showPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
                   </button>
@@ -239,10 +218,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
               </div>
             )}
 
-            {/* Confirm Password Field (Sign Up Mode) */}
+            {/* Re-enter Password (Sign Up Mode only) */}
             {mode === "signup" && (
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Re-enter Password</label>
+                <label className="text-[10px] font-bold text-[#4A5A7A] uppercase tracking-wider">Re-enter Password</label>
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? "text" : "password"}
@@ -251,12 +230,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
                     placeholder="••••••••"
                     disabled={loading}
                     required
-                    className="w-full text-xs p-3.5 pr-10 border border-slate-200 focus:border-secondary focus:ring-1 focus:ring-secondary/20 rounded-lg outline-none text-primary font-sans transition-all disabled:opacity-50"
+                    className="w-full text-xs p-3.5 pr-10 border border-slate-200 focus:border-[#2F7FE8] focus:ring-1 focus:ring-[#2F7FE8]/20 rounded-lg outline-none text-[#1B3A6B] font-sans transition-all disabled:opacity-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-secondary cursor-pointer focus:outline-none"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-[#2F7FE8] cursor-pointer focus:outline-none"
                   >
                     {showConfirmPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
                   </button>
@@ -267,36 +246,33 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
             {/* Remember Me & Forgot Password Links */}
             {mode === "signin" && (
               <div className="flex items-center justify-between text-xs pt-1">
-                <label className="flex items-center gap-2 text-text-muted cursor-pointer font-medium select-none">
+                <label className="flex items-center gap-2 text-[#4A5A7A] cursor-pointer font-medium select-none">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 border border-slate-300 rounded text-secondary focus:ring-secondary/30"
+                    className="w-4 h-4 border border-slate-300 rounded text-[#2F7FE8] focus:ring-[#2F7FE8]/30"
                   />
                   Remember me
                 </label>
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode("forgot");
-                    setError(null);
-                  }}
-                  className="font-semibold text-secondary hover:text-secondary/80 hover:underline cursor-pointer focus:outline-none"
+                  onClick={() => setMode("forgot")}
+                  className="font-semibold text-[#2F7FE8] hover:text-[#2F7FE8]/80 hover:underline cursor-pointer focus:outline-none"
                 >
                   Forgot password?
                 </button>
               </div>
             )}
 
-            {/* Alerts as simple plain text */}
+            {/* Alerts */}
             {error && (
-              <div className="text-red-600 text-xs font-semibold animate-fade-in pb-2 text-center">
+              <div className="text-red-600 text-xs font-semibold animate-fade-in pb-1 text-center">
                 {error}
               </div>
             )}
             {success && (
-              <div className="text-green-600 text-xs font-semibold animate-fade-in pb-2 text-center">
+              <div className="text-emerald-600 text-xs font-semibold animate-fade-in pb-1 text-center">
                 {success}
               </div>
             )}
@@ -305,7 +281,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer mt-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 bg-[#1B3A6B] hover:bg-[#1B3A6B]/95 text-white text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer mt-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -324,16 +300,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
         </div>
 
         {/* Footer toggles */}
-        <div className="pt-4 mt-4 border-t border-slate-100 text-center text-xs text-text-muted font-medium">
+        <div className="pt-4 mt-4 border-t border-slate-100 text-center text-xs text-[#4A5A7A] font-medium">
           {mode === "signin" && (
             <p>
               New to Tutoboard?{" "}
               <button
-                onClick={() => {
-                  setMode("signup");
-                  setError(null);
-                }}
-                className="font-bold text-secondary hover:text-secondary/80 cursor-pointer focus:outline-none"
+                onClick={() => setMode("signup")}
+                className="font-bold text-[#2F7FE8] hover:text-[#2F7FE8]/80 cursor-pointer focus:outline-none"
               >
                 Create account
               </button>
@@ -343,11 +316,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
             <p>
               Already have an account?{" "}
               <button
-                onClick={() => {
-                  setMode("signin");
-                  setError(null);
-                }}
-                className="font-bold text-secondary hover:text-secondary/80 cursor-pointer focus:outline-none"
+                onClick={() => setMode("signin")}
+                className="font-bold text-[#2F7FE8] hover:text-[#2F7FE8]/80 cursor-pointer focus:outline-none"
               >
                 Sign In
               </button>
@@ -355,11 +325,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
           )}
           {mode === "forgot" && (
             <button
-              onClick={() => {
-                setMode("signin");
-                setError(null);
-              }}
-              className="font-bold text-secondary hover:text-secondary/80 cursor-pointer focus:outline-none"
+              onClick={() => setMode("signin")}
+              className="font-bold text-[#2F7FE8] hover:text-[#2F7FE8]/80 cursor-pointer focus:outline-none"
             >
               Back to Sign In
             </button>

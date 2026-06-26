@@ -1,18 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import {
-  IconSend,
-  IconMessageCircle,
-  IconHeadset,
-  IconUser,
-  IconChevronLeft,
+  IconSend, IconMessageCircle, IconHeadset, IconUser, IconChevronLeft,
 } from "@tabler/icons-react";
-import { getChildEnrolledMentors } from "@/app/actions";
+import { getStudentMentors } from "@/app/actions";
 import { validateMessage, sanitizeText } from "@/lib/validate";
 
-// ─── Types ────────────────────────────────────────────────────────
 type Contact = {
   id: string;
   name: string;
@@ -24,7 +18,7 @@ type Contact = {
 
 type Message = {
   id: string;
-  sender: "parent" | "contact";
+  sender: "student" | "contact";
   text: string;
   time: string;
 };
@@ -45,12 +39,11 @@ function colorFor(id: string) {
   const hash = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
-
 function nowTime() {
   return new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────
+// ─── Skeleton ──────────────────────────────────────────────────────
 function MessagesSkeleton() {
   return (
     <div className="flex h-[calc(100vh-220px)] min-h-[500px] bg-white rounded-2xl border border-[#D0DCF5] overflow-hidden">
@@ -78,17 +71,9 @@ function MessagesSkeleton() {
   );
 }
 
-// ─── Contact list item ─────────────────────────────────────────────
-function ContactItem({
-  contact,
-  active,
-  lastMsg,
-  onClick,
-}: {
-  contact: Contact;
-  active: boolean;
-  lastMsg?: string;
-  onClick: () => void;
+// ─── Contact item ──────────────────────────────────────────────────
+function ContactItem({ contact, active, lastMsg, onClick }: {
+  contact: Contact; active: boolean; lastMsg?: string; onClick: () => void;
 }) {
   return (
     <button
@@ -104,41 +89,29 @@ function ContactItem({
         {contact.isSupport ? <IconHeadset className="w-5 h-5" /> : contact.initials}
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-[13px] font-bold truncate ${active ? "text-[#0C447C]" : "text-[#1B3A6B]"}`}>
-          {contact.name}
-        </p>
-        <p className="text-[11px] text-[#4A5A7A] truncate">
-          {lastMsg ?? contact.subject}
-        </p>
+        <p className={`text-[13px] font-bold truncate ${active ? "text-[#0C447C]" : "text-[#1B3A6B]"}`}>{contact.name}</p>
+        <p className="text-[11px] text-[#4A5A7A] truncate">{lastMsg ?? contact.subject}</p>
       </div>
     </button>
   );
 }
 
 // ─── Chat bubble ──────────────────────────────────────────────────
-function ChatBubble({
-  msg,
-  isParent,
-}: {
-  msg: Message;
-  isParent: boolean;
-}) {
+function ChatBubble({ msg, isStudent }: { msg: Message; isStudent: boolean }) {
   return (
-    <div className={`flex gap-2.5 items-end ${isParent ? "flex-row-reverse" : ""}`}>
-      {!isParent && (
+    <div className={`flex gap-2.5 items-end ${isStudent ? "flex-row-reverse" : ""}`}>
+      {!isStudent && (
         <div className="w-7 h-7 rounded-full bg-[#E6F1FB] flex items-center justify-center shrink-0 mb-0.5">
           <IconUser className="w-4 h-4 text-[#2F7FE8]" />
         </div>
       )}
-      <div
-        className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed ${
-          isParent
-            ? "bg-[#2F7FE8] text-white rounded-br-sm"
-            : "bg-[#F5F8FF] text-[#1B3A6B] rounded-bl-sm"
-        }`}
-      >
+      <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed ${
+        isStudent
+          ? "bg-[#2F7FE8] text-white rounded-br-sm"
+          : "bg-[#F5F8FF] text-[#1B3A6B] rounded-bl-sm"
+      }`}>
         {msg.text}
-        <p className={`text-[10px] mt-1 ${isParent ? "text-blue-200 text-right" : "text-[#4A5A7A]"}`}>
+        <p className={`text-[10px] mt-1 ${isStudent ? "text-blue-200 text-right" : "text-[#4A5A7A]"}`}>
           {msg.time}
         </p>
       </div>
@@ -147,10 +120,7 @@ function ChatBubble({
 }
 
 // ─── Main page ────────────────────────────────────────────────────
-export default function MessagesPage() {
-  const searchParams = useSearchParams();
-  const childId = searchParams.get("child");
-
+export default function StudentMessagesPage() {
   const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState<Contact[]>([SUPPORT_CONTACT]);
   const [active, setActive] = useState<Contact>(SUPPORT_CONTACT);
@@ -169,9 +139,7 @@ export default function MessagesPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!childId) { setLoading(false); return; }
-    setLoading(true);
-    getChildEnrolledMentors(childId)
+    getStudentMentors()
       .then((mentors: any[]) => {
         const mentorContacts: Contact[] = mentors.map((m) => ({
           id: m.id,
@@ -182,10 +150,10 @@ export default function MessagesPage() {
         }));
         setContacts([SUPPORT_CONTACT, ...mentorContacts]);
       })
+      .catch(() => {})
       .finally(() => setLoading(false));
-  }, [childId]);
+  }, []);
 
-  // Scroll to bottom on new message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [convos, active]);
@@ -203,19 +171,10 @@ export default function MessagesPage() {
     const check = validateMessage(text, { maxLength: 2000 });
     if (!check.valid) return; // silently block oversized / malicious input
     const safeText = sanitizeText(text);
-    const newMsg: Message = {
-      id: `${Date.now()}`,
-      sender: "parent",
-      text: safeText,
-      time: nowTime(),
-    };
-    setConvos((prev) => ({
-      ...prev,
-      [active.id]: [...(prev[active.id] ?? []), newMsg],
-    }));
+    const newMsg: Message = { id: `${Date.now()}`, sender: "student", text: safeText, time: nowTime() };
+    setConvos((prev) => ({ ...prev, [active.id]: [...(prev[active.id] ?? []), newMsg] }));
     setDraft("");
 
-    // Auto-reply after 1s for support
     if (active.isSupport) {
       setTimeout(() => {
         const replies = [
@@ -229,18 +188,12 @@ export default function MessagesPage() {
           text: replies[Math.floor(Math.random() * replies.length)],
           time: nowTime(),
         };
-        setConvos((prev) => ({
-          ...prev,
-          [active.id]: [...(prev[active.id] ?? []), reply],
-        }));
+        setConvos((prev) => ({ ...prev, [active.id]: [...(prev[active.id] ?? []), reply] }));
       }, 1000);
     }
   };
 
-  const openContact = (c: Contact) => {
-    setActive(c);
-    setMobileShowChat(true);
-  };
+  const openContact = (c: Contact) => { setActive(c); setMobileShowChat(true); };
 
   if (loading) return <MessagesSkeleton />;
 
@@ -248,59 +201,36 @@ export default function MessagesPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-[22px] font-extrabold font-heading text-[#1B3A6B]">Messages</h1>
-        <p className="text-[13px] text-[#4A5A7A] mt-0.5">Chat with Tutoboard Support or your enrolled mentors.</p>
+        <p className="text-[13px] text-[#4A5A7A] mt-0.5">Chat with your mentors or Tutoboard Support.</p>
       </div>
 
       <div className="flex h-[calc(100vh-220px)] min-h-[520px] bg-white rounded-2xl border border-[#D0DCF5] overflow-hidden shadow-sm">
-        {/* ── Contact list ── */}
-        <aside
-          className={`flex-shrink-0 w-full md:w-64 border-r border-[#D0DCF5] flex flex-col ${
-            mobileShowChat ? "hidden md:flex" : "flex"
-          }`}
-        >
+        {/* Contact list */}
+        <aside className={`flex-shrink-0 w-full md:w-64 border-r border-[#D0DCF5] flex flex-col h-full ${mobileShowChat ? "hidden md:flex" : "flex"}`}>
           <div className="px-4 pt-4 pb-2 border-b border-[#D0DCF5]">
             <p className="text-[11px] font-bold text-[#4A5A7A] uppercase tracking-widest">Conversations</p>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5 premium-scrollbar">
             {contacts.map((c) => (
-              <ContactItem
-                key={c.id}
-                contact={c}
-                active={active.id === c.id}
-                lastMsg={lastMsg(c.id)}
-                onClick={() => openContact(c)}
-              />
+              <ContactItem key={c.id} contact={c} active={active.id === c.id} lastMsg={lastMsg(c.id)} onClick={() => openContact(c)} />
             ))}
-
             {contacts.length === 1 && (
               <div className="px-4 py-6 text-center">
                 <IconMessageCircle className="w-8 h-8 text-[#D0DCF5] mx-auto mb-2" />
-                <p className="text-[11px] text-[#4A5A7A] font-semibold">
-                  Enroll in courses to chat with mentors
-                </p>
+                <p className="text-[11px] text-[#4A5A7A] font-semibold">Enroll in courses to chat with mentors</p>
               </div>
             )}
           </div>
         </aside>
 
-        {/* ── Chat panel ── */}
-        <div
-          className={`flex-1 flex flex-col min-w-0 ${
-            !mobileShowChat ? "hidden md:flex" : "flex"
-          }`}
-        >
-          {/* Chat header */}
+        {/* Chat panel */}
+        <div className={`flex-1 flex flex-col min-w-0 h-full ${!mobileShowChat ? "hidden md:flex" : "flex"}`}>
+          {/* Header */}
           <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#D0DCF5] bg-white shrink-0">
-            <button
-              className="md:hidden p-1.5 rounded-lg hover:bg-[#F5F8FF] transition-colors"
-              onClick={() => setMobileShowChat(false)}
-            >
+            <button className="md:hidden p-1.5 rounded-lg hover:bg-[#F5F8FF] transition-colors" onClick={() => setMobileShowChat(false)}>
               <IconChevronLeft className="w-4 h-4 text-[#4A5A7A]" />
             </button>
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
-              style={{ backgroundColor: active.avatarColor }}
-            >
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{ backgroundColor: active.avatarColor }}>
               {active.isSupport ? <IconHeadset className="w-4.5 h-4.5" /> : active.initials}
             </div>
             <div>
@@ -308,9 +238,7 @@ export default function MessagesPage() {
               <p className="text-[11px] text-[#4A5A7A]">{active.subject}</p>
             </div>
             {active.isSupport && (
-              <span className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-50 text-green-600">
-                ● Online
-              </span>
+              <span className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-50 text-green-600">● Online</span>
             )}
           </div>
 
@@ -319,23 +247,18 @@ export default function MessagesPage() {
             {currentMessages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
                 <IconMessageCircle className="w-10 h-10 text-[#D0DCF5]" />
-                <p className="text-[13px] font-semibold text-[#4A5A7A]">
-                  Start the conversation with {active.name}
-                </p>
+                <p className="text-[13px] font-semibold text-[#4A5A7A]">Start the conversation with {active.name}</p>
               </div>
             )}
             {currentMessages.map((msg) => (
-              <ChatBubble key={msg.id} msg={msg} isParent={msg.sender === "parent"} />
+              <ChatBubble key={msg.id} msg={msg} isStudent={msg.sender === "student"} />
             ))}
             <div ref={bottomRef} />
           </div>
 
           {/* Input */}
           <div className="px-5 py-4 border-t border-[#D0DCF5] bg-white shrink-0">
-            <form
-              onSubmit={(e) => { e.preventDefault(); send(); }}
-              className="flex items-center gap-3"
-            >
+            <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex items-center gap-3">
               <input
                 type="text"
                 value={draft}
