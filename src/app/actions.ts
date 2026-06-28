@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { validateEmail } from "@/lib/validate";
 
 // ----------------------------------------------------
 // HELPERS
@@ -253,12 +254,13 @@ export async function getAdminData() {
     .select("*, profile:profiles(full_name, avatar_url, email)")
     .order("created_at", { ascending: false });
 
-  const mentors = (dbMentors || []).map((m: any) => {
+  const activeMentors = (dbMentors || []).map((m: any) => {
     const name = m.profile?.full_name || "Unknown Mentor";
     const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
     return {
       id: m.id,
       name,
+      email: m.profile?.email || "",
       subject: m.expertise.join(" & "),
       rating: Number(m.rating),
       students: 420,
@@ -272,6 +274,37 @@ export async function getAdminData() {
       bio: m.bio || "",
     };
   });
+
+  // Get pending invitations
+  const { data: dbInvites } = await supabase
+    .from("mentor_invitations")
+    .select("*")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  const pendingInvites = (dbInvites || []).map((inv: any) => {
+    const name = inv.full_name || "Pending Mentor";
+    const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+    return {
+      id: `inv-${inv.id}`,
+      name,
+      email: inv.email,
+      subject: inv.expertise.join(" & "),
+      rating: 5.0,
+      students: 0,
+      courses: 0,
+      rate: Number(inv.hourly_rate),
+      verified: false,
+      avatarText: init,
+      avatarBg: "#9BA8C0",
+      qualification: inv.qualification || "Educator",
+      experience: inv.experience || 1,
+      bio: "Invitation pending. Ready for sign up.",
+      isInvitation: true,
+    };
+  });
+
+  const mentors = [...pendingInvites, ...activeMentors];
 
   return {
     settings: settings || {
@@ -503,46 +536,48 @@ export async function toggleSessionStatus(id: string, currentStatus: string) {
 
 export async function upsertMentor(mentor: any) {
   const supabase = createAdminClient();
-  const adminClient = createAdminClient();
 
   const isNew = !mentor.id || mentor.id.startsWith("m-");
 
   if (isNew) {
-    const email = `${mentor.name.toLowerCase().replace(/[^a-z0-9]/g, "")}_${Date.now()}@tutoboard.com`;
-    const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
-      email,
-      password: "password123",
-      email_confirm: true,
-      user_metadata: {
-        full_name: mentor.name,
-        role: "mentor",
-      },
-    });
-
-    if (authError || !authUser.user) {
-      console.error("DEBUG AUTH ERROR:", authError);
-      throw new Error(authError ? `AuthError: ${authError.message || JSON.stringify(authError)}` : "Failed to create authentication profile.");
-    }
-
-    const mentorId = authUser.user.id;
-
     const expertiseArray = mentor.subject
       ? mentor.subject.split("&").map((s: string) => s.trim())
       : ["Mathematics"];
 
-    const { error: mentorUpdateErr } = await supabase
-      .from("mentors")
+    const { error } = await supabase
+      .from("mentor_invitations")
+      .insert([
+        {
+          email: mentor.email.trim().toLowerCase(),
+          full_name: mentor.name,
+          hourly_rate: Number(mentor.rate || 0.00),
+          expertise: expertiseArray,
+          qualification: mentor.qualification || "Educator",
+          experience: Number(mentor.experience || 1),
+          status: "pending"
+        }
+      ]);
+
+    if (error) throw new Error(error.message);
+  } else if (mentor.id.startsWith("inv-")) {
+    const dbId = mentor.id.replace("inv-", "");
+    const expertiseArray = mentor.subject
+      ? mentor.subject.split("&").map((s: string) => s.trim())
+      : ["Mathematics"];
+
+    const { error } = await supabase
+      .from("mentor_invitations")
       .update({
-        bio: mentor.bio || "",
+        email: mentor.email.trim().toLowerCase(),
+        full_name: mentor.name,
+        hourly_rate: Number(mentor.rate || 0.00),
         expertise: expertiseArray,
-        hourly_rate: Number(mentor.rate),
         qualification: mentor.qualification || "Educator",
         experience: Number(mentor.experience || 1),
-        verified: mentor.verified || false,
       })
-      .eq("id", mentorId);
+      .eq("id", dbId);
 
-    if (mentorUpdateErr) throw new Error(mentorUpdateErr.message);
+    if (error) throw new Error(error.message);
   } else {
     const expertiseArray = mentor.subject
       ? mentor.subject.split("&").map((s: string) => s.trim())
@@ -550,7 +585,10 @@ export async function upsertMentor(mentor: any) {
 
     const { error: profileErr } = await supabase
       .from("profiles")
-      .update({ full_name: mentor.name })
+      .update({ 
+        full_name: mentor.name,
+        email: mentor.email?.trim().toLowerCase()
+      })
       .eq("id", mentor.id);
 
     if (profileErr) throw new Error(profileErr.message);
@@ -577,8 +615,17 @@ export async function upsertMentor(mentor: any) {
 
 export async function deleteMentor(id: string) {
   const adminClient = createAdminClient();
-  const { error } = await adminClient.auth.admin.deleteUser(id);
-  if (error) throw new Error(error.message);
+  if (id.startsWith("inv-")) {
+    const dbId = id.replace("inv-", "");
+    const { error } = await adminClient
+      .from("mentor_invitations")
+      .delete()
+      .eq("id", dbId);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await adminClient.auth.admin.deleteUser(id);
+    if (error) throw new Error(error.message);
+  }
   revalidatePath("/");
   revalidatePath("/admin");
   return { success: true };
@@ -2570,4 +2617,652 @@ export async function getStudentMentors() {
     }
   }
   return Object.values(mentorMap);
+}
+
+// ----------------------------------------------------
+// MENTOR DASHBOARD ACTIONS
+// ----------------------------------------------------
+
+export async function getMentorOverviewStats() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const todayStart = new Date();
+  todayStart.setHours(0,0,0,0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23,59,59,999);
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  // Run queries in parallel
+  const [
+    todayClassesRes,
+    upcomingClassesRes,
+    pendingAssignmentsRes,
+    participationsRes,
+    bookingsRes
+  ] = await Promise.all([
+    supabase
+      .from("scheduled_classes")
+      .select("id")
+      .eq("mentor_id", user.id)
+      .eq("status", "scheduled")
+      .gte("scheduled_at", todayStart.toISOString())
+      .lte("scheduled_at", todayEnd.toISOString()),
+      
+    supabase
+      .from("scheduled_classes")
+      .select("id")
+      .eq("mentor_id", user.id)
+      .eq("status", "scheduled")
+      .gt("scheduled_at", new Date().toISOString()),
+      
+    supabase
+      .from("assignments")
+      .select("id")
+      .eq("created_by", user.id)
+      .eq("status", "submitted"),
+      
+    supabase
+      .from("chat_participants")
+      .select("chat_room_id")
+      .eq("user_id", user.id),
+      
+    supabase
+      .from("bookings")
+      .select(`
+        amount_paid,
+        session:sessions(mentor_id),
+        course:courses(mentor_id)
+      `)
+      .eq("payment_status", "paid")
+      .gte("created_at", startOfMonth.toISOString())
+  ]);
+
+  const todayClasses = todayClassesRes.data;
+  const upcomingClasses = upcomingClassesRes.data;
+  const pendingAssignments = pendingAssignmentsRes.data;
+  const participations = participationsRes.data;
+  const bookings = bookingsRes.data;
+
+  // Unread messages
+  const roomIds = (participations || []).map(p => p.chat_room_id);
+  let unreadCount = 0;
+  if (roomIds.length > 0) {
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .in("chat_room_id", roomIds)
+      .neq("sender_id", user.id)
+      .gte("created_at", last24h);
+    unreadCount = count || 0;
+  }
+
+  // Earnings this month
+  const earningsThisMonth = (bookings || []).reduce((acc: number, b: any) => {
+    const targetMentorId = b.session?.mentor_id || b.course?.mentor_id;
+    if (targetMentorId === user.id) {
+      return acc + Number(b.amount_paid);
+    }
+    return acc;
+  }, 0);
+
+  return {
+    todayClassesCount: todayClasses?.length || 0,
+    upcomingClassesCount: upcomingClasses?.length || 0,
+    pendingAssignmentsCount: pendingAssignments?.length || 0,
+    unreadMessagesCount: unreadCount,
+    earningsThisMonth,
+  };
+}
+
+export async function getMentorClasses() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: classes, error } = await supabase
+    .from("scheduled_classes")
+    .select(`
+      *,
+      student:students(
+        id,
+        profile:profiles(full_name, avatar_url, email)
+      )
+    `)
+    .eq("mentor_id", user.id)
+    .order("scheduled_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (classes || []).map((c: any) => ({
+    ...c,
+    studentName: c.student?.profile?.full_name || "Unknown Student",
+    studentEmail: c.student?.profile?.email || "",
+    studentAvatar: c.student?.profile?.avatar_url || "",
+  }));
+}
+
+export async function createScheduledClass(data: {
+  bookingId: string;
+  studentId: string;
+  title: string;
+  subject: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  joinUrl?: string;
+  iconName?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: newClass, error } = await supabase
+    .from("scheduled_classes")
+    .insert([
+      {
+        booking_id: data.bookingId,
+        student_id: data.studentId,
+        mentor_id: user.id,
+        title: data.title,
+        subject: data.subject,
+        scheduled_at: data.scheduledAt,
+        duration_minutes: data.durationMinutes,
+        join_url: data.joinUrl || null,
+        icon_name: data.iconName || "video",
+        status: "scheduled",
+      }
+    ])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/mentor/classes");
+  revalidatePath("/mentor/overview");
+  return newClass;
+}
+
+export async function updateScheduledClass(
+  classId: string,
+  updates: {
+    title?: string;
+    subject?: string;
+    scheduledAt?: string;
+    durationMinutes?: number;
+    joinUrl?: string;
+    status?: string;
+  }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const dbUpdates: any = {};
+  if (updates.title !== undefined) dbUpdates.title = updates.title;
+  if (updates.subject !== undefined) dbUpdates.subject = updates.subject;
+  if (updates.scheduledAt !== undefined) dbUpdates.scheduled_at = updates.scheduledAt;
+  if (updates.durationMinutes !== undefined) dbUpdates.duration_minutes = updates.durationMinutes;
+  if (updates.joinUrl !== undefined) dbUpdates.join_url = updates.joinUrl;
+  if (updates.status !== undefined) dbUpdates.status = updates.status;
+
+  const { data, error } = await supabase
+    .from("scheduled_classes")
+    .update(dbUpdates)
+    .eq("id", classId)
+    .eq("mentor_id", user.id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/mentor/classes");
+  revalidatePath("/mentor/overview");
+  return data;
+}
+
+export async function cancelScheduledClass(classId: string) {
+  return updateScheduledClass(classId, { status: "cancelled" });
+}
+
+export async function getMentorStudents() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // Fetch bookings for sessions or courses taught by this mentor
+  const { data: bookings, error } = await supabase
+    .from("bookings")
+    .select(`
+      id,
+      status,
+      payment_status,
+      created_at,
+      student_id,
+      student:students(
+        grade_level,
+        school_name,
+        profile:profiles(full_name, email, avatar_url),
+        parent:parents(profile:profiles(full_name, email, phone))
+      ),
+      session:sessions(title, subject, mentor_id),
+      course:courses(title, subject, mentor_id)
+    `);
+
+  if (error) throw new Error(error.message);
+
+  const studentsMap: Record<string, any> = {};
+  for (const b of (bookings || []) as any[]) {
+    const mentorId = b.session?.mentor_id || b.course?.mentor_id;
+    if (mentorId !== user.id) continue;
+
+    const studentId = b.student_id;
+    const studentInfo = b.student;
+    if (!studentInfo) continue;
+
+    if (!studentsMap[studentId]) {
+      studentsMap[studentId] = {
+        id: studentId,
+        bookingId: b.id,
+        name: studentInfo.profile?.full_name || "Student",
+        email: studentInfo.profile?.email || "",
+        avatarUrl: studentInfo.profile?.avatar_url || "",
+        grade: studentInfo.grade_level || "Class 10",
+        school: studentInfo.school_name || "High School",
+        parentName: studentInfo.parent?.profile?.full_name || "Parent",
+        parentPhone: studentInfo.parent?.profile?.phone || "N/A",
+        subject: b.session?.subject || b.course?.subject || "General",
+        enrolledAt: new Date(b.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+        totalClasses: 0,
+        attendedClasses: 0,
+      };
+    }
+  }
+
+  // Count attendance/classes for each student
+  const studentIds = Object.keys(studentsMap);
+  if (studentIds.length > 0) {
+    const { data: attendance } = await supabase
+      .from("attendance_records")
+      .select("student_id, status")
+      .in("student_id", studentIds);
+
+    const { data: classes } = await supabase
+      .from("scheduled_classes")
+      .select("student_id")
+      .eq("mentor_id", user.id)
+      .in("student_id", studentIds);
+
+    for (const att of (attendance || [])) {
+      if (studentsMap[att.student_id]) {
+        if (att.status === "present") {
+          studentsMap[att.student_id].attendedClasses++;
+        }
+      }
+    }
+
+    for (const cl of (classes || [])) {
+      if (studentsMap[cl.student_id]) {
+        studentsMap[cl.student_id].totalClasses++;
+      }
+    }
+  }
+
+  return Object.values(studentsMap);
+}
+
+export async function getMentorAssignments() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: assignments, error } = await supabase
+    .from("assignments")
+    .select(`
+      *,
+      student:students(
+        id,
+        profile:profiles(full_name, email, avatar_url)
+      )
+    `)
+    .eq("created_by", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (assignments || []).map((a: any) => ({
+    ...a,
+    studentName: a.student?.profile?.full_name || "Student",
+    studentAvatar: a.student?.profile?.avatar_url || "",
+  }));
+}
+
+export async function createAssignment(data: {
+  studentId: string;
+  bookingId: string;
+  title: string;
+  subject: string;
+  dueDate: string;
+  description?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: newAssign, error } = await supabase
+    .from("assignments")
+    .insert([
+      {
+        student_id: data.studentId,
+        booking_id: data.bookingId,
+        title: data.title,
+        subject: data.subject,
+        due_date: data.dueDate,
+        feedback: data.description || null,
+        created_by: user.id,
+        status: "pending",
+      }
+    ])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/mentor/assignments");
+  return newAssign;
+}
+
+export async function reviewAssignmentSubmission(assignmentId: string, score: number, feedback: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data, error } = await supabase
+    .from("assignments")
+    .update({
+      score,
+      feedback,
+      status: "reviewed",
+    })
+    .eq("id", assignmentId)
+    .eq("created_by", user.id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/mentor/assignments");
+  revalidatePath("/mentor/overview");
+  return data;
+}
+
+export async function getMentorResources() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: resources, error } = await supabase
+    .from("resources")
+    .select(`
+      *,
+      student:students(
+        profile:profiles(full_name)
+      )
+    `)
+    .eq("mentor_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (resources || []).map((r: any) => ({
+    ...r,
+    studentName: r.student?.profile?.full_name || "All Students",
+  }));
+}
+
+export async function createResource(data: {
+  name: string;
+  type: "pdf" | "video" | "link" | "document";
+  subject: string;
+  url: string;
+  size?: string;
+  studentId?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: resource, error } = await supabase
+    .from("resources")
+    .insert([
+      {
+        mentor_id: user.id,
+        student_id: data.studentId || null,
+        name: data.name,
+        type: data.type,
+        subject: data.subject,
+        url: data.url,
+        size: data.size || null,
+      }
+    ])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/mentor/resources");
+  return resource;
+}
+
+export async function deleteResource(resourceId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { error } = await supabase
+    .from("resources")
+    .delete()
+    .eq("id", resourceId)
+    .eq("mentor_id", user.id);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/mentor/resources");
+  return { success: true };
+}
+
+export async function saveAttendanceRecord(data: {
+  studentId: string;
+  scheduledClassId: string;
+  bookingId?: string;
+  sessionDate: string;
+  subject: string;
+  status: "present" | "absent" | "excused";
+  notes?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // Check if attendance already exists for this scheduled class
+  const { data: existing } = await supabase
+    .from("attendance_records")
+    .select("id")
+    .eq("scheduled_class_id", data.scheduledClassId)
+    .eq("student_id", data.studentId)
+    .limit(1)
+    .single();
+
+  let result;
+  if (existing) {
+    const { data: updated, error } = await supabase
+      .from("attendance_records")
+      .update({
+        status: data.status,
+        notes: data.notes || null,
+      })
+      .eq("id", existing.id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    result = updated;
+  } else {
+    const { data: inserted, error } = await supabase
+      .from("attendance_records")
+      .insert([
+        {
+          student_id: data.studentId,
+          scheduled_class_id: data.scheduledClassId,
+          booking_id: data.bookingId || null,
+          session_date: data.sessionDate,
+          subject: data.subject,
+          status: data.status,
+          notes: data.notes || null,
+        }
+      ])
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    result = inserted;
+  }
+
+  // Mark the scheduled class as completed as well
+  await supabase
+    .from("scheduled_classes")
+    .update({ status: "completed" })
+    .eq("id", data.scheduledClassId);
+
+  revalidatePath("/mentor/attendance");
+  revalidatePath("/mentor/classes");
+  return result;
+}
+
+export async function getMentorEarnings() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // Fetch all paid bookings for sessions or courses taught by this mentor
+  const { data: bookings, error } = await supabase
+    .from("bookings")
+    .select(`
+      id,
+      status,
+      payment_status,
+      amount_paid,
+      created_at,
+      student:students(
+        profile:profiles(full_name)
+      ),
+      session:sessions(title, subject, mentor_id, price),
+      course:courses(title, subject, mentor_id, price)
+    `)
+    .eq("payment_status", "paid");
+
+  if (error) throw new Error(error.message);
+
+  const mentorBookings = (bookings || []).filter((b: any) => {
+    const mentorId = b.session?.mentor_id || b.course?.mentor_id;
+    return mentorId === user.id;
+  });
+
+  const totalEarnings = mentorBookings.reduce((acc, b) => acc + Number(b.amount_paid), 0);
+
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+
+  const thisMonthEarnings = mentorBookings
+    .filter((b) => {
+      const d = new Date(b.created_at);
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    })
+    .reduce((acc, b) => acc + Number(b.amount_paid), 0);
+
+  // Group by month for chart
+  const monthlyData: Record<string, number> = {};
+  for (const b of mentorBookings) {
+    const d = new Date(b.created_at);
+    const monthKey = d.toLocaleString("en-IN", { month: "short", year: "2-digit" });
+    monthlyData[monthKey] = (monthlyData[monthKey] || 0) + Number(b.amount_paid);
+  }
+
+  const chartData = Object.entries(monthlyData).map(([name, amount]) => ({
+    name,
+    amount,
+  })).reverse(); // Order from oldest to newest
+
+  const transactions = mentorBookings.map((b: any) => ({
+    id: b.id,
+    studentName: b.student?.profile?.full_name || "Student",
+    title: b.session?.title || b.course?.title || "Booking",
+    subject: b.session?.subject || b.course?.subject || "General",
+    type: b.session_id ? "1-on-1 Session" : "Course Batch",
+    amount: Number(b.amount_paid),
+    date: new Date(b.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+  }));
+
+  return {
+    totalEarnings,
+    thisMonthEarnings,
+    chartData,
+    transactions,
+  };
+}
+
+export async function getMentorProfile() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, role, avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  const { data: mentor } = await supabase
+    .from("mentors")
+    .select("qualification, expertise")
+    .eq("id", user.id)
+    .single();
+
+  return {
+    id: profile?.id ?? user.id,
+    name: profile?.full_name ?? "Mentor",
+    email: profile?.email ?? user.email ?? "",
+    role: profile?.role ?? "mentor",
+    avatarText: (profile?.full_name ?? "M")
+      .split(" ")
+      .map((w: string) => w[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase(),
+    qualification: mentor?.qualification ?? "Educator",
+    expertise: mentor?.expertise ?? [],
+  };
+}
+
+export async function checkMentorInvitation(email: string) {
+  const emailCheck = validateEmail(email);
+  if (!emailCheck.valid) {
+    return { success: false, error: emailCheck.error };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const { data: invite, error: inviteErr } = await adminClient
+      .from("mentor_invitations")
+      .select("id, status")
+      .eq("email", email.trim().toLowerCase())
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (inviteErr) {
+      return { success: false, error: "Failed to verify invitation status" };
+    }
+
+    if (!invite) {
+      return { success: false, error: "No pending invitation found for this email address. Tutors must be pre-registered by the administrator." };
+    }
+
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || "Invitation check encountered an error" };
+  }
 }

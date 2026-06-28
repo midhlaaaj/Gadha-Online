@@ -18,6 +18,32 @@ export default function Navbar() {
 
   const supabase = createClient();
   const pathname = usePathname();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setRole(null);
+      localStorage.removeItem("tutoboard_user_role_cache");
+      return;
+    }
+
+    const cachedRole = localStorage.getItem("tutoboard_user_role_cache");
+    if (cachedRole) {
+      setRole(cachedRole);
+    }
+
+    supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.role) {
+          setRole(data.role);
+          localStorage.setItem("tutoboard_user_role_cache", data.role);
+        }
+      });
+  }, [user]);
 
   const getDropdownItemClass = (path: string) => {
     const base = "block px-5 py-2.5 text-sm transition-all";
@@ -143,6 +169,13 @@ export default function Navbar() {
     return currentUser?.user_metadata?.full_name || currentUser?.email?.split("@")[0] || "User";
   };
 
+  const getDashboardLink = () => {
+    if (role === "admin") return "/admin";
+    if (role === "mentor") return "/mentor/overview";
+    if (role === "student") return "/lms/overview";
+    return "/dashboard/overview";
+  };
+
   return (
     <>
       <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-40 shadow-sm">
@@ -224,26 +257,30 @@ export default function Navbar() {
                     >
                       Profile
                     </Link>
+                    {(!role || role === "parent") && (
+                      <>
+                        <Link
+                          href="/bookings"
+                          onClick={() => setDropdownOpen(false)}
+                          className={getDropdownItemClass("/bookings")}
+                        >
+                          Bookings
+                        </Link>
+                        <Link
+                          href="/my-children"
+                          onClick={() => setDropdownOpen(false)}
+                          className={getDropdownItemClass("/my-children")}
+                        >
+                          My children
+                        </Link>
+                      </>
+                    )}
                     <Link
-                      href="/bookings"
+                      href={getDashboardLink()}
                       onClick={() => setDropdownOpen(false)}
-                      className={getDropdownItemClass("/bookings")}
+                      className={getDropdownItemClass(getDashboardLink())}
                     >
-                      Bookings
-                    </Link>
-                    <Link
-                      href="/my-children"
-                      onClick={() => setDropdownOpen(false)}
-                      className={getDropdownItemClass("/my-children")}
-                    >
-                      My children
-                    </Link>
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setDropdownOpen(false)}
-                      className={getDropdownItemClass("/dashboard")}
-                    >
-                      Dashboard
+                      {role === "student" ? "LMS Portal" : role === "mentor" ? "Mentor Portal" : role === "admin" ? "Admin Portal" : "Dashboard"}
                     </Link>
                     <div className="border-t border-slate-100 my-1"></div>
                     <button
@@ -339,26 +376,30 @@ export default function Navbar() {
                 >
                   Profile
                 </Link>
+                {(!role || role === "parent") && (
+                  <>
+                    <Link
+                      href="/bookings"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={getMobileDropdownItemClass("/bookings")}
+                    >
+                      Bookings
+                    </Link>
+                    <Link
+                      href="/my-children"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={getMobileDropdownItemClass("/my-children")}
+                    >
+                      My children
+                    </Link>
+                  </>
+                )}
                 <Link
-                  href="/bookings"
+                  href={getDashboardLink()}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={getMobileDropdownItemClass("/bookings")}
+                  className={getMobileDropdownItemClass(getDashboardLink())}
                 >
-                  Bookings
-                </Link>
-                <Link
-                  href="/my-children"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={getMobileDropdownItemClass("/my-children")}
-                >
-                  My children
-                </Link>
-                <Link
-                  href="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={getMobileDropdownItemClass("/dashboard")}
-                >
-                  Dashboard
+                  {role === "student" ? "LMS Portal" : role === "mentor" ? "Mentor Portal" : role === "admin" ? "Admin Portal" : "Dashboard"}
                 </Link>
                 <button
                   onClick={() => {

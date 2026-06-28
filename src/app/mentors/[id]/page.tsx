@@ -313,7 +313,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sessions.slice(0, 4).map((s: any) => (
+                {sessions.slice(0, 2).map((s: any) => (
                   <div key={s.id} className="bg-white border border-border-subtle rounded-xl overflow-hidden hover:shadow-md transition-shadow flex flex-col justify-between p-4">
                     <div>
                       <div className="flex items-center gap-2 mb-2">

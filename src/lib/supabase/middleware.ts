@@ -55,11 +55,42 @@ export async function updateSession(request: NextRequest) {
         .single();
 
       if (profile?.role !== "student") {
-        // If they are not a student (e.g. parent/mentor/admin), redirect to main home page
-        return NextResponse.redirect(new URL("/", request.url));
+        if (pathname !== "/lms/login") {
+          return NextResponse.redirect(new URL("/lms/login", request.url));
+        }
       } else if (pathname === "/lms/login") {
         // If they are a student and on the login page, redirect them to overview
         return NextResponse.redirect(new URL("/lms/overview", request.url));
+      }
+    }
+  }
+
+  if (pathname.startsWith("/mentor")) {
+    if (pathname === "/mentor/login") {
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        if (profile?.role === "mentor") {
+          return NextResponse.redirect(new URL("/mentor/overview", request.url));
+        }
+      }
+      return supabaseResponse;
+    }
+
+    if (!user) {
+      return NextResponse.redirect(new URL("/mentor/login", request.url));
+    } else {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "mentor") {
+        return NextResponse.redirect(new URL("/mentor/login", request.url));
       }
     }
   }

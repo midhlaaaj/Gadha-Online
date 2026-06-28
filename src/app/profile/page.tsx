@@ -431,7 +431,14 @@ export default function ProfilePage() {
                   <div>
                     <h4 className="font-heading text-base font-bold text-[#1B3A6B]">{profile.name}</h4>
                     <p className="text-slate-400 text-[11px] mt-0.5 font-medium">
-                      Parent account · Member since {formatDate(profile.createdAt)}
+                      {profile.role === "mentor"
+                        ? "Mentor account"
+                        : profile.role === "student"
+                        ? "Student account"
+                        : profile.role === "admin"
+                        ? "Admin account"
+                        : "Parent account"}{" "}
+                      · Member since {formatDate(profile.createdAt)}
                     </p>
                   </div>
                 </div>

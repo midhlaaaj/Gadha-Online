@@ -85,6 +85,7 @@ interface Session {
 interface Mentor {
   id: string;
   name: string;
+  email?: string;
   subject: string;
   rating: number;
   students: number;
@@ -96,6 +97,7 @@ interface Mentor {
   qualification: string;
   experience: number;
   bio: string;
+  isInvitation?: boolean;
 }
 
 interface Testimonial {
@@ -303,6 +305,7 @@ export default function AdminPanel() {
       } else if (mode === "mentor") {
         setDrawerForm({
           name: "",
+          email: "",
           subject: "Mathematics",
           rate: 0,
           bio: "",
@@ -1706,7 +1709,7 @@ export default function AdminPanel() {
                           <div>
                             <div className="font-bold text-primary leading-tight">{m.name}</div>
                             <div className="text-[9px] text-text-muted">
-                              {m.qualification} &middot; {m.experience} yrs exp
+                              {m.email} &middot; {m.qualification} &middot; {m.experience} yrs exp
                             </div>
                           </div>
                         </td>
@@ -1716,13 +1719,19 @@ export default function AdminPanel() {
                         <td className="py-3 px-3 text-xs text-text-muted">{m.courses}</td>
                         <td className="py-3 px-3 text-xs text-primary font-semibold">₹{m.rate}</td>
                         <td className="py-3 px-3 text-xs">
-                          <span
-                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                              m.verified ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {m.verified ? "Verified" : "Unverified"}
-                          </span>
+                          {m.isInvitation ? (
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                              Pending Invite
+                            </span>
+                          ) : (
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                m.verified ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {m.verified ? "Verified" : "Unverified"}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-3 text-center">
                           <div className="flex gap-1.5 justify-center">
@@ -2465,6 +2474,16 @@ export default function AdminPanel() {
                       placeholder="e.g. Arjun Kapoor"
                       value={drawerForm.name || ""}
                       onChange={(e) => setDrawerForm({ ...drawerForm, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-primary uppercase">Email Address</label>
+                    <input
+                      className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                      type="email"
+                      placeholder="e.g. arjun@tutoboard.com"
+                      value={drawerForm.email || ""}
+                      onChange={(e) => setDrawerForm({ ...drawerForm, email: e.target.value })}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
