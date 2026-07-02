@@ -634,15 +634,27 @@ function CoursesPageContent() {
                 key={c.id}
                 className="bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between"
               >
-                <div className={`w-full h-36 flex items-center justify-center relative ${getSubjectBgColor(c.subject)}`}>
-                  {c.format === "Live batch" && (
-                    <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-                      LIVE
-                    </div>
-                  )}
-                  {getIconComponent(c.iconName)}
-                </div>
+                {c.coverImageUrl ? (
+                  <div className="w-full h-36 overflow-hidden relative">
+                    {c.format === "Live batch" && (
+                      <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 z-10">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                        LIVE
+                      </div>
+                    )}
+                    <img src={c.coverImageUrl} alt={c.title} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className={`w-full h-36 flex items-center justify-center relative ${getSubjectBgColor(c.subject)}`}>
+                    {c.format === "Live batch" && (
+                      <div className="absolute top-3 left-3 bg-primary text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                        LIVE
+                      </div>
+                    )}
+                    {getIconComponent(c.iconName)}
+                  </div>
+                )}
 
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>

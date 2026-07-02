@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Dashboard · Tutoboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1B3A6B;--blue:#2F7FE8;--gold:#FFC107;
+  --bg:#F5F8FF;--white:#fff;--border:#d0dcf5;
+  --sec:#4a5a7a;--muted:#9aaecf;--r:12px;
+}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;}
+
+/* ── NAV ── */
+.topnav{background:var(--white);border-bottom:.5px solid var(--border);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100;}
+.topnav-logo{font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:var(--navy);}
+.topnav-logo span{color:var(--blue);}
+.topnav-links{display:flex;gap:2px;position:absolute;left:50%;transform:translateX(-50%);}
+.tnl{font-size:13px;font-weight:500;color:var(--sec);padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .15s;}
+.tnl:hover{background:var(--bg);color:var(--navy);}
+.topnav-right{display:flex;align-items:center;gap:12px;}
+.bell-wrap{position:relative;}
+.bell-btn{background:none;border:none;cursor:pointer;color:var(--sec);font-size:20px;display:flex;align-items:center;}
+.bell-btn:hover{color:var(--navy);}
+.bell-dot{position:absolute;top:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:#E24B4A;border:1.5px solid #fff;}
+.notif-panel{position:absolute;top:calc(100% + 10px);right:-8px;width:300px;background:var(--white);border:.5px solid var(--border);border-radius:var(--r);box-shadow:0 10px 32px rgba(27,58,107,.12);z-index:200;display:none;}
+.notif-panel.open{display:block;}
+.np-header{padding:12px 16px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.np-title{font-size:13px;font-weight:600;color:var(--navy);}
+.np-mark{font-size:11px;color:var(--blue);cursor:pointer;font-weight:600;}
+.np-item{display:flex;gap:10px;padding:11px 16px;border-bottom:.5px solid #f0f3fb;cursor:pointer;transition:background .12s;}
+.np-item:last-child{border-bottom:none;}
+.np-item:hover{background:var(--bg);}
+.np-item.unread{background:#f8faff;}
+.np-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.np-text{font-size:11px;color:var(--navy);line-height:1.5;flex:1;}
+.np-text strong{font-weight:600;}
+.np-time{font-size:10px;color:var(--muted);margin-top:2px;}
+.np-udot{width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:4px;}
+.av-wrap{position:relative;}
+.av-btn{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.av{width:32px;height:32px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;color:var(--gold);}
+.av-name{font-size:13px;font-weight:600;color:var(--navy);}
+.av-chev{font-size:13px;color:var(--muted);}
+.nav-dd{position:absolute;top:calc(100% + 10px);right:0;width:200px;background:var(--white);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;display:none;z-index:99;box-shadow:0 8px 24px rgba(27,58,107,.1);}
+.nav-dd.open{display:block;}
+.dd-top{padding:12px 14px;border-bottom:.5px solid #eef2fb;}
+.dd-top b{display:block;font-size:13px;font-weight:600;color:var(--navy);}
+.dd-top small{font-size:11px;color:var(--muted);}
+.ddi{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:12px;font-weight:500;color:var(--sec);cursor:pointer;}
+.ddi:hover{background:var(--bg);color:var(--navy);}
+.ddi i{font-size:15px;color:var(--muted);}
+.ddi:hover i{color:var(--blue);}
+.dd-div{border-top:.5px solid #eef2fb;margin:4px 0;}
+.ddi.out{color:#A32D2D;}
+.ddi.out i{color:#f09595;}
+.ddi.out:hover{background:#FCEBEB;}
+
+/* ── LAYOUT ── */
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 60px);overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--white);border-right:.5px solid var(--border);padding:18px 0;display:flex;flex-direction:column;overflow-y:auto;}
+.sb-section{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 20px;margin-bottom:6px;margin-top:18px;}
+.sb-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:500;color:var(--sec);cursor:pointer;transition:all .15s;user-select:none;}
+.sb-item i{font-size:17px;width:18px;flex-shrink:0;color:var(--muted);transition:color .15s;}
+.sb-item:hover{background:var(--bg);color:var(--navy);}
+.sb-item:hover i{color:var(--navy);}
+.sb-item.active{background:#E6F1FB;color:#0C447C;font-weight:600;}
+.sb-item.active i{color:var(--blue);}
+.sb-badge{margin-left:auto;min-width:18px;height:18px;border-radius:99px;background:var(--blue);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+.sb-divider{height:.5px;background:var(--border);margin:10px 10px;}
+.sb-footer{padding:0 10px;margin-top:auto;}
+.sb-footer-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:500;color:#A32D2D;cursor:pointer;}
+.sb-footer-item:hover{background:#FCEBEB;}
+
+/* ── MAIN ── */
+.main{padding:24px 28px 32px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;max-height:calc(100vh - 60px);scroll-behavior:smooth;}
+.main::-webkit-scrollbar{width:4px;}
+.main::-webkit-scrollbar-track{background:transparent;}
+.main::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* ── TABS ── */
+.tab-page{display:none;flex-direction:column;gap:18px;}
+.tab-page.active{display:flex;}
+
+/* ── PAGE HEADER ── */
+.pg-header{display:flex;align-items:flex-start;justify-content:space-between;}
+.pg-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--navy);margin-bottom:2px;}
+.pg-sub{font-size:12px;color:var(--sec);}
+
+/* ── CARDS ── */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;}
+.card-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.card-link{font-size:11px;font-weight:600;color:var(--blue);cursor:pointer;}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px;}
+.stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.stat-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.stat-num{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--navy);}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+.stat-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;}
+.tag-green{background:#dcfce7;color:#085041;}
+.tag-gold{background:#FFF3CD;color:#7a4d00;}
+.tag-red{background:#fee2e2;color:#991b1b;}
+.tag-blue{background:#E6F1FB;color:#0C447C;}
+
+/* ── OVERVIEW GRID ── */
+.ov-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+.ov-col{display:flex;flex-direction:column;gap:14px;}
+
+/* today's schedule */
+.sched-item{display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border-radius:10px;border:.5px solid var(--border);margin-bottom:8px;}
+.sched-item:last-child{margin-bottom:0;}
+.sched-icon{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.sched-info{flex:1;}
+.sched-title{font-size:13px;font-weight:600;color:var(--navy);}
+.sched-meta{font-size:11px;color:var(--sec);margin-top:2px;}
+.sched-time{font-size:10px;font-weight:700;color:var(--muted);}
+.btn-join{font-size:11px;font-weight:700;padding:6px 14px;border-radius:7px;background:var(--navy);color:#fff;border:none;cursor:pointer;white-space:nowrap;transition:background .15s;}
+.btn-join:hover{background:var(--blue);}
+.btn-join:disabled,.btn-join.disabled{background:var(--border);color:var(--muted);cursor:not-allowed;pointer-events:none;}
+
+/* assignments strip */
+.assign-strip{display:flex;flex-direction:column;gap:0;}
+.as-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid #f0f3fb;}
+.as-item:last-child{border-bottom:none;}
+.as-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dot-red{background:#E24B4A;}
+.dot-gold{background:#FFC107;}
+.as-info{flex:1;}
+.as-title{font-size:12px;font-weight:600;color:var(--navy);}
+.as-meta{font-size:10px;color:var(--muted);margin-top:1px;}
+.as-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;}
+
+/* activity feed */
+.act-item{display:flex;gap:10px;padding:9px 0;border-bottom:.5px solid #f0f3fb;}
+.act-item:last-child{border-bottom:none;}
+.act-ico{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.act-body{flex:1;}
+.act-txt{font-size:11.5px;color:var(--navy);line-height:1.5;}
+.act-txt strong{font-weight:600;}
+.act-when{font-size:10px;color:var(--muted);margin-top:1px;}
+
+/* attendance ring */
+.att-ring-wrap{display:flex;align-items:center;gap:16px;}
+.ring-rel{position:relative;width:80px;height:80px;flex-shrink:0;}
+.ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;color:var(--navy);}
+.att-rows{flex:1;}
+.att-row{display:flex;justify-content:space-between;font-size:11px;color:var(--sec);padding:3px 0;}
+.att-row strong{color:var(--navy);font-weight:600;}
+
+/* ── CLASSES SUB-TABS ── */
+.sub-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.stab{font-size:12px;font-weight:600;padding:7px 16px;border-radius:99px;border:1.5px solid var(--border);color:var(--sec);background:var(--white);cursor:pointer;}
+.stab.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.sub-page{display:none;flex-direction:column;gap:10px;}
+.sub-page.active{display:flex;}
+
+/* class card */
+.class-card{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--white);border:.5px solid var(--border);border-radius:10px;transition:box-shadow .15s;}
+.class-card:hover{box-shadow:0 4px 16px rgba(27,58,107,.07);}
+.class-card.live{border-color:rgba(226,75,74,.25);background:#fffafa;}
+.cc-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.cc-info{flex:1;}
+.cc-title{font-size:13px;font-weight:600;color:var(--navy);}
+.cc-meta{font-size:11px;color:var(--sec);margin-top:3px;}
+.cc-status{font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;}
+.s-live{background:#fee2e2;color:#991b1b;animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.6;}}
+.s-up{background:#E6F1FB;color:#0C447C;}
+.s-done{background:#dcfce7;color:#085041;}
+.s-miss{background:#f0f0f0;color:var(--sec);}
+
+/* recorded session card */
+.rec-card{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--white);border:.5px solid var(--border);border-radius:10px;}
+.rec-thumb{width:80px;height:52px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;position:relative;overflow:hidden;}
+.rec-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(27,58,107,.35);}
+.rec-play i{font-size:22px;color:#fff;}
+.rec-dur{position:absolute;bottom:3px;right:5px;font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.5);padding:1px 5px;border-radius:4px;}
+.rec-info{flex:1;}
+.rec-title{font-size:13px;font-weight:600;color:var(--navy);}
+.rec-meta{font-size:11px;color:var(--sec);margin-top:3px;}
+.btn-watch{font-size:11px;font-weight:600;padding:6px 14px;border-radius:7px;background:var(--bg);color:var(--navy);border:.5px solid var(--border);cursor:pointer;}
+.btn-watch:hover{border-color:var(--navy);}
+
+/* ── ASSIGNMENTS FULL ── */
+.af-card{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--white);border:.5px solid var(--border);border-radius:10px;cursor:pointer;transition:box-shadow .15s;}
+.af-card:hover{box-shadow:0 4px 16px rgba(27,58,107,.07);}
+.af-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.af-info{flex:1;}
+.af-title{font-size:13px;font-weight:600;color:var(--navy);}
+.af-meta{font-size:11px;color:var(--sec);margin-top:3px;}
+.af-r{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
+
+/* assignment detail drawer */
+.drawer-ov{position:fixed;inset:0;background:rgba(27,58,107,.4);z-index:200;display:none;}
+.drawer-ov.open{display:block;}
+.drawer{position:fixed;top:0;right:-480px;width:480px;height:100%;background:var(--white);z-index:201;display:flex;flex-direction:column;transition:right .25s ease;box-shadow:-4px 0 24px rgba(27,58,107,.1);}
+.drawer.open{right:0;}
+.dw-header{padding:18px 22px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.dw-title{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:var(--navy);}
+.dw-close{width:30px;height:30px;border-radius:8px;border:.5px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--sec);}
+.dw-close:hover{border-color:var(--navy);}
+.dw-body{flex:1;overflow-y:auto;padding:20px 22px;}
+.dw-footer{padding:14px 22px;border-top:.5px solid var(--border);flex-shrink:0;}
+.dw-section{margin-bottom:18px;}
+.dw-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;}
+.dw-text{font-size:12px;color:var(--sec);line-height:1.7;}
+.dw-attach{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:8px;border:.5px solid var(--border);margin-bottom:8px;}
+.dw-attach:last-child{margin-bottom:0;}
+.dw-attach i{font-size:16px;color:var(--blue);}
+.dw-attach-name{font-size:12px;font-weight:600;color:var(--navy);flex:1;}
+.dw-attach-size{font-size:10px;color:var(--muted);}
+.btn-dl{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;border:.5px solid var(--border);background:var(--white);color:var(--sec);cursor:pointer;}
+.btn-dl:hover{border-color:var(--blue);color:var(--blue);}
+.upload-zone{border:1.5px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .15s;}
+.upload-zone:hover{border-color:var(--blue);background:#F0F6FF;}
+.upload-zone i{font-size:28px;color:var(--muted);display:block;margin-bottom:8px;}
+.upload-zone .uz-main{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px;}
+.upload-zone .uz-sub{font-size:11px;color:var(--muted);}
+.btn-submit{width:100%;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;padding:12px 0;border-radius:9px;background:var(--navy);color:#fff;border:none;cursor:pointer;}
+.btn-submit:hover{background:var(--blue);}
+.fb-box{background:#F5F8FF;border:.5px solid var(--border);border-radius:9px;padding:14px;}
+.fb-score{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--navy);margin-bottom:6px;}
+.fb-txt{font-size:12px;color:var(--sec);line-height:1.65;}
+
+/* ── RESOURCES ── */
+.res-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.res-search{position:relative;flex:1;min-width:180px;}
+.res-search i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;}
+.res-search input{width:100%;font-family:'Poppins',sans-serif;font-size:12px;padding:8px 10px 8px 32px;border-radius:8px;border:.5px solid var(--border);outline:none;color:var(--navy);}
+.res-search input:focus{border-color:var(--blue);}
+.res-filter{font-family:'Poppins',sans-serif;font-size:12px;padding:8px 12px;border-radius:8px;border:.5px solid var(--border);color:var(--navy);background:var(--white);outline:none;cursor:pointer;}
+.res-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.res-card{display:flex;align-items:center;gap:12px;padding:14px;background:var(--white);border:.5px solid var(--border);border-radius:10px;}
+.res-icon{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.res-info{flex:1;min-width:0;}
+.res-name{font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.res-meta{font-size:10px;color:var(--muted);margin-top:2px;}
+.btn-res-dl{font-size:11px;font-weight:600;padding:6px 12px;border-radius:7px;background:var(--bg);border:.5px solid var(--border);color:var(--sec);cursor:pointer;white-space:nowrap;}
+.btn-res-dl:hover{border-color:var(--blue);color:var(--blue);}
+
+/* ── PERFORMANCE ── */
+.perf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.subj-bars{display:flex;flex-direction:column;gap:12px;}
+.sb-row{display:flex;align-items:center;gap:10px;}
+.sb-name{font-size:12px;font-weight:600;color:var(--navy);width:90px;flex-shrink:0;}
+.sb-track{flex:1;height:7px;background:var(--bg);border-radius:99px;overflow:hidden;}
+.sb-fill{height:100%;border-radius:99px;background:var(--blue);}
+.sb-pct{font-size:11px;font-weight:700;color:var(--navy);width:34px;text-align:right;flex-shrink:0;}
+.score-list{display:flex;flex-direction:column;gap:0;}
+.score-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:.5px solid #f0f3fb;}
+.score-row:last-child{border-bottom:none;}
+.sr-title{font-size:12px;font-weight:600;color:var(--navy);}
+.sr-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.sr-score{font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:var(--navy);}
+.sr-score.hi{color:#085041;}
+.sr-score.lo{color:#A32D2D;}
+.streak-box{display:flex;align-items:center;gap:12px;padding:16px;background:#FFF3CD;border:.5px solid #FAC775;border-radius:10px;}
+.streak-num{font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:#7a4d00;}
+.export-btn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:8px 16px;border-radius:8px;border:.5px solid var(--border);background:var(--white);color:var(--sec);cursor:pointer;}
+.export-btn:hover{border-color:var(--navy);color:var(--navy);}
+
+/* ── MESSAGES ── */
+.msg-shell{display:grid;grid-template-columns:240px 1fr;background:var(--white);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;height:calc(100vh - 220px);min-height:460px;}
+.msg-list{border-right:.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+.msg-search-wrap{padding:12px;border-bottom:.5px solid var(--border);}
+.msg-search{width:100%;font-family:'Poppins',sans-serif;font-size:11px;padding:7px 10px;border-radius:7px;border:.5px solid var(--border);outline:none;color:var(--navy);}
+.msg-search:focus{border-color:var(--blue);}
+.msg-tutor{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:.5px solid #f5f7fc;transition:background .12s;}
+.msg-tutor:hover{background:var(--bg);}
+.msg-tutor.active{background:#E6F1FB;}
+.mt-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;}
+.mt-info{flex:1;min-width:0;}
+.mt-name{font-size:12px;font-weight:600;color:var(--navy);}
+.mt-prev{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mt-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.mt-time{font-size:9px;color:var(--muted);}
+.mt-badge{min-width:16px;height:16px;border-radius:99px;background:var(--blue);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+.msg-thread{display:flex;flex-direction:column;flex:1;}
+.thread-hdr{padding:12px 18px;border-bottom:.5px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.th-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;color:#fff;}
+.th-name{font-size:13px;font-weight:600;color:var(--navy);}
+.th-sub{font-size:10px;color:var(--muted);}
+.th-online{width:8px;height:8px;border-radius:50%;background:#2ECC71;margin-left:auto;}
+.thread-body{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
+.date-sep{text-align:center;font-size:10px;color:var(--muted);font-weight:600;position:relative;margin:4px 0;}
+.date-sep::before,.date-sep::after{content:'';position:absolute;top:50%;width:calc(50% - 40px);height:.5px;background:var(--border);}
+.date-sep::before{left:0;}
+.date-sep::after{right:0;}
+.bubble{max-width:72%;padding:9px 13px;border-radius:12px;font-size:12px;line-height:1.55;}
+.bubble-in{background:var(--bg);color:var(--navy);align-self:flex-start;border-bottom-left-radius:3px;}
+.bubble-out{background:var(--navy);color:#fff;align-self:flex-end;border-bottom-right-radius:3px;}
+.bubble-sys{align-self:center;background:#FFF3CD;color:#7a4d00;font-size:11px;border-radius:99px;padding:5px 14px;font-weight:600;}
+.bubble-time{font-size:9px;margin-top:3px;}
+.bubble-in .bubble-time{color:var(--muted);}
+.bubble-out .bubble-time{color:rgba(255,255,255,.55);}
+.thread-input-wrap{padding:12px 18px;border-top:.5px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.thread-input{flex:1;font-family:'Poppins',sans-serif;font-size:12px;padding:9px 14px;border:.5px solid var(--border);border-radius:9px;outline:none;color:var(--navy);}
+.thread-input:focus{border-color:var(--blue);}
+.btn-attach{width:34px;height:34px;border-radius:8px;border:.5px solid var(--border);background:var(--white);color:var(--sec);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.btn-attach:hover{border-color:var(--blue);color:var(--blue);}
+.btn-send{width:34px;height:34px;border-radius:8px;background:var(--navy);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.btn-send:hover{background:var(--blue);}
+
+/* ── CHIPS ── */
+.chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{font-size:11px;font-weight:600;padding:6px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--white);color:var(--sec);cursor:pointer;}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty i{font-size:32px;display:block;margin-bottom:10px;opacity:.5;}
+.empty-t{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+.empty-s{font-size:11px;color:var(--sec);}
+</style>
+</head>
+<body>
+
+<!-- ── TOP NAV ── -->
+<div class="topnav">
+  <div class="topnav-logo">Tuto<span>board</span></div>
+  <div class="topnav-links">
+    <div class="tnl">Home</div>
+    <div class="tnl">Mentors</div>
+    <div class="tnl">Courses</div>
+    <div class="tnl">Sessions</div>
+  </div>
+  <div class="topnav-right">
+    <div class="bell-wrap">
+      <button class="bell-btn" onclick="toggleNotif()" aria-label="Notifications">
+        <i class="ti ti-bell"></i>
+        <div class="bell-dot" id="bell-dot"></div>
+      </button>
+      <div class="notif-panel" id="notif-panel">
+        <div class="np-header">
+          <span class="np-title">Notifications</span>
+          <span class="np-mark" onclick="markAllRead()">Mark all read</span>
+        </div>
+        <div class="np-item unread" onclick="gotoTab('classes');closeNotif()">
+          <div class="np-icon" style="background:#fee2e2;color:#A32D2D;"><i class="ti ti-broadcast"></i></div>
+          <div style="flex:1;"><div class="np-text"><strong>Calculus class</strong> starts in 15 minutes</div><div class="np-time">Just now</div></div>
+          <div class="np-udot"></div>
+        </div>
+        <div class="np-item unread" onclick="gotoTab('assignments');closeNotif()">
+          <div class="np-icon" style="background:#FFF3CD;color:#7a4d00;"><i class="ti ti-clock"></i></div>
+          <div style="flex:1;"><div class="np-text"><strong>Integration practice set</strong> is overdue</div><div class="np-time">2 hours ago</div></div>
+          <div class="np-udot"></div>
+        </div>
+        <div class="np-item" onclick="gotoTab('messages');closeNotif()">
+          <div class="np-icon" style="background:#dbeafe;color:#2F7FE8;"><i class="ti ti-message"></i></div>
+          <div style="flex:1;"><div class="np-text">New message from <strong>Arjun Kapoor</strong></div><div class="np-time">Yesterday</div></div>
+        </div>
+        <div class="np-item" onclick="gotoTab('resources');closeNotif()">
+          <div class="np-icon" style="background:#dcfce7;color:#085041;"><i class="ti ti-file-text"></i></div>
+          <div style="flex:1;"><div class="np-text"><strong>Arjun Kapoor</strong> shared new notes</div><div class="np-time">2 days ago</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="av-wrap">
+      <div class="av-btn" onclick="toggleDD()">
+        <div class="av">RK</div>
+        <span class="av-name">Rohan</span>
+        <i class="ti ti-chevron-down av-chev" id="av-chev"></i>
+      </div>
+      <div class="nav-dd" id="nav-dd">
+        <div class="dd-top"><b>Rohan Kumar</b><small>rohan@gmail.com</small></div>
+        <div class="ddi"><i class="ti ti-user"></i>Profile &amp; settings</div>
+        <div class="ddi"><i class="ti ti-calendar"></i>My bookings</div>
+        <div class="dd-div"></div>
+        <div class="ddi out"><i class="ti ti-logout"></i>Sign out</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <div class="sidebar">
+    <div class="sb-nav">
+      <div class="sb-item active" data-tab="overview" onclick="switchTab('overview',this)"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+      <div class="sb-section">Learning</div>
+      <div class="sb-item" data-tab="classes" onclick="switchTab('classes',this)"><i class="ti ti-video"></i>Classes</div>
+      <div class="sb-item" data-tab="assignments" onclick="switchTab('assignments',this)"><i class="ti ti-clipboard-list"></i>Assignments<span class="sb-badge">3</span></div>
+      <div class="sb-item" data-tab="resources" onclick="switchTab('resources',this)"><i class="ti ti-files"></i>Resources</div>
+      <div class="sb-item" data-tab="performance" onclick="switchTab('performance',this)"><i class="ti ti-chart-bar"></i>Performance</div>
+      <div class="sb-item" data-tab="messages" onclick="switchTab('messages',this)"><i class="ti ti-message-circle"></i>Messages<span class="sb-badge">2</span></div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-footer">
+      <div class="sb-footer-item"><i class="ti ti-logout"></i>Sign out</div>
+    </div>
+  </div>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+
+    <!-- ══════════ OVERVIEW ══════════ -->
+    <div class="tab-page active" id="tab-overview">
+      <div class="pg-header">
+        <div>
+          <div class="pg-title">Good morning, Rohan 👋</div>
+          <div class="pg-sub">You have 2 classes today and 3 pending assignments</div>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon" style="background:#dcfce7;"><i class="ti ti-calendar-check" style="color:#085041;"></i></div>
+            <span class="stat-tag tag-green">+4%</span>
+          </div>
+          <div class="stat-num">94%</div>
+          <div class="stat-lbl">Attendance rate</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon" style="background:#dbeafe;"><i class="ti ti-broadcast" style="color:#2F7FE8;"></i></div>
+            <span class="stat-tag tag-blue">Today</span>
+          </div>
+          <div class="stat-num">9:00 AM</div>
+          <div class="stat-lbl">Next class</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon" style="background:#FFF3CD;"><i class="ti ti-clipboard-list" style="color:#7a4d00;"></i></div>
+            <span class="stat-tag tag-red">1 overdue</span>
+          </div>
+          <div class="stat-num">3</div>
+          <div class="stat-lbl">Pending assignments</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon" style="background:#ede9fe;"><i class="ti ti-flame" style="color:#534AB7;"></i></div>
+            <span class="stat-tag tag-gold">🔥 on fire</span>
+          </div>
+          <div class="stat-num">12</div>
+          <div class="stat-lbl">Day streak</div>
+        </div>
+      </div>
+
+      <div class="ov-grid">
+        <div class="ov-col">
+          <div class="card">
+            <div class="card-title">Today's classes <span class="card-link" onclick="switchTabById('classes')">View all</span></div>
+            <div class="sched-item">
+              <div class="sched-icon" style="background:#dbeafe;"><i class="ti ti-math" style="color:#2F7FE8;"></i></div>
+              <div class="sched-info">
+                <div class="sched-title">Advanced Calculus &amp; Algebra</div>
+                <div class="sched-meta">Arjun Kapoor · 9:00 – 10:00 AM</div>
+              </div>
+              <button class="btn-join">Join now</button>
+            </div>
+            <div class="sched-item">
+              <div class="sched-icon" style="background:#fde2e2;"><i class="ti ti-atom-2" style="color:#A32D2D;"></i></div>
+              <div class="sched-info">
+                <div class="sched-title">Physics: Mechanics &amp; Waves</div>
+                <div class="sched-meta">Arjun Kapoor · 4:00 – 5:30 PM</div>
+              </div>
+              <button class="btn-join disabled" disabled>Starts at 4 PM</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Pending assignments <span class="card-link" onclick="switchTabById('assignments')">View all</span></div>
+            <div class="assign-strip">
+              <div class="as-item">
+                <div class="as-dot dot-red"></div>
+                <div class="as-info"><div class="as-title">Integration practice set</div><div class="as-meta">Mathematics · was due Jun 16</div></div>
+                <span class="as-badge tag-red">Overdue</span>
+              </div>
+              <div class="as-item">
+                <div class="as-dot dot-gold"></div>
+                <div class="as-info"><div class="as-title">Essay draft submission</div><div class="as-meta">English · due Jun 20</div></div>
+                <span class="as-badge tag-gold">Due soon</span>
+              </div>
+              <div class="as-item">
+                <div class="as-dot dot-gold"></div>
+                <div class="as-info"><div class="as-title">Mechanics problem set 4</div><div class="as-meta">Physics · due Jun 22</div></div>
+                <span class="as-badge tag-gold">Due soon</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ov-col">
+          <div class="card">
+            <div class="card-title">Attendance</div>
+            <div class="att-ring-wrap">
+              <div class="ring-rel">
+                <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="#eef2fb" stroke-width="8"/>
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="#2F7FE8" stroke-width="8" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="12" transform="rotate(-90 40 40)"/>
+                </svg>
+                <div class="ring-num">94%</div>
+              </div>
+              <div class="att-rows">
+                <div class="att-row"><span>This month</span><strong>17 / 18</strong></div>
+                <div class="att-row"><span>This week</span><strong>4 / 4</strong></div>
+                <div class="att-row"><span>Streak</span><strong>12 days 🔥</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Recent activity</div>
+            <div class="act-item">
+              <div class="act-ico" style="background:#dcfce7;color:#085041;"><i class="ti ti-check"></i></div>
+              <div class="act-body"><div class="act-txt">Attended <strong>Calculus &amp; Algebra</strong></div><div class="act-when">Today, 9:00 AM</div></div>
+            </div>
+            <div class="act-item">
+              <div class="act-ico" style="background:#FFF3CD;color:#7a4d00;"><i class="ti ti-clipboard-check"></i></div>
+              <div class="act-body"><div class="act-txt">Submitted <strong>Trigonometry worksheet</strong></div><div class="act-when">Yesterday, 6:40 PM</div></div>
+            </div>
+            <div class="act-item">
+              <div class="act-ico" style="background:#dbeafe;color:#2F7FE8;"><i class="ti ti-message"></i></div>
+              <div class="act-body"><div class="act-txt">New message from <strong>Arjun Kapoor</strong></div><div class="act-when">2 days ago</div></div>
+            </div>
+            <div class="act-item">
+              <div class="act-ico" style="background:#ede9fe;color:#534AB7;"><i class="ti ti-star"></i></div>
+              <div class="act-body"><div class="act-txt">Scored <strong>92%</strong> on Physics quiz</div><div class="act-when">3 days ago</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ CLASSES ══════════ -->
+    <div class="tab-page" id="tab-classes">
+      <div class="pg-header">
+        <div><div class="pg-title">Classes</div><div class="pg-sub">Your live, upcoming, recorded and past sessions</div></div>
+      </div>
+      <div class="sub-tabs">
+        <div class="stab on" onclick="switchSubTab('today',this)">Today</div>
+        <div class="stab" onclick="switchSubTab('upcoming',this)">Upcoming</div>
+        <div class="stab" onclick="switchSubTab('recorded',this)">Recorded</div>
+        <div class="stab" onclick="switchSubTab('history',this)">History</div>
+      </div>
+
+      <!-- TODAY -->
+      <div class="sub-page active" id="sub-today">
+        <div class="class-card live">
+          <div class="cc-icon" style="background:#dbeafe;"><i class="ti ti-math" style="color:#2F7FE8;"></i></div>
+          <div class="cc-info">
+            <div class="cc-title">Advanced Calculus &amp; Algebra</div>
+            <div class="cc-meta">Arjun Kapoor · Today, 9:00 – 10:00 AM · Live now</div>
+          </div>
+          <span class="cc-status s-live">● Live</span>
+          <button class="btn-join" style="margin-left:10px;">Join now</button>
+        </div>
+        <div class="class-card">
+          <div class="cc-icon" style="background:#fde2e2;"><i class="ti ti-atom-2" style="color:#A32D2D;"></i></div>
+          <div class="cc-info">
+            <div class="cc-title">Physics: Mechanics &amp; Waves</div>
+            <div class="cc-meta">Arjun Kapoor · Today, 4:00 – 5:30 PM</div>
+          </div>
+          <span class="cc-status s-up">Upcoming</span>
+          <button class="btn-join disabled" disabled style="margin-left:10px;">Starts at 4 PM</button>
+        </div>
+      </div>
+
+      <!-- UPCOMING -->
+      <div class="sub-page" id="sub-upcoming">
+        <div class="class-card">
+          <div class="cc-icon" style="background:#dbeafe;"><i class="ti ti-math" style="color:#2F7FE8;"></i></div>
+          <div class="cc-info"><div class="cc-title">Advanced Calculus &amp; Algebra</div><div class="cc-meta">Arjun Kapoor · Wed, 18 Jun · 9:00 AM</div></div>
+          <span class="cc-status s-up">Upcoming</span>
+        </div>
+        <div class="class-card">
+          <div class="cc-icon" style="background:#fde2e2;"><i class="ti ti-atom-2" style="color:#A32D2D;"></i></div>
+          <div class="cc-info"><div class="cc-title">Physics: Mechanics &amp; Waves</div><div class="cc-meta">Arjun Kapoor · Sat, 21 Jun · 11:00 AM</div></div>
+          <span class="cc-status s-up">Upcoming</span>
+        </div>
+        <div class="class-card">
+          <div class="cc-icon" style="background:#ede9fe;"><i class="ti ti-writing" style="color:#534AB7;"></i></div>
+          <div class="cc-info"><div class="cc-title">English Essay Writing</div><div class="cc-meta">Priya Sharma · Mon, 23 Jun · 5:00 PM</div></div>
+          <span class="cc-status s-up">Upcoming</span>
+        </div>
+      </div>
+
+      <!-- RECORDED -->
+      <div class="sub-page" id="sub-recorded">
+        <div class="rec-card">
+          <div class="rec-thumb" style="background:#dbeafe;">
+            <i class="ti ti-math" style="color:#2F7FE8;font-size:20px;"></i>
+            <div class="rec-play"><i class="ti ti-player-play-filled"></i></div>
+            <div class="rec-dur">58:22</div>
+          </div>
+          <div class="rec-info">
+            <div class="rec-title">Advanced Calculus — Limits &amp; Continuity</div>
+            <div class="rec-meta">Arjun Kapoor · Recorded Wed, 11 Jun</div>
+          </div>
+          <button class="btn-watch"><i class="ti ti-player-play" style="font-size:12px;"></i> Watch</button>
+        </div>
+        <div class="rec-card">
+          <div class="rec-thumb" style="background:#fde2e2;">
+            <i class="ti ti-atom-2" style="color:#A32D2D;font-size:20px;"></i>
+            <div class="rec-play"><i class="ti ti-player-play-filled"></i></div>
+            <div class="rec-dur">1:24:08</div>
+          </div>
+          <div class="rec-info">
+            <div class="rec-title">Physics — Newton's Laws of Motion</div>
+            <div class="rec-meta">Arjun Kapoor · Recorded Sat, 8 Jun</div>
+          </div>
+          <button class="btn-watch"><i class="ti ti-player-play" style="font-size:12px;"></i> Watch</button>
+        </div>
+        <div class="rec-card">
+          <div class="rec-thumb" style="background:#ede9fe;">
+            <i class="ti ti-writing" style="color:#534AB7;font-size:20px;"></i>
+            <div class="rec-play"><i class="ti ti-player-play-filled"></i></div>
+            <div class="rec-dur">52:45</div>
+          </div>
+          <div class="rec-info">
+            <div class="rec-title">English — Essay Structure &amp; Argumentation</div>
+            <div class="rec-meta">Priya Sharma · Recorded Mon, 9 Jun</div>
+          </div>
+          <button class="btn-watch"><i class="ti ti-player-play" style="font-size:12px;"></i> Watch</button>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="sub-page" id="sub-history">
+        <div class="class-card">
+          <div class="cc-icon" style="background:#dbeafe;"><i class="ti ti-math" style="color:#2F7FE8;"></i></div>
+          <div class="cc-info"><div class="cc-title">Advanced Calculus &amp; Algebra</div><div class="cc-meta">Arjun Kapoor · Wed, 11 Jun · 9:00 AM</div></div>
+          <span class="cc-status s-done">Attended</span>
+        </div>
+        <div class="class-card">
+          <div class="cc-icon" style="background:#fde2e2;"><i class="ti ti-atom-2" style="color:#A32D2D;"></i></div>
+          <div class="cc-info"><div class="cc-title">Physics: Mechanics &amp; Waves</div><div class="cc-meta">Arjun Kapoor · Sat, 8 Jun · 11:00 AM</div></div>
+          <span class="cc-status s-done">Attended</span>
+        </div>
+        <div class="class-card">
+          <div class="cc-icon" style="background:#ede9fe;"><i class="ti ti-writing" style="color:#534AB7;"></i></div>
+          <div class="cc-info"><div class="cc-title">English Essay Writing</div><div class="cc-meta">Priya Sharma · Mon, 9 Jun · 5:00 PM</div></div>
+          <span class="cc-status s-miss">Missed</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ ASSIGNMENTS ══════════ -->
+    <div class="tab-page" id="tab-assignments">
+      <div class="pg-header">
+        <div><div class="pg-title">Assignments</div><div class="pg-sub">Submit work and view mentor feedback</div></div>
+      </div>
+      <div class="chips">
+        <div class="chip on" onclick="filterAssign(this,'all')">All</div>
+        <div class="chip" onclick="filterAssign(this,'pending')">Pending</div>
+        <div class="chip" onclick="filterAssign(this,'submitted')">Submitted</div>
+        <div class="chip" onclick="filterAssign(this,'graded')">Graded</div>
+        <div class="chip" onclick="filterAssign(this,'overdue')">Overdue</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;" id="assign-list">
+        <div class="af-card" data-status="overdue" onclick="openDrawer('integration','Integration practice set','Mathematics','Overdue — was due Jun 16','Arjun Kapoor','overdue')">
+          <div class="af-icon" style="background:#fee2e2;"><i class="ti ti-alert-circle" style="color:#A32D2D;"></i></div>
+          <div class="af-info"><div class="af-title">Integration practice set</div><div class="af-meta">Mathematics · Arjun Kapoor · was due Jun 16</div></div>
+          <div class="af-r"><span class="stat-tag tag-red">Overdue</span></div>
+        </div>
+        <div class="af-card" data-status="pending" onclick="openDrawer('essay','Essay draft submission','English','Due Jun 20','Priya Sharma','pending')">
+          <div class="af-icon" style="background:#FFF3CD;"><i class="ti ti-clock" style="color:#7a4d00;"></i></div>
+          <div class="af-info"><div class="af-title">Essay draft submission</div><div class="af-meta">English · Priya Sharma · due Jun 20</div></div>
+          <div class="af-r"><span class="stat-tag tag-gold">Due soon</span></div>
+        </div>
+        <div class="af-card" data-status="pending" onclick="openDrawer('mechanics','Mechanics problem set 4','Physics','Due Jun 22','Arjun Kapoor','pending')">
+          <div class="af-icon" style="background:#FFF3CD;"><i class="ti ti-clock" style="color:#7a4d00;"></i></div>
+          <div class="af-info"><div class="af-title">Mechanics problem set 4</div><div class="af-meta">Physics · Arjun Kapoor · due Jun 22</div></div>
+          <div class="af-r"><span class="stat-tag tag-gold">Due soon</span></div>
+        </div>
+        <div class="af-card" data-status="graded" onclick="openDrawer('trig','Trigonometry worksheet','Mathematics','Submitted Jun 17','Arjun Kapoor','graded')">
+          <div class="af-icon" style="background:#dcfce7;"><i class="ti ti-check" style="color:#085041;"></i></div>
+          <div class="af-info"><div class="af-title">Trigonometry worksheet</div><div class="af-meta">Mathematics · Arjun Kapoor · submitted Jun 17</div></div>
+          <div class="af-r"><span class="stat-tag tag-green">Graded — 92%</span></div>
+        </div>
+        <div class="af-card" data-status="submitted" onclick="openDrawer('essay2','Short story — personal experience','English','Submitted Jun 14','Priya Sharma','submitted')">
+          <div class="af-icon" style="background:#dbeafe;"><i class="ti ti-send" style="color:#2F7FE8;"></i></div>
+          <div class="af-info"><div class="af-title">Short story — personal experience</div><div class="af-meta">English · Priya Sharma · submitted Jun 14</div></div>
+          <div class="af-r"><span class="stat-tag tag-blue">Awaiting grade</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ RESOURCES ══════════ -->
+    <div class="tab-page" id="tab-resources">
+      <div class="pg-header">
+        <div><div class="pg-title">Resources</div><div class="pg-sub">Notes, worksheets and files shared by your mentors</div></div>
+      </div>
+      <div class="card" style="padding:14px 16px;">
+        <div class="res-toolbar">
+          <div class="res-search"><i class="ti ti-search"></i><input type="text" placeholder="Search files..."></div>
+          <select class="res-filter"><option>All subjects</option><option>Mathematics</option><option>Physics</option><option>English</option></select>
+          <select class="res-filter"><option>All mentors</option><option>Arjun Kapoor</option><option>Priya Sharma</option></select>
+        </div>
+      </div>
+      <div class="res-grid">
+        <div class="res-card">
+          <div class="res-icon" style="background:#fee2e2;"><i class="ti ti-file-type-pdf" style="color:#E24B4A;"></i></div>
+          <div class="res-info">
+            <div class="res-name">Calculus — Limits &amp; Derivatives.pdf</div>
+            <div class="res-meta">Mathematics · Arjun Kapoor · Jun 11 · 2.4 MB</div>
+          </div>
+          <button class="btn-res-dl"><i class="ti ti-download" style="font-size:12px;"></i> Download</button>
+        </div>
+        <div class="res-card">
+          <div class="res-icon" style="background:#dbeafe;"><i class="ti ti-file-type-doc" style="color:#2F7FE8;"></i></div>
+          <div class="res-info">
+            <div class="res-name">Newton's Laws — Summary Notes.docx</div>
+            <div class="res-meta">Physics · Arjun Kapoor · Jun 8 · 890 KB</div>
+          </div>
+          <button class="btn-res-dl"><i class="ti ti-download" style="font-size:12px;"></i> Download</button>
+        </div>
+        <div class="res-card">
+          <div class="res-icon" style="background:#ede9fe;"><i class="ti ti-presentation" style="color:#534AB7;"></i></div>
+          <div class="res-info">
+            <div class="res-name">Essay Writing — Structure Slides.pptx</div>
+            <div class="res-meta">English · Priya Sharma · Jun 9 · 4.1 MB</div>
+          </div>
+          <button class="btn-res-dl"><i class="ti ti-download" style="font-size:12px;"></i> Download</button>
+        </div>
+        <div class="res-card">
+          <div class="res-icon" style="background:#dbeafe;"><i class="ti ti-file-type-pdf" style="color:#E24B4A;"></i></div>
+          <div class="res-info">
+            <div class="res-name">Integration Techniques — Practice Set.pdf</div>
+            <div class="res-meta">Mathematics · Arjun Kapoor · Jun 11 · 1.2 MB</div>
+          </div>
+          <button class="btn-res-dl"><i class="ti ti-download" style="font-size:12px;"></i> Download</button>
+        </div>
+        <div class="res-card">
+          <div class="res-icon" style="background:#dcfce7;"><i class="ti ti-table" style="color:#085041;"></i></div>
+          <div class="res-info">
+            <div class="res-name">Mechanics — Formula Reference Sheet.xlsx</div>
+            <div class="res-meta">Physics · Arjun Kapoor · Jun 5 · 340 KB</div>
+          </div>
+          <button class="btn-res-dl"><i class="ti ti-download" style="font-size:12px;"></i> Download</button>
+        </div>
+        <div class="res-card">
+          <div class="res-icon" style="background:#ede9fe;"><i class="ti ti-file-type-pdf" style="color:#E24B4A;"></i></div>
+          <div class="res-info">
+            <div class="res-name">English Grammar — Common Mistakes.pdf</div>
+            <div class="res-meta">English · Priya Sharma · May 30 · 780 KB</div>
+          </div>
+          <button class="btn-res-dl"><i class="ti ti-download" style="font-size:12px;"></i> Download</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ PERFORMANCE ══════════ -->
+    <div class="tab-page" id="tab-performance">
+      <div class="pg-header">
+        <div><div class="pg-title">Performance</div><div class="pg-sub">Your attendance and progress across all subjects</div></div>
+        <button class="export-btn"><i class="ti ti-download"></i> Export report</button>
+      </div>
+      <div class="sub-tabs">
+        <div class="stab on" onclick="switchSubTab('att-view',this)">Attendance</div>
+        <div class="stab" onclick="switchSubTab('progress-view',this)">Progress report</div>
+      </div>
+
+      <!-- ATTENDANCE VIEW -->
+      <div class="sub-page active" id="sub-att-view">
+        <div class="perf-grid">
+          <div class="card" style="padding:16px;">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Overall</div>
+            <div class="att-ring-wrap">
+              <div class="ring-rel">
+                <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="#eef2fb" stroke-width="8"/>
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="#2F7FE8" stroke-width="8" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="12" transform="rotate(-90 40 40)"/>
+                </svg>
+                <div class="ring-num">94%</div>
+              </div>
+              <div class="att-rows">
+                <div class="att-row"><span>This month</span><strong>17 / 18</strong></div>
+                <div class="att-row"><span>This week</span><strong>4 / 4</strong></div>
+              </div>
+            </div>
+          </div>
+          <div class="streak-box" style="border:.5px solid #FAC775;border-radius:var(--r);">
+            <i class="ti ti-flame" style="font-size:32px;color:#7a4d00;"></i>
+            <div>
+              <div class="streak-num">12</div>
+              <div style="font-size:11px;color:#7a4d00;font-weight:600;">day streak</div>
+              <div style="font-size:10px;color:#854F0B;margin-top:2px;">Keep it going!</div>
+            </div>
+          </div>
+          <div class="card" style="padding:16px;">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">This month</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:26px;font-weight:800;color:var(--navy);">17 / 18</div>
+            <div style="font-size:11px;color:var(--sec);margin-top:2px;">sessions attended</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Attendance by subject</div>
+          <div class="subj-bars">
+            <div class="sb-row"><div class="sb-name">Mathematics</div><div class="sb-track"><div class="sb-fill" style="width:97%;"></div></div><div class="sb-pct">97%</div></div>
+            <div class="sb-row"><div class="sb-name">Physics</div><div class="sb-track"><div class="sb-fill" style="width:90%;background:#534AB7;"></div></div><div class="sb-pct">90%</div></div>
+            <div class="sb-row"><div class="sb-name">English</div><div class="sb-track"><div class="sb-fill" style="width:95%;background:#0F6E56;"></div></div><div class="sb-pct">95%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROGRESS VIEW -->
+      <div class="sub-page" id="sub-progress-view">
+        <div class="perf-grid">
+          <div class="card" style="padding:16px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Avg score</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;color:var(--navy);">86%</div>
+            <div style="font-size:10px;color:var(--sec);">across all subjects</div>
+          </div>
+          <div class="card" style="padding:16px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Submitted</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;color:var(--navy);">8</div>
+            <div style="font-size:10px;color:var(--sec);">of 11 assignments</div>
+          </div>
+          <div class="card" style="padding:16px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Best subject</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-top:8px;">Mathematics</div>
+            <div style="font-size:10px;color:var(--sec);">avg 92%</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent scores</div>
+          <div class="score-list">
+            <div class="score-row">
+              <div><div class="sr-title">Trigonometry worksheet</div><div class="sr-sub">Mathematics · Jun 17</div></div>
+              <div class="sr-score hi">92%</div>
+            </div>
+            <div class="score-row">
+              <div><div class="sr-title">Physics quiz — Newton's laws</div><div class="sr-sub">Physics · Jun 12</div></div>
+              <div class="sr-score hi">88%</div>
+            </div>
+            <div class="score-row">
+              <div><div class="sr-title">Grammar exercise — tenses</div><div class="sr-sub">English · Jun 10</div></div>
+              <div class="sr-score">78%</div>
+            </div>
+            <div class="score-row">
+              <div><div class="sr-title">Calculus — Limits quiz</div><div class="sr-sub">Mathematics · Jun 5</div></div>
+              <div class="sr-score hi">95%</div>
+            </div>
+            <div class="score-row">
+              <div><div class="sr-title">Mechanics problem set 3</div><div class="sr-sub">Physics · Jun 2</div></div>
+              <div class="sr-score lo">62%</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Mentor feedback</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="background:var(--bg);border-radius:9px;padding:14px;border:.5px solid var(--border);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:#2F7FE8;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:10px;font-weight:800;color:#fff;">AK</div>
+                <div><div style="font-size:12px;font-weight:600;color:var(--navy);">Arjun Kapoor</div><div style="font-size:10px;color:var(--muted);">Jun 17</div></div>
+              </div>
+              <div style="font-size:12px;color:var(--sec);line-height:1.65;">Rohan has shown excellent improvement in calculus this month. His understanding of integration by parts is solid. Needs more practice on improper integrals before the next session.</div>
+            </div>
+            <div style="background:var(--bg);border-radius:9px;padding:14px;border:.5px solid var(--border);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:#993556;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:10px;font-weight:800;color:#fff;">PS</div>
+                <div><div style="font-size:12px;font-weight:600;color:var(--navy);">Priya Sharma</div><div style="font-size:10px;color:var(--muted);">Jun 10</div></div>
+              </div>
+              <div style="font-size:12px;color:var(--sec);line-height:1.65;">Good essay structure in the last submission. The argumentation is improving. Focus on stronger topic sentences and varying sentence length for the next draft.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ MESSAGES ══════════ -->
+    <div class="tab-page" id="tab-messages">
+      <div class="pg-header">
+        <div><div class="pg-title">Messages</div><div class="pg-sub">Chat with your mentors</div></div>
+      </div>
+      <div class="msg-shell">
+        <div class="msg-list">
+          <div class="msg-search-wrap">
+            <input class="msg-search" type="text" placeholder="Search conversations...">
+          </div>
+          <div class="msg-tutor active">
+            <div class="mt-av" style="background:#2F7FE8;">AK</div>
+            <div class="mt-info">
+              <div class="mt-name">Arjun Kapoor</div>
+              <div class="mt-prev">Great progress this week!</div>
+            </div>
+            <div class="mt-right">
+              <div class="mt-time">10:24 AM</div>
+              <div class="mt-badge">2</div>
+            </div>
+          </div>
+          <div class="msg-tutor">
+            <div class="mt-av" style="background:#993556;">PS</div>
+            <div class="mt-info">
+              <div class="mt-name">Priya Sharma</div>
+              <div class="mt-prev">Please submit the draft by...</div>
+            </div>
+            <div class="mt-right">
+              <div class="mt-time">Yesterday</div>
+            </div>
+          </div>
+        </div>
+        <div class="msg-thread">
+          <div class="thread-hdr">
+            <div class="th-av" style="background:#2F7FE8;">AK</div>
+            <div>
+              <div class="th-name">Arjun Kapoor</div>
+              <div class="th-sub">Mathematics &amp; Physics mentor</div>
+            </div>
+            <div class="th-online" title="Online"></div>
+          </div>
+          <div class="thread-body">
+            <div class="date-sep">Today</div>
+            <div class="bubble bubble-in">Hi Rohan! Just wanted to update you — you did really well in today's integration session. Your confidence is clearly improving.<div class="bubble-time">9:48 AM</div></div>
+            <div class="bubble bubble-out">Thank you sir! I practiced the problems you sent yesterday. The substitution method finally clicked.<div class="bubble-time">10:02 AM</div></div>
+            <div class="bubble bubble-in">Great to hear! I've shared the notes for today's class in Resources. Have a look before Thursday.<div class="bubble-time">10:15 AM</div></div>
+            <div class="bubble bubble-sys">📎 Arjun Kapoor shared "Calculus — Limits &amp; Derivatives.pdf"</div>
+            <div class="bubble bubble-in">Great progress this week! Keep it up 🙌<div class="bubble-time">10:24 AM</div></div>
+          </div>
+          <div class="thread-input-wrap">
+            <input class="thread-input" type="text" placeholder="Type a message...">
+            <button class="btn-attach" title="Attach file"><i class="ti ti-paperclip"></i></button>
+            <button class="btn-send"><i class="ti ti-send"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ── ASSIGNMENT DRAWER ── -->
+<div class="drawer-ov" id="drawer-ov" onclick="closeDrawer()"></div>
+<div class="drawer" id="assign-drawer">
+  <div class="dw-header">
+    <div class="dw-title" id="dw-title">Assignment</div>
+    <button class="dw-close" onclick="closeDrawer()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="dw-body" id="dw-body"></div>
+</div>
+
+<script>
+// ── NAV ──
+function toggleDD(){
+  const d=document.getElementById('nav-dd'),c=document.getElementById('av-chev');
+  const o=d.classList.toggle('open');
+  c.className=o?'ti ti-chevron-up av-chev':'ti ti-chevron-down av-chev';
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.av-wrap')) document.getElementById('nav-dd').classList.remove('open');
+  if(!e.target.closest('.bell-wrap')) closeNotif();
+});
+
+// ── NOTIFICATIONS ──
+function toggleNotif(){document.getElementById('notif-panel').classList.toggle('open');}
+function closeNotif(){document.getElementById('notif-panel').classList.remove('open');}
+function markAllRead(){
+  document.querySelectorAll('.np-item.unread').forEach(i=>i.classList.remove('unread'));
+  document.querySelectorAll('.np-udot').forEach(d=>d.remove());
+  document.getElementById('bell-dot').style.display='none';
+}
+
+// ── SIDEBAR TABS ──
+function switchTab(id,el){
+  document.querySelectorAll('.tab-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  el.classList.add('active');
+}
+function switchTabById(id){
+  const el=document.querySelector(`.sb-item[data-tab="${id}"]`);
+  if(el)switchTab(id,el);
+}
+function gotoTab(id){switchTabById(id);}
+
+// ── SUB TABS ──
+function switchSubTab(id,el){
+  const parent=el.closest('.tab-page');
+  parent.querySelectorAll('.stab').forEach(t=>t.classList.remove('on'));
+  parent.querySelectorAll('.sub-page').forEach(p=>p.classList.remove('active'));
+  el.classList.add('on');
+  document.getElementById('sub-'+id).classList.add('active');
+}
+
+// ── ASSIGNMENT FILTER ──
+function filterAssign(el,status){
+  document.querySelectorAll('.chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('#assign-list .af-card').forEach(c=>{
+    c.style.display=(status==='all'||c.dataset.status===status)?'flex':'none';
+  });
+}
+
+// ── ASSIGNMENT DRAWER ──
+const drawerContent = {
+  integration:{
+    title:'Integration practice set',subj:'Mathematics',status:'overdue',
+    due:'Was due Jun 16',mentor:'Arjun Kapoor',
+    instructions:'Complete problems 1–20 from the integration chapter. Show all working steps. Particular focus on integration by substitution and integration by parts.',
+    files:['Integration_Chapter_Problems.pdf · 1.2 MB'],
+    state:'overdue'
+  },
+  essay:{
+    title:'Essay draft submission',subj:'English',status:'pending',
+    due:'Due Jun 20',mentor:'Priya Sharma',
+    instructions:'Write a 600-word argumentative essay on a topic of your choice. Ensure you have a clear thesis, three supporting arguments, and a conclusion. Submit as a Word document or PDF.',
+    files:['Essay_Writing_Guide.pdf · 780 KB'],
+    state:'pending'
+  },
+  mechanics:{
+    title:'Mechanics problem set 4',subj:'Physics',status:'pending',
+    due:'Due Jun 22',mentor:'Arjun Kapoor',
+    instructions:'Solve all 15 problems in the attached sheet. Problems cover Newton\'s laws, friction, and circular motion. Show free body diagrams for questions 7–10.',
+    files:['Mechanics_Problem_Set_4.pdf · 890 KB'],
+    state:'pending'
+  },
+  trig:{
+    title:'Trigonometry worksheet',subj:'Mathematics',status:'graded',
+    due:'Submitted Jun 17',mentor:'Arjun Kapoor',
+    instructions:'Worksheet covering sine, cosine, and tangent rules.',
+    files:['Trigonometry_Worksheet.pdf · 540 KB'],
+    state:'graded',score:'92%',
+    feedback:'Excellent work! Your understanding of the trigonometric identities is strong. Minor errors in Q8 and Q12 — review the double-angle formulas before the next session.'
+  },
+  essay2:{
+    title:'Short story — personal experience',subj:'English',status:'submitted',
+    due:'Submitted Jun 14',mentor:'Priya Sharma',
+    instructions:'Write a short story based on a personal experience. Min 500 words.',
+    files:['Short_Story_Guidelines.pdf · 320 KB'],
+    state:'submitted'
+  }
+};
+
+function openDrawer(key){
+  const d=drawerContent[key];if(!d)return;
+  document.getElementById('dw-title').textContent=d.title;
+  let html=`
+    <div class="dw-section">
+      <div class="dw-lbl">Subject</div>
+      <div class="dw-text">${d.subj} · ${d.mentor}</div>
+    </div>
+    <div class="dw-section">
+      <div class="dw-lbl">${d.state==='graded'?'Submitted':'Due date'}</div>
+      <div class="dw-text">${d.due}</div>
+    </div>
+    <div class="dw-section">
+      <div class="dw-lbl">Instructions</div>
+      <div class="dw-text">${d.instructions}</div>
+    </div>
+    <div class="dw-section">
+      <div class="dw-lbl">Attachments from mentor</div>
+      ${d.files.map(f=>`<div class="dw-attach"><i class="ti ti-file-type-pdf"></i><span class="dw-attach-name">${f.split('·')[0].trim()}</span><span class="dw-attach-size">·${f.split('·')[1]||''}</span><button class="btn-dl">Download</button></div>`).join('')}
+    </div>`;
+
+  if(d.state==='graded'){
+    html+=`<div class="dw-section">
+      <div class="dw-lbl">Grade &amp; feedback</div>
+      <div class="fb-box">
+        <div class="fb-score">${d.score}</div>
+        <div class="fb-txt">${d.feedback}</div>
+      </div>
+    </div>`;
+  } else if(d.state==='submitted'){
+    html+=`<div class="dw-section">
+      <div class="dw-lbl">Your submission</div>
+      <div class="dw-attach"><i class="ti ti-file-check" style="color:#085041;"></i><span class="dw-attach-name">Submitted successfully</span><span class="stat-tag tag-blue" style="margin-left:auto;">Awaiting grade</span></div>
+    </div>`;
+  } else {
+    html+=`<div class="dw-section">
+      <div class="dw-lbl">Your submission</div>
+      <div class="upload-zone" onclick="document.getElementById('file-upload').click()">
+        <i class="ti ti-upload"></i>
+        <div class="uz-main">Drop your file here or click to upload</div>
+        <div class="uz-sub">PDF, DOC, DOCX, JPG · max 10 MB</div>
+        <input type="file" id="file-upload" style="display:none;" onchange="handleFile(event)">
+      </div>
+      <div id="file-preview" style="display:none;margin-top:10px;"></div>
+    </div>
+    <div class="dw-footer">
+      <button class="btn-submit" onclick="submitAssign()">Submit assignment</button>
+    </div>`;
+  }
+
+  document.getElementById('dw-body').innerHTML=html;
+  document.getElementById('drawer-ov').classList.add('open');
+  document.getElementById('assign-drawer').classList.add('open');
+}
+
+function closeDrawer(){
+  document.getElementById('drawer-ov').classList.remove('open');
+  document.getElementById('assign-drawer').classList.remove('open');
+}
+function handleFile(e){
+  const f=e.target.files[0];if(!f)return;
+  const p=document.getElementById('file-preview');
+  p.style.display='block';
+  p.innerHTML=`<div class="dw-attach"><i class="ti ti-file-check" style="color:#085041;"></i><span class="dw-attach-name">${f.name}</span><span class="dw-attach-size">${(f.size/1024/1024).toFixed(1)} MB</span></div>`;
+}
+function submitAssign(){
+  closeDrawer();
+  // Show toast notification
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:20px;right:20px;background:#1B3A6B;color:#fff;padding:12px 20px;border-radius:10px;font-family:Poppins,sans-serif;font-size:13px;font-weight:500;z-index:9999;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(27,58,107,.2);';
+  toast.innerHTML='<i class="ti ti-circle-check" style="color:#4ade80;font-size:18px;"></i> Assignment submitted successfully!';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),3500);
+}
+</script>
+</body>
+</html>

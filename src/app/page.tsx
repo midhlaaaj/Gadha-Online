@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   IconSparkles,
   IconCode,
@@ -17,6 +18,7 @@ import {
   IconBook,
 } from "@tabler/icons-react";
 import { getHomepageData, submitContactMessage } from "./actions";
+import BookingModal from "@/components/BookingModal";
 import { validateEmail, validateName, validatePhone, validateMessage, validateSubject, sanitizeText } from "@/lib/validate";
 
 // Dynamic Icon Picker Helper
@@ -63,15 +65,12 @@ function AnimatedCounter({ value }: { value: string }) {
   const elementRef = useRef<HTMLSpanElement>(null);
 
   const match = value.match(/^([\d,]+)(.*)$/);
-  if (!match) {
-    return <span>{value}</span>;
-  }
-
-  const numStr = match[1];
-  const suffix = match[2];
-  const target = parseInt(numStr.replace(/,/g, ""), 10);
+  const numStr = match ? match[1] : "";
+  const suffix = match ? match[2] : "";
+  const target = match ? parseInt(numStr.replace(/,/g, ""), 10) : 0;
 
   useEffect(() => {
+    const currentElement = elementRef.current;
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
@@ -82,19 +81,19 @@ function AnimatedCounter({ value }: { value: string }) {
       { threshold: 0.1 }
     );
 
-    if (elementRef.current) {
-      observer.observe(elementRef.current);
+    if (currentElement) {
+      observer.observe(currentElement);
     }
 
     return () => {
-      if (elementRef.current) {
-        observer.unobserve(elementRef.current);
+      if (currentElement) {
+        observer.unobserve(currentElement);
       }
     };
   }, [hasAnimated]);
 
   useEffect(() => {
-    if (!hasAnimated || isNaN(target)) return;
+    if (!numStr || !hasAnimated || isNaN(target)) return;
 
     const duration = 2000; // 2 seconds animation duration
     const frameRate = 1000 / 60; // 60 fps
@@ -117,7 +116,11 @@ function AnimatedCounter({ value }: { value: string }) {
     }, frameRate);
 
     return () => clearInterval(timer);
-  }, [hasAnimated, target]);
+  }, [hasAnimated, target, numStr]);
+
+  if (!match) {
+    return <span>{value}</span>;
+  }
 
   const formattedCount = numStr.includes(",") 
     ? count.toLocaleString("en-US")
@@ -133,6 +136,14 @@ function AnimatedCounter({ value }: { value: string }) {
 
 export default function Home() {
   const [data, setData] = useState<any>(null);
+  const [activeBooking, setActiveBooking] = useState<{
+    id: string;
+    type: "course" | "session";
+    title: string;
+    price: number;
+    mentorName: string;
+    isLiveIndividual?: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -418,32 +429,60 @@ export default function Home() {
           ) : (
             <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
               {courses.map((c: any) => (
-                <div key={c.id} className="w-[calc(100%_-_32px)] md:w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(100%_-_32px)] md:min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className={`w-full h-32 flex items-center justify-center ${getSubjectBgColor(c.subject)}`}>
-                    {getIconComponent(c.iconName)}
-                  </div>
-                  <div className="p-5">
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-badge-bg text-badge-text mb-3 inline-block">
-                      {c.subject}
-                    </span>
-                    <h3 className="font-heading text-lg font-bold text-primary mb-1">
-                      {c.title}
-                    </h3>
-                    <p className="text-xs text-text-muted leading-relaxed mb-1 line-clamp-2">
-                      Course by {c.mentor}
-                    </p>
-                    <p className="text-[10px] text-slate-400 capitalize mb-4">Format: {c.format}</p>
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-xs font-bold text-accent flex items-center gap-0.5">
-                        <IconStar className="w-3.5 h-3.5 fill-accent" /> {c.rating}
-                      </span>
-                      <span className="text-[10px] text-text-muted">({c.students} students)</span>
-                      <span className="ml-auto font-heading font-extrabold text-primary text-base">
-                        ₹{c.price}
-                      </span>
+                <div key={c.id} className="w-[calc(100%_-_32px)] md:w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(100%_-_32px)] md:min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between">
+                  {c.coverImageUrl ? (
+                    <div className="w-full h-32 overflow-hidden">
+                      <img src={c.coverImageUrl} alt={c.title} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className={`w-full h-32 flex items-center justify-center ${getSubjectBgColor(c.subject)}`}>
+                      {getIconComponent(c.iconName)}
+                    </div>
+                  )}
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-badge-bg text-badge-text inline-block">
+                          {c.subject}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-block ${
+                          c.format === "Recorded"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : c.format === "Live individual"
+                            ? "bg-purple-50 text-purple-700"
+                            : "bg-orange-50 text-orange-700"
+                        }`}>
+                          {c.format}
+                        </span>
+                      </div>
+                      <h3 className="font-heading text-lg font-bold text-primary mb-1">
+                        {c.title}
+                      </h3>
+                      <p className="text-xs text-text-muted leading-relaxed mb-4 line-clamp-2">
+                        Course by {c.mentor}
+                      </p>
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-xs font-bold text-accent flex items-center gap-0.5">
+                          <IconStar className="w-3.5 h-3.5 fill-accent" /> {c.rating}
+                        </span>
+                        <span className="text-[10px] text-text-muted">({c.students} students)</span>
+                        <span className="ml-auto font-heading font-extrabold text-primary text-base">
+                          ₹{c.price}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex gap-3">
-                      <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer">
+                      <button 
+                        onClick={() => setActiveBooking({
+                          id: c.id,
+                          type: "course",
+                          title: c.title,
+                          price: c.price,
+                          mentorName: c.mentor,
+                          isLiveIndividual: c.format === "Live individual"
+                        })}
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
+                      >
                         Book now
                       </button>
                       <a href={`/courses/${c.id}`} className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center">
@@ -511,36 +550,60 @@ export default function Home() {
           ) : (
             <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
               {sessions.map((s: any) => (
-                <div key={s.id} className="w-[calc(100%_-_32px)] md:w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(100%_-_32px)] md:min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
+                <div key={s.id} className="w-[calc(100%_-_32px)] md:w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(100%_-_32px)] md:min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between">
                   <div className={`w-full h-32 flex items-center justify-center ${getSubjectBgColor(s.subject)}`}>
                     {getIconComponent(s.iconName)}
                   </div>
-                  <div className="p-5">
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 mb-3 inline-block">
-                      {s.type} Session
-                    </span>
-                    <h3 className="font-heading text-lg font-bold text-primary mb-1">
-                      {s.title}
-                    </h3>
-                    <p className="text-xs text-text-muted leading-relaxed mb-4 line-clamp-2">
-                      {s.description || `1-on-1 private lesson with ${s.mentor}.`}
-                    </p>
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-xs font-bold text-accent flex items-center gap-0.5">
-                        <IconStar className="w-3.5 h-3.5 fill-accent" /> 5.0
-                      </span>
-                      <span className="text-[10px] text-text-muted">({s.bookings} reviews)</span>
-                      <span className="ml-auto font-heading font-extrabold text-primary text-base">
-                        ₹{s.price}/hr
-                      </span>
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-badge-bg text-badge-text inline-block">
+                          {s.subject}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-block ${
+                          s.type === "Group"
+                            ? "bg-purple-50 text-purple-700"
+                            : "bg-blue-50 text-blue-700"
+                        }`}>
+                          {s.type} Session
+                        </span>
+                      </div>
+                      <h3 className="font-heading text-lg font-bold text-primary mb-1">
+                        {s.title}
+                      </h3>
+                      <p className="text-xs text-text-muted leading-relaxed mb-4 line-clamp-2">
+                        {s.description || `1-on-1 private lesson with ${s.mentor}.`}
+                      </p>
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-xs font-bold text-accent flex items-center gap-0.5">
+                          <IconStar className="w-3.5 h-3.5 fill-accent" /> 5.0
+                        </span>
+                        <span className="text-[10px] text-text-muted">({s.bookings} reviews)</span>
+                        <span className="ml-auto font-heading font-extrabold text-primary text-base">
+                          ₹{s.price}/hr
+                        </span>
+                      </div>
                     </div>
                     <div className="flex gap-3">
-                      <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer">
+                      <button 
+                        onClick={() => setActiveBooking({
+                          id: s.id,
+                          type: "session",
+                          title: s.title,
+                          price: s.price,
+                          mentorName: s.mentor,
+                          isLiveIndividual: s.type === "1-on-1"
+                        })}
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
+                      >
                         Book now
                       </button>
-                      <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer">
+                      <Link 
+                        href={`/sessions/${s.id}`} 
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center"
+                      >
                         Details
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -880,6 +943,18 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      {activeBooking && (
+        <BookingModal
+          isOpen={!!activeBooking}
+          onClose={() => setActiveBooking(null)}
+          targetId={activeBooking.id}
+          targetType={activeBooking.type}
+          title={activeBooking.title}
+          price={activeBooking.price}
+          mentorName={activeBooking.mentorName}
+          isLiveIndividual={!!activeBooking.isLiveIndividual}
+        />
+      )}
     </div>
   );
 }

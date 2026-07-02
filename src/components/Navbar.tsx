@@ -251,12 +251,21 @@ export default function Navbar() {
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-slate-100 shadow-xl py-2 z-50 animate-fade-in-up origin-top-right">
                     <Link
-                      href="/profile"
+                      href={role === "mentor" ? "/mentor/profile" : "/profile"}
                       onClick={() => setDropdownOpen(false)}
-                      className={getDropdownItemClass("/profile")}
+                      className={getDropdownItemClass(role === "mentor" ? "/mentor/profile" : "/profile")}
                     >
                       Profile
                     </Link>
+                    {role === "mentor" && (
+                      <Link
+                        href="/mentor/availability"
+                        onClick={() => setDropdownOpen(false)}
+                        className={getDropdownItemClass("/mentor/availability")}
+                      >
+                        Manage Availability
+                      </Link>
+                    )}
                     {(!role || role === "parent") && (
                       <>
                         <Link
@@ -370,12 +379,21 @@ export default function Navbar() {
               <div className="flex flex-col gap-3">
                 <div className="border-t border-slate-100 my-1"></div>
                 <Link
-                  href="/profile"
+                  href={role === "mentor" ? "/mentor/profile" : "/profile"}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={getMobileDropdownItemClass("/profile")}
+                  className={getMobileDropdownItemClass(role === "mentor" ? "/mentor/profile" : "/profile")}
                 >
                   Profile
                 </Link>
+                {role === "mentor" && (
+                  <Link
+                    href="/mentor/availability"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={getMobileDropdownItemClass("/mentor/availability")}
+                  >
+                    Manage Availability
+                  </Link>
+                )}
                 {(!role || role === "parent") && (
                   <>
                     <Link

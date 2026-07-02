@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use, useState, useEffect } from "react";
+import Link from "next/link";
 import {
   IconCheck,
   IconStar,
@@ -16,6 +17,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { getMentorDetailsData } from "../../actions";
+import BookingModal from "@/components/BookingModal";
 
 // Helper for subject badges colors
 const getSubjectBgColor = (subject: string) => {
@@ -33,23 +35,78 @@ const getSubjectBgColor = (subject: string) => {
   }
 };
 
+interface MentorProfile {
+  id: string;
+  name: string;
+  expertise: string[];
+  subject: string;
+  rating: number;
+  students: number;
+  courses: number;
+  rate: number;
+  verified: boolean;
+  avatarText: string;
+  avatarBg: string;
+  qualification: string;
+  experience: number;
+  bio: string;
+}
+
+interface CourseData {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  format: string;
+  price: number;
+  mentor: string;
+  students: number;
+  rating: number;
+  status: string;
+  colorBg: string;
+  iconName: string;
+}
+
+interface SessionData {
+  id: string;
+  title: string;
+  description: string;
+  mentor: string;
+  mentorAvatar: string;
+  mentorColor: string;
+  type: string;
+  bookings: number;
+  subject: string;
+  price: number;
+  status: string;
+  colorBg: string;
+  iconName: string;
+}
+
+interface MentorDetailsResponse {
+  mentor: MentorProfile;
+  courses: CourseData[];
+  sessions: SessionData[];
+}
+
 export default function MentorDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<MentorDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
         const res = await getMentorDetailsData(id);
-        setData(res);
-      } catch (err: any) {
+        setData(res as MentorDetailsResponse);
+      } catch (err: unknown) {
         console.error(err);
-        setError(err.message || "Failed to load mentor details");
+        setError(err instanceof Error ? err.message : "Failed to load mentor details");
       } finally {
         setLoading(false);
       }
@@ -71,9 +128,9 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
           <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
             <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Profile</h2>
             <p className="text-sm text-text-muted mb-6">{error || "Mentor not found."}</p>
-            <a href="/mentors" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
+            <Link href="/mentors" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
               Back to Mentors
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -164,7 +221,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const { mentor, courses, sessions } = data;
+  const { mentor, courses, sessions } = data!;
 
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
@@ -184,9 +241,9 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
         <div className="max-w-7xl mx-auto">
           {/* Breadcrumb */}
           <nav className="text-xs text-text-muted mb-4 flex items-center gap-1.5 font-medium">
-            <a href="/" className="hover:text-secondary transition-colors">Home</a>
+            <Link href="/" className="hover:text-secondary transition-colors">Home</Link>
             <span className="text-slate-300">/</span>
-            <a href="/mentors" className="hover:text-secondary transition-colors">Mentors</a>
+            <Link href="/mentors" className="hover:text-secondary transition-colors">Mentors</Link>
             <span className="text-slate-300">/</span>
             <span className="text-primary font-semibold">{mentor.name}</span>
           </nav>
@@ -253,7 +310,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {courses.slice(0, 4).map((c: any) => (
+                {courses.slice(0, 4).map((c: CourseData) => (
                   <div key={c.id} className="bg-white border border-border-subtle rounded-xl overflow-hidden hover:shadow-md transition-shadow flex flex-col justify-between p-4">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
@@ -313,7 +370,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sessions.slice(0, 2).map((s: any) => (
+                {sessions.slice(0, 2).map((s: SessionData) => (
                   <div key={s.id} className="bg-white border border-border-subtle rounded-xl overflow-hidden hover:shadow-md transition-shadow flex flex-col justify-between p-4">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
@@ -404,7 +461,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
             </div>
 
             <button
-              onClick={() => triggerToast("Booking function coming soon!")}
+              onClick={() => setBookingModalOpen(true)}
               className="w-full text-xs font-bold py-3.5 rounded-xl bg-secondary text-white hover:bg-secondary/90 transition-all cursor-pointer shadow-md mb-2.5"
             >
               Book 1-on-1 Session
@@ -441,7 +498,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
                 Tuto<span className="text-accent">board</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
-                India's most trusted online tutoring platform. Learn at your pace, with the best mentors.
+                India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
               </p>
             </div>
             <div>
@@ -450,7 +507,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
               </div>
               <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="/#about" className="hover:text-white transition-colors">About us</a>
+                  <Link href="/#about" className="hover:text-white transition-colors">About us</Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">Careers</a>
@@ -477,6 +534,18 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </footer>
+      {bookingModalOpen && (
+        <BookingModal
+          isOpen={bookingModalOpen}
+          onClose={() => setBookingModalOpen(false)}
+          targetId={mentor.id}
+          targetType="mentor"
+          title={`1-on-1 Session with ${mentor.name}`}
+          price={mentor.rate}
+          mentorName={mentor.name}
+          isLiveIndividual={true}
+        />
+      )}
     </div>
   );
 }

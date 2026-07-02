@@ -6,18 +6,21 @@ import { createClient } from "@/lib/supabase/client";
 import {
   IconLayoutDashboard, IconVideo, IconClipboardList,
   IconFiles, IconCalendarCheck, IconMessageCircle,
-  IconLogout, IconUsers, IconCoin
+  IconLogout, IconUsers, IconCoin, IconClock, IconUser
 } from "@tabler/icons-react";
+import { NotificationBell } from "./NotificationBell";
 
 const NAV = [
-  { segment: "overview",    label: "Overview",     icon: IconLayoutDashboard },
-  { segment: "classes",     label: "Classes",      icon: IconVideo },
-  { segment: "students",    label: "Students",     icon: IconUsers },
-  { segment: "assignments", label: "Assignments",  icon: IconClipboardList },
-  { segment: "resources",   label: "Resources",    icon: IconFiles },
-  { segment: "attendance",  label: "Attendance",   icon: IconCalendarCheck },
-  { segment: "earnings",    label: "Earnings",     icon: IconCoin },
-  { segment: "messages",    label: "Messages",     icon: IconMessageCircle },
+  { segment: "overview",     label: "Overview",     icon: IconLayoutDashboard },
+  { segment: "classes",      label: "Classes",      icon: IconVideo },
+  { segment: "students",     label: "Students",     icon: IconUsers },
+  { segment: "assignments",  label: "Assignments",  icon: IconClipboardList },
+  { segment: "resources",    label: "Resources",    icon: IconFiles },
+  { segment: "attendance",   label: "Attendance",   icon: IconCalendarCheck },
+  { segment: "earnings",     label: "Earnings",     icon: IconCoin },
+  { segment: "messages",     label: "Messages",     icon: IconMessageCircle },
+  { segment: "availability", label: "Availability", icon: IconClock },
+  { segment: "profile",      label: "Profile",      icon: IconUser },
 ];
 
 export function MentorAppSidebar() {
@@ -32,11 +35,12 @@ export function MentorAppSidebar() {
 
   return (
     <aside className="flex flex-col w-[220px] shrink-0 bg-white border-r border-[#E6EBF8] h-screen sticky top-0 z-30">
-      {/* Logo */}
-      <div className="h-[80px] flex items-center px-6 border-b border-[#E6EBF8] shrink-0">
+      {/* Logo + Bell */}
+      <div className="h-[80px] flex items-center justify-between px-6 border-b border-[#E6EBF8] shrink-0">
         <Link href="/mentor/overview" className="font-heading text-2xl font-extrabold tracking-tight text-[#1B3A6B] hover:opacity-90 transition-opacity">
           Tuto<span className="text-[#2F7FE8]">board</span>
         </Link>
+        <NotificationBell />
       </div>
 
       {/* Nav */}

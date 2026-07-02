@@ -62,6 +62,21 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Scheduled class row ────────────────────────────────────────────
 function ClassRow({ c }: { c: Class }) {
+  const now = new Date();
+  const classTime = new Date(c.scheduledAt);
+  const minsUntil = (classTime.getTime() - now.getTime()) / 60000;
+  const canJoin = c.status === "scheduled" && minsUntil <= 15 && minsUntil > -120;
+
+  const formatCountdown = () => {
+    if (minsUntil <= 0) return null;
+    if (minsUntil < 60) return `Starts in ${Math.round(minsUntil)}m`;
+    const h = Math.floor(minsUntil / 60);
+    const m = Math.round(minsUntil % 60);
+    return `Starts in ${h}h ${m > 0 ? `${m}m` : ""}`;
+  };
+
+  const countdown = formatCountdown();
+
   return (
     <div className="bg-white rounded-2xl border border-[#D0DCF5] p-5 flex items-center gap-4 hover:shadow-sm transition-shadow">
       <div className="w-10 h-10 rounded-xl bg-[#E6F1FB] flex items-center justify-center shrink-0">
@@ -77,24 +92,91 @@ function ClassRow({ c }: { c: Class }) {
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <StatusBadge status={c.status} />
-        {c.status === "scheduled" && c.joinUrl && (
-          <a
-            href={c.joinUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2F7FE8] text-white text-[11px] font-bold rounded-full hover:bg-[#1B3A6B] transition-colors"
-          >
-            <IconPlayerPlay className="w-3.5 h-3.5" />
-            Join
-          </a>
+        {c.status === "scheduled" && (
+          canJoin && c.joinUrl ? (
+            <a
+              href={c.joinUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2F7FE8] text-white text-[11px] font-bold rounded-full hover:bg-[#1B3A6B] transition-colors animate-pulse"
+            >
+              <IconPlayerPlay className="w-3.5 h-3.5" />
+              Join Now
+            </a>
+          ) : countdown ? (
+            <span className="text-[10px] font-bold text-[#9BA8C0] bg-slate-50 border border-[#E6EBF8] px-2.5 py-1 rounded-full whitespace-nowrap">
+              {countdown}
+            </span>
+          ) : null
         )}
       </div>
     </div>
   );
 }
 
+
 // ─── Enrolled booking row ───────────────────────────────────────────
 function EnrolledRow({ b }: { b: Booking }) {
+  const getCourseAccessStatus = () => {
+    // If not a course, assume active session booking
+    if (b.type !== "Course") {
+      return { label: "Enrolled", bg: "bg-green-50", text: "text-green-600", active: true };
+    }
+    
+    // Recorded courses always active
+    if (b.format === "Recorded") {
+      return { label: "Lifetime Access", bg: "bg-green-50", text: "text-green-600", active: true };
+    }
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    // Live Batch date check
+    if (b.format === "Live batch") {
+      const bStartStr = (b as any).batchStartDate;
+      const bEndStr = (b as any).batchEndDate;
+      if (!bStartStr || !bEndStr) {
+        return { label: "Active Access", bg: "bg-green-50", text: "text-green-600", active: true };
+      }
+      const sDate = new Date(bStartStr);
+      const eDate = new Date(bEndStr);
+      sDate.setHours(0, 0, 0, 0);
+      eDate.setHours(0, 0, 0, 0);
+
+      if (now < sDate) {
+        return { label: `Access Starts ${sDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, bg: "bg-amber-55 bg-amber-50", text: "text-amber-700", active: false };
+      } else if (now > eDate) {
+        return { label: "Expired", bg: "bg-red-50", text: "text-red-500", active: false };
+      } else {
+        return { label: `Active (Ends ${eDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`, bg: "bg-green-50", text: "text-green-600", active: true };
+      }
+    }
+
+    // Live Individual date validity limit check
+    if (b.format === "Live individual") {
+      const createdStr = (b as any).createdAt;
+      const duration = (b as any).durationDays;
+      if (!createdStr || !duration) {
+        return { label: "Active Access", bg: "bg-green-50", text: "text-green-600", active: true };
+      }
+      const sDate = new Date(createdStr);
+      sDate.setHours(0, 0, 0, 0);
+      const eDate = new Date(sDate);
+      eDate.setDate(sDate.getDate() + Number(duration));
+      eDate.setHours(0, 0, 0, 0);
+
+      if (now > eDate) {
+        return { label: "Expired", bg: "bg-red-50", text: "text-red-500", active: false };
+      } else {
+        return { label: `Active (Expires ${eDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`, bg: "bg-green-50", text: "text-green-600", active: true };
+      }
+    }
+
+    return { label: "Enrolled", bg: "bg-green-50", text: "text-green-600", active: true };
+  };
+
+  const status = getCourseAccessStatus();
+
   return (
     <div className="bg-white rounded-2xl border border-[#D0DCF5] p-5 flex items-center gap-4 hover:shadow-sm transition-shadow">
       <div className="w-10 h-10 rounded-xl bg-[#E6F1FB] flex items-center justify-center shrink-0">
@@ -105,9 +187,9 @@ function EnrolledRow({ b }: { b: Booking }) {
         <p className="text-[11px] text-[#4A5A7A]">{b.subject} · {b.mentorName}</p>
         <p className="text-[11px] text-[#4A5A7A] mt-0.5">{b.type === "course" ? "Course" : "Session"} · {b.dateTime}</p>
       </div>
-      <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-50 text-green-600">
-        <IconCheck className="w-3.5 h-3.5" />
-        Enrolled
+      <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${status.bg} ${status.text}`}>
+        {status.active ? <IconCheck className="w-3.5 h-3.5" /> : <IconX className="w-3.5 h-3.5" />}
+        {status.label}
       </span>
     </div>
   );

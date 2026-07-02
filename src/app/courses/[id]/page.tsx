@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use, useState, useEffect } from "react";
+import Link from "next/link";
 import {
   IconCheck,
   IconChevronDown,
@@ -29,7 +30,8 @@ import {
   IconBrandLinkedin,
   IconBrandYoutube,
 } from "@tabler/icons-react";
-import { getCourseDetails } from "../../actions";
+import { getCourseDetails, getItemReviews, addReview } from "../../actions";
+import BookingModal from "@/components/BookingModal";
 
 // Dynamic Icon Picker Helper
 const getDetailsIcon = (name: string) => {
@@ -216,31 +218,156 @@ function getDynamicLearningOutcomes(subject: string) {
   ];
 }
 
+interface RelatedCourse {
+  id: string;
+  title: string;
+  subject: string;
+  format: string;
+  price: number;
+  mentor: string;
+  students: number;
+  rating: number;
+  colorBg: string;
+  iconName: string;
+}
+
+interface CourseDetailsData {
+  id: string;
+  title: string;
+  description: string;
+  aboutCourse: string;
+  subject: string;
+  format: string;
+  price: number;
+  mentor: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl: string;
+    avatarText: string;
+    expertise: string;
+    rating: number;
+    qualification: string;
+    experience: number;
+    bio: string;
+    students: number;
+  };
+  students: number;
+  rating: number;
+  learningOutcomes: string[];
+  curriculum: { name: string; meta: string; lessons: string[]; }[];
+  inclusions: string[];
+  batchStartDate: string;
+  batchEndDate: string;
+  classDays: string;
+  classTiming: string;
+  coverImageUrl: string;
+  colorBg: string;
+  iconName: string;
+  languages?: string[];
+  durationDays?: number;
+  totalSessions?: number;
+  sessionsPerWeek?: number;
+}
+
+interface CourseDetailsResponse {
+  course: CourseDetailsData;
+  related: RelatedCourse[];
+}
+
 export default function CourseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<CourseDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Accordion state (for curriculum)
   const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({ 0: true });
 
+  const [selectedSlot, setSelectedSlot] = useState({ day: "Wed", time: "7 PM" });
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+
+  const sidebarSlots = [
+    { day: "Mon", time: "5 PM", status: "booked" },
+    { day: "Tue", time: "5 PM", status: "open" },
+    { day: "Wed", time: "7 PM", status: "open" },
+    { day: "Thu", time: "5 PM", status: "open" },
+    { day: "Fri", time: "5 PM", status: "open" },
+    { day: "Sat", time: "10 AM", status: "open" },
+  ];
+
+  const calendarData = [
+    { day: "Mon", slots: [{ time: "5 PM", status: "booked" }, { time: "7 PM", status: "booked" }, { time: "8 PM", status: "open" }] },
+    { day: "Tue", slots: [{ time: "5 PM", status: "open" }, { time: "6 PM", status: "open" }, { time: "8 PM", status: "open" }] },
+    { day: "Wed", slots: [{ time: "5 PM", status: "booked" }, { time: "6 PM", status: "open" }, { time: "7 PM", status: "open" }] },
+    { day: "Thu", slots: [{ time: "5 PM", status: "open" }, { time: "7 PM", status: "open" }, { time: "8 PM", status: "booked" }] },
+    { day: "Fri", slots: [{ time: "5 PM", status: "open" }, { time: "6 PM", status: "open" }, { time: "8 PM", status: "open" }] },
+    { day: "Sat", slots: [{ time: "10 AM", status: "open" }, { time: "11 AM", status: "open" }, { time: "12 PM", status: "open" }] },
+    { day: "Sun", slots: [{ time: "10 AM", status: "booked" }, { time: "11 AM", status: "booked" }, { time: "12 PM", status: "booked" }] },
+  ];
+
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewComment, setNewReviewComment] = useState("");
+  const [newReviewName, setNewReviewName] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const loadReviews = async () => {
+    try {
+      setLoadingReviews(true);
+      const data = await getItemReviews(id, "course");
+      setReviews(data);
+    } catch (e) {
+      console.error("Failed to load reviews:", e);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
   useEffect(() => {
     async function loadData() {
       try {
         const res = await getCourseDetails(id);
-        setData(res);
-      } catch (err: any) {
+        setData(res as CourseDetailsResponse);
+      } catch (err: unknown) {
         console.error(err);
-        setError(err.message || "Failed to load course details");
+        setError(err instanceof Error ? err.message : "Failed to load course details");
       } finally {
         setLoading(false);
       }
     }
     loadData();
+    loadReviews();
   }, [id]);
+
+  const handleAddReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newReviewRating < 1 || newReviewRating > 5) return;
+    setSubmittingReview(true);
+    try {
+      await addReview({
+        itemId: id,
+        type: "course",
+        rating: newReviewRating,
+        comment: newReviewComment.trim(),
+        studentName: newReviewName.trim() || undefined,
+      });
+      setNewReviewComment("");
+      setNewReviewName("");
+      setNewReviewRating(5);
+      setReviewModalOpen(false);
+      await loadReviews();
+      alert("Review submitted successfully!");
+    } catch (err: any) {
+      alert("Failed to submit review: " + err.message);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const toggleModule = (index: number) => {
     setExpandedModules((prev) => ({ ...prev, [index]: !prev[index] }));
@@ -319,13 +446,13 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md text-center shadow-md">
             <h2 className="font-heading text-lg font-bold text-red-700 mb-2">Error Loading Course</h2>
             <p className="text-sm text-text-muted mb-6">{error || "Course not found."}</p>
-            <a href="/courses" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
+            <Link href="/courses" className="text-xs font-semibold px-6 py-3 bg-primary text-white rounded-lg hover:shadow-md transition-all">
               Back to Courses
-            </a>
+            </Link>
           </div>
         </div>
       ) : (() => {
-        const { course, related } = data;
+        const { course, related } = data!;
         const isLive = course.format === "Live batch";
 
         const syllabus = (course.curriculum && course.curriculum.length > 0)
@@ -383,9 +510,9 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
       {/* BREADCRUMB */}
       <div className="bg-surface border-b border-border-subtle py-4 px-6 md:px-12">
         <div className="max-w-7xl mx-auto text-xs text-text-muted flex items-center gap-1.5 font-medium">
-          <a href="/" className="hover:text-secondary transition-colors">Home</a>
+          <Link href="/" className="hover:text-secondary transition-colors">Home</Link>
           <span className="text-slate-300">/</span>
-          <a href="/courses" className="hover:text-secondary transition-colors">Courses</a>
+          <Link href="/courses" className="hover:text-secondary transition-colors">Courses</Link>
           <span className="text-slate-300">/</span>
           <span className="text-primary font-semibold truncate max-w-[200px] sm:max-w-xs">{course.title}</span>
         </div>
@@ -447,8 +574,12 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-text-muted font-medium pt-2">
               <div className="flex items-center gap-1">
-                <span className="text-accent font-bold">★ {course.rating}</span>
-                <span>(214 reviews)</span>
+                <span className="text-accent font-bold">
+                  ★ {reviews.length > 0 
+                    ? (reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / reviews.length).toFixed(1) 
+                    : "5.0"}
+                </span>
+                <span>({reviews.length} review{reviews.length === 1 ? "" : "s"})</span>
               </div>
               <span className="h-4 w-px bg-border-subtle hidden sm:block"></span>
               <div className="flex items-center gap-1.5">
@@ -458,19 +589,35 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
               <span className="h-4 w-px bg-border-subtle hidden sm:block"></span>
               <div className="flex items-center gap-1.5">
                 <IconClock className="w-4 h-4 text-slate-400" />
-                <span>{isLive ? "8-week program" : "32 hours total"}</span>
+                <span>
+                  {(() => {
+                    if (isLive && course.batchStartDate && course.batchEndDate) {
+                      const start = new Date(course.batchStartDate);
+                      const end = new Date(course.batchEndDate);
+                      const diffTime = Math.abs(end.getTime() - start.getTime());
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      const diffWeeks = Math.round(diffDays / 7);
+                      return `${diffWeeks}-week program`;
+                    }
+                    return isLive ? "8-week program" : "32 hours total";
+                  })()}
+                </span>
               </div>
               <span className="h-4 w-px bg-border-subtle hidden sm:block"></span>
               <div className="flex items-center gap-1.5">
                 <IconWorld className="w-4 h-4 text-slate-400" />
-                <span>English {isLive && "· IST"}</span>
+                <span>
+                  {(course.languages && course.languages.length > 0) 
+                    ? course.languages.join(" / ") 
+                    : "English"} {isLive && "· IST"}
+                </span>
               </div>
             </div>
           </div>
 
           {/* WHAT YOU'LL LEARN */}
           <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm">
-            <h3 className="font-heading text-lg font-bold text-primary mb-4">What you'll learn</h3>
+            <h3 className="font-heading text-lg font-bold text-primary mb-4">What you&apos;ll learn</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {outcomes.map((item: string, index: number) => (
                 <div key={index} className="flex items-start gap-2.5 text-xs text-slate-700 leading-normal">
@@ -582,51 +729,114 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* STUDENT REVIEWS */}
-          <div className="space-y-3">
-            <h3 className="font-heading text-lg font-bold text-primary">Student reviews</h3>
-            <div className="space-y-3">
-              <div className="border border-border-subtle rounded-2xl p-5 shadow-sm space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center font-heading text-xs font-bold text-accent">
-                    RA
+          {/* AVAILABILITY CALENDAR (Only if Live individual course) */}
+          {course.format === "Live individual" && (
+            <div className="bg-white border border-border-subtle rounded-2xl p-[22px] shadow-sm">
+              <h3 className="font-heading text-base font-bold text-primary mb-1">Availability this week</h3>
+              <p className="text-[10px] text-text-muted mb-4">Click an available slot to pick a booking time</p>
+              
+              <div className="grid grid-cols-7 gap-1.5 mb-4 overflow-x-auto pb-2 premium-scrollbar">
+                {calendarData.map((dayData, idx) => (
+                  <div key={idx} className="flex flex-col min-w-[50px] text-center">
+                    <span className="text-[9px] text-text-muted font-bold uppercase mb-2">{dayData.day}</span>
+                    <div className="space-y-1">
+                      {dayData.slots.map((slot, sIdx) => {
+                        const isSelected = selectedSlot.day === dayData.day && selectedSlot.time === slot.time;
+                        const isBooked = slot.status === "booked";
+                        
+                        let slotClass = "bg-slate-100 text-slate-400 cursor-not-allowed border-transparent";
+                        if (slot.status === "open") {
+                          if (isSelected) {
+                            slotClass = "bg-primary text-white border-primary font-bold";
+                          } else {
+                            slotClass = "bg-[#E6F1FB] text-[#0C447C] border-[#b5d0f0] hover:bg-secondary hover:text-white";
+                          }
+                        }
+                        
+                        return (
+                          <button
+                            key={sIdx}
+                            disabled={isBooked}
+                            onClick={() => {
+                              if (!isBooked) {
+                                setSelectedSlot({ day: dayData.day, time: slot.time });
+                              }
+                            }}
+                            className={`w-full text-[9px] py-1.5 border rounded-lg transition-all text-center focus:outline-none ${slotClass}`}
+                          >
+                            {slot.time}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-primary">Rohan Agarwal</p>
-                    <p className="text-[10px] text-text-muted">2 weeks ago</p>
-                  </div>
-                  <div className="ml-auto text-xs text-accent font-bold flex items-center">
-                    ★★★★★
-                  </div>
-                </div>
-                <p className="text-xs leading-relaxed text-text-muted">
-                  {isLive 
-                    ? "Loved that it's actually live — I could ask questions mid-class and get answers right away. Felt like a real classroom."
-                    : "Extremely well structured. The module on integration alone was worth the price — clear explanations and tons of practice problems."
-                  }
-                </p>
+                ))}
               </div>
 
-              <div className="border border-border-subtle rounded-2xl p-5 shadow-sm space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#993556] flex items-center justify-center font-heading text-xs font-bold text-white">
-                    AN
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-primary">Aisha Naik</p>
-                    <p className="text-[10px] text-text-muted">1 month ago</p>
-                  </div>
-                  <div className="ml-auto text-xs text-accent font-bold flex items-center">
-                    ★★★★★
-                  </div>
+              <div className="flex gap-3.5 border-t border-slate-50 pt-3">
+                <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-medium">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-[#E6F1FB] border border-[#b5d0f0]"></div>
+                  <span>Available</span>
                 </div>
-                <p className="text-xs leading-relaxed text-text-muted">
-                  {isLive 
-                    ? "The small batch size made a huge difference. Arjun sir noticed when I was stuck and slowed down to help."
-                    : "Arjun sir explains everything so patiently. The weekly live sessions really helped clear my doubts before the boards."
-                  }
-                </p>
+                <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-medium">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-primary"></div>
+                  <span>Selected</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-medium">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-slate-100"></div>
+                  <span>Booked</span>
+                </div>
               </div>
+            </div>
+          )}
+
+          {/* STUDENT REVIEWS */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <h3 className="font-heading text-lg font-bold text-primary">Student reviews</h3>
+              <button
+                onClick={() => setReviewModalOpen(true)}
+                className="text-xs font-bold text-secondary hover:text-secondary/80 border border-secondary px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+              >
+                Write a review
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {loadingReviews ? (
+                <p className="text-xs text-text-muted">Loading reviews...</p>
+              ) : reviews.length === 0 ? (
+                <div className="border border-dashed border-border-subtle rounded-2xl p-6 text-center space-y-1">
+                  <p className="text-xs font-bold text-primary">No reviews yet</p>
+                  <p className="text-[10.5px] text-text-muted">Be the first to share your learning experience!</p>
+                </div>
+              ) : (
+                reviews.map((r: any) => (
+                  <div key={r.id} className="border border-border-subtle rounded-2xl p-5 shadow-sm space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-secondary/10 flex items-center justify-center font-heading text-xs font-bold text-secondary">
+                        {r.avatarText}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-primary">{r.studentName}</p>
+                        <p className="text-[10px] text-text-muted">
+                          {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric"
+                          })}
+                        </p>
+                      </div>
+                      <div className="ml-auto text-xs text-accent font-bold flex items-center">
+                        {"★".repeat(r.rating) + "☆".repeat(5 - r.rating)}
+                      </div>
+                    </div>
+                    <p className="text-xs leading-relaxed text-text-muted">
+                      {r.comment}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -635,12 +845,40 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
         {/* RIGHT COLUMN / SIDEBAR CARD (1/3 width on desktop) */}
         <div className="space-y-6">
           <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-lg space-y-5">
-            {isLive && (
-              <div className="bg-red-50 text-red-700 text-[10px] font-bold px-3 py-1 rounded-lg border border-red-150 flex items-center gap-1.5 self-start w-fit">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                Batch starts in 2 days
-              </div>
-            )}
+            {isLive && (() => {
+              if (!course.batchStartDate) return null;
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const start = new Date(course.batchStartDate);
+              start.setHours(0, 0, 0, 0);
+              const diffTime = start.getTime() - today.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+              let statusText = "";
+              let bgClass = "bg-red-50 text-red-700 border-red-150";
+              let dotClass = "bg-red-500";
+
+              if (diffDays === 0) {
+                statusText = "Batch starts today!";
+                bgClass = "bg-emerald-50 text-emerald-700 border-emerald-150";
+                dotClass = "bg-emerald-500";
+              } else if (diffDays === 1) {
+                statusText = "Batch starts tomorrow!";
+              } else if (diffDays > 1) {
+                statusText = `Batch starts in ${diffDays} days`;
+              } else {
+                statusText = "Batch in progress";
+                bgClass = "bg-slate-100 text-slate-700 border-slate-200";
+                dotClass = "bg-slate-500";
+              }
+
+              return (
+                <div className={`text-[10px] font-bold px-3 py-1 rounded-lg border flex items-center gap-1.5 self-start w-fit ${bgClass}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${dotClass}`}></span>
+                  {statusText}
+                </div>
+              );
+            })()}
             
             <div className="space-y-1">
               <div className="flex items-baseline gap-2">
@@ -651,7 +889,17 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                   ₹{oldPrice.toLocaleString("en-IN")}
                 </span>
                 <span className="text-xs text-text-muted font-medium">
-                  {isLive ? "/ 8-week batch" : "/ course"}
+                  {isLive ? (() => {
+                    if (course.batchStartDate && course.batchEndDate) {
+                      const start = new Date(course.batchStartDate);
+                      const end = new Date(course.batchEndDate);
+                      const diffTime = Math.abs(end.getTime() - start.getTime());
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      const diffWeeks = Math.round(diffDays / 7);
+                      return `/ ${diffWeeks}-week batch`;
+                    }
+                    return "/ 8-week batch";
+                  })() : "/ course"}
                 </span>
               </div>
               {!isLive && (
@@ -661,8 +909,57 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
               )}
             </div>
 
-            <button className="w-full font-semibold text-sm py-3.5 bg-secondary text-white rounded-xl hover:bg-secondary/90 transition-colors cursor-pointer shadow-md">
-              {isLive ? "Reserve your seat" : "Book now"}
+            {course.format === "Live individual" && (
+              <>
+                {/* Next Available */}
+                <div className="flex items-center gap-3 bg-[#F5F8FF] border border-border-subtle rounded-xl p-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <IconCalendar className="w-4.5 h-4.5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-secondary font-bold uppercase tracking-wider">Next available slot</p>
+                    <p className="text-xs font-semibold text-primary">
+                      {selectedSlot.day}, 25 Jun · {selectedSlot.time} IST
+                    </p>
+                  </div>
+                </div>
+
+                {/* Slot picker grid */}
+                <div>
+                  <p className="text-[9px] text-primary font-bold uppercase tracking-wider mb-2">Pick a slot</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {sidebarSlots.map((slot, idx) => {
+                      const isSelected = selectedSlot.day === slot.day && selectedSlot.time === slot.time;
+                      const isBooked = slot.status === "booked";
+                      
+                      let slotClass = "border-border-subtle text-text-muted hover:border-secondary hover:text-secondary";
+                      if (isBooked) {
+                        slotClass = "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed";
+                      } else if (isSelected) {
+                        slotClass = "bg-primary text-white border-primary font-bold shadow-sm";
+                      }
+                      
+                      return (
+                        <button
+                          key={idx}
+                          disabled={isBooked}
+                          onClick={() => setSelectedSlot({ day: slot.day, time: slot.time })}
+                          className={`text-center py-2.5 border rounded-lg text-[10px] font-semibold transition-all focus:outline-none cursor-pointer ${slotClass}`}
+                        >
+                          {slot.day} · {slot.time}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button 
+              onClick={() => setBookingModalOpen(true)}
+              className="w-full font-semibold text-sm py-3.5 bg-secondary text-white rounded-xl hover:bg-secondary/90 transition-colors cursor-pointer shadow-md"
+            >
+              {course.format === "Live individual" ? "Book 1-on-1 Course" : isLive ? "Reserve your seat" : "Book now"}
             </button>
             
             <button className="w-full font-semibold text-xs py-3 border border-primary rounded-xl text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2 cursor-pointer">
@@ -715,8 +1012,8 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             <h3 className="font-heading text-lg font-bold text-primary mb-6">Related courses</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {related.map((rc: any) => (
-                <a 
+              {related.map((rc: RelatedCourse) => (
+                <Link 
                   href={`/courses/${rc.id}`}
                   key={rc.id}
                   className="bg-white border border-border-subtle rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
@@ -733,7 +1030,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                       <strong className="text-primary font-extrabold text-sm">₹{rc.price.toLocaleString("en-IN")}</strong>
                     </div>
                   </div>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -749,7 +1046,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                 Tuto<span className="text-accent">board</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
-                India's most trusted online tutoring platform. Learn at your pace, with the best mentors.
+                India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
               </p>
             </div>
             <div>
@@ -758,7 +1055,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
               </div>
               <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="/#about" className="hover:text-white transition-colors">About us</a>
+                  <Link href="/#about" className="hover:text-white transition-colors">About us</Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">Careers</a>
@@ -785,6 +1082,87 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </footer>
+      <BookingModal
+        isOpen={bookingModalOpen}
+        onClose={() => setBookingModalOpen(false)}
+        targetId={course.id}
+        targetType="course"
+        title={course.title}
+        price={course.price}
+        selectedSlot={course.format === "Live individual" ? selectedSlot : undefined}
+        mentorName={course.mentor.name}
+        isLiveIndividual={course.format === "Live individual"}
+      />
+
+      {/* REVIEW SUBMISSION MODAL */}
+      {reviewModalOpen && (
+        <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-[999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-border-subtle max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <h3 className="font-heading text-base font-bold text-primary">Write a Review</h3>
+              <button
+                onClick={() => setReviewModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer text-text-muted font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddReviewSubmit} className="space-y-4 text-left">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-primary uppercase">Your Name (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="Anonymous Student"
+                  value={newReviewName}
+                  onChange={(e) => setNewReviewName(e.target.value)}
+                  className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-primary uppercase">Rating</label>
+                <div className="flex items-center gap-1.5 mt-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setNewReviewRating(star)}
+                      className="text-xl cursor-pointer transition-transform hover:scale-110"
+                    >
+                      {star <= newReviewRating ? (
+                        <IconStar className="w-6 h-6 text-accent fill-accent" />
+                      ) : (
+                        <IconStar className="w-6 h-6 text-slate-300" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-primary uppercase">Review Content</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Share your learning experience with this course..."
+                  value={newReviewComment}
+                  onChange={(e) => setNewReviewComment(e.target.value)}
+                  className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none resize-none h-24"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingReview}
+                className="w-full text-xs font-bold py-2.5 rounded-xl bg-secondary text-white hover:bg-secondary/90 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {submittingReview ? "Submitting..." : "Submit Review"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
           </>
         );
       })()}

@@ -47,6 +47,11 @@ import {
   toggleTestimonialStatus as apiToggleTestimonialStatus,
   syncMockDataToBackend,
   uploadCourseCover,
+  getCourseUnits,
+  upsertCourseUnit,
+  deleteCourseUnit,
+  reorderCourseUnits,
+  cancelBooking,
 } from "../actions";
 
 // Mock Data Types
@@ -56,7 +61,7 @@ interface Course {
   description?: string;
   coverImageUrl?: string;
   subject: "Mathematics" | "Science" | "Programming" | "English";
-  format: "Live batch" | "Recorded" | "Hourly";
+  format: "Live batch" | "Live individual" | "Recorded" | "Hourly";
   price: number;
   mentor: string;
   students: number;
@@ -111,6 +116,19 @@ interface Testimonial {
   avatarText: string;
 }
 
+interface Booking {
+  id: string;
+  parentName: string;
+  parentEmail: string;
+  studentName: string;
+  bookingType: string;
+  itemTitle: string;
+  amountPaid: number;
+  status: string;
+  paymentStatus: string;
+  createdAt: string;
+}
+
 // Default fallback hero structure for clean state initiation
 const DEFAULT_HERO = {
   badgeText: "#1 online tutoring platform",
@@ -133,7 +151,7 @@ const DEFAULT_HERO = {
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "hero" | "courses" | "sessions" | "mentors" | "testimonials"
+    "dashboard" | "hero" | "courses" | "sessions" | "mentors" | "testimonials" | "bookings"
   >("dashboard");
 
   // Core Data States
@@ -141,7 +159,17 @@ export default function AdminPanel() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [heroCopy, setHeroCopy] = useState(DEFAULT_HERO);
+  
+  // Recorded units & selected booking states
+  const [courseUnits, setCourseUnits] = useState<any[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [newUnitTitle, setNewUnitTitle] = useState("");
+  const [newUnitUrl, setNewUnitUrl] = useState("");
+  const [newUnitDesc, setNewUnitDesc] = useState("");
+  const [newUnitDur, setNewUnitDur] = useState(0);
+  const [unitSaving, setUnitSaving] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -154,6 +182,7 @@ export default function AdminPanel() {
       setSessions(res.sessions);
       setMentors(res.mentors);
       setTestimonials(res.testimonials);
+      setBookings(res.bookings || []);
       if (res.settings) {
         setHeroCopy({
           badgeText: res.settings.badge_text,
@@ -217,6 +246,7 @@ export default function AdminPanel() {
 
   const [testimonialSearch, setTestimonialSearch] = useState("");
   const [testimonialFilter, setTestimonialFilter] = useState("All");
+  const [bookingSearch, setBookingSearch] = useState("");
 
   // Drawer modal state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -228,6 +258,7 @@ export default function AdminPanel() {
   const [showMoreCourseDetails, setShowMoreCourseDetails] = useState(false);
   const [showMoreSessionDetails, setShowMoreSessionDetails] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [courseLangDropdownOpen, setCourseLangDropdownOpen] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -253,12 +284,15 @@ export default function AdminPanel() {
   ) => {
     setDrawerMode(mode);
     setDrawerEditId(id);
+    setCourseUnits([]);
     
     if (id) {
-      // Find item to edit
       if (mode === "course") {
         const item = courses.find((x) => x.id === id);
         setDrawerForm({ ...item });
+        if (item && item.format === "Recorded") {
+          getCourseUnits(id).then(setCourseUnits).catch(console.error);
+        }
       } else if (mode === "session") {
         const item = sessions.find((x) => x.id === id);
         setDrawerForm({ ...item });
@@ -283,6 +317,12 @@ export default function AdminPanel() {
           students: 0,
           rating: 5.0,
           status: "Draft",
+          durationDays: 30,
+          totalSessions: 10,
+          sessionsPerWeek: 2,
+          classDays: "",
+          classTiming: "",
+          languages: ["English"],
         });
       } else if (mode === "session") {
         setDrawerForm({
@@ -301,6 +341,8 @@ export default function AdminPanel() {
           language: "English / Hindi",
           days: "Mon – Sat",
           reschedulePolicy: "Up to 4 hrs before",
+          sessionDate: "",
+          sessionTime: "",
         });
       } else if (mode === "mentor") {
         setDrawerForm({
@@ -421,6 +463,64 @@ export default function AdminPanel() {
     }
   };
 
+  // Recorded course units CRUD handlers
+  const handleAddUnit = async () => {
+    if (!drawerEditId) return;
+    if (!newUnitTitle.trim() || !newUnitUrl.trim()) {
+      alert("Unit title and YouTube URL are required.");
+      return;
+    }
+    setUnitSaving(true);
+    try {
+      await upsertCourseUnit({
+        courseId: drawerEditId,
+        title: newUnitTitle.trim(),
+        description: newUnitDesc.trim(),
+        youtubeUrl: newUnitUrl.trim(),
+        orderIndex: courseUnits.length,
+        durationSeconds: Number(newUnitDur || 0),
+      });
+      setNewUnitTitle("");
+      setNewUnitUrl("");
+      setNewUnitDesc("");
+      setNewUnitDur(0);
+      const data = await getCourseUnits(drawerEditId);
+      setCourseUnits(data);
+    } catch (err: any) {
+      alert("Failed to add unit: " + err.message);
+    } finally {
+      setUnitSaving(false);
+    }
+  };
+
+  const handleDeleteUnit = async (unitId: string) => {
+    if (!confirm("Are you sure you want to delete this video unit?")) return;
+    try {
+      await deleteCourseUnit(unitId);
+      if (drawerEditId) {
+        const data = await getCourseUnits(drawerEditId);
+        setCourseUnits(data);
+      }
+    } catch (err: any) {
+      alert("Failed to delete unit: " + err.message);
+    }
+  };
+
+  const handleMoveUnit = async (index: number, direction: "up" | "down") => {
+    const newUnits = [...courseUnits];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newUnits.length) return;
+    const temp = newUnits[index];
+    newUnits[index] = newUnits[targetIndex];
+    newUnits[targetIndex] = temp;
+    setCourseUnits(newUnits);
+    try {
+      await reorderCourseUnits(newUnits.map((u) => u.id));
+    } catch (err: any) {
+      alert("Failed to save reordered units: " + err.message);
+    }
+  };
+
   // Dynamic Metrics (Computed from state)
   const dashboardStats = useMemo(() => {
     const totalStudents = courses.reduce((acc, curr) => acc + curr.students, 0) + 12000; // base offset
@@ -466,6 +566,16 @@ export default function AdminPanel() {
       testimonialFilter === "All" ||
       (testimonialFilter === "Visible" ? x.showOnSite : !x.showOnSite);
     return matchSearch && matchStatus;
+  });
+
+  const filteredBookings = bookings.filter((b) => {
+    const term = bookingSearch.toLowerCase();
+    return (
+      b.parentName.toLowerCase().includes(term) ||
+      b.studentName.toLowerCase().includes(term) ||
+      b.itemTitle.toLowerCase().includes(term) ||
+      b.bookingType.toLowerCase().includes(term)
+    );
   });
 
   // Dynamic helper: Headline highlights builder
@@ -578,6 +688,17 @@ export default function AdminPanel() {
               >
                 <IconQuote className="w-4 h-4 shrink-0" />
                 Testimonials
+              </button>
+              <button
+                onClick={() => setActiveTab("bookings")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                  activeTab === "bookings"
+                    ? "bg-secondary text-white"
+                    : "text-white/65 hover:bg-white/8 hover:text-white"
+                }`}
+              >
+                <IconList className="w-4 h-4 shrink-0" />
+                Bookings
               </button>
             </div>
           </div>
@@ -1233,30 +1354,50 @@ export default function AdminPanel() {
                         key={c.id}
                         className="bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-md transition-shadow group relative"
                       >
-                        <div
-                          style={{ backgroundColor: c.colorBg }}
-                          className="w-full h-24 flex items-center justify-center relative"
-                        >
-                          <IconComponent className="w-10 h-10 text-primary/80" />
-                          <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => openDrawer("course", c.id)}
-                              className="w-7 h-7 rounded-lg border border-border-subtle bg-white flex items-center justify-center hover:bg-badge-bg cursor-pointer text-text-muted"
-                            >
-                              <IconEdit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => deleteItem("course", c.id)}
-                              className="w-7 h-7 rounded-lg border border-red-200 bg-white flex items-center justify-center hover:bg-red-50 text-red-600 cursor-pointer"
-                            >
-                              <IconTrash className="w-3.5 h-3.5" />
-                            </button>
+                        {c.coverImageUrl ? (
+                          <div className="w-full h-24 overflow-hidden relative">
+                            <img src={c.coverImageUrl} alt={c.title} className="w-full h-full object-cover" />
+                            <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                              <button
+                                onClick={() => openDrawer("course", c.id)}
+                                className="w-7 h-7 rounded-lg border border-border-subtle bg-white flex items-center justify-center hover:bg-badge-bg cursor-pointer text-text-muted"
+                              >
+                                <IconEdit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => deleteItem("course", c.id)}
+                                className="w-7 h-7 rounded-lg border border-red-200 bg-white flex items-center justify-center hover:bg-red-50 text-red-600 cursor-pointer"
+                              >
+                                <IconTrash className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div
+                            style={{ backgroundColor: c.colorBg }}
+                            className="w-full h-24 flex items-center justify-center relative"
+                          >
+                            <IconComponent className="w-10 h-10 text-primary/80" />
+                            <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => openDrawer("course", c.id)}
+                                className="w-7 h-7 rounded-lg border border-border-subtle bg-white flex items-center justify-center hover:bg-badge-bg cursor-pointer text-text-muted"
+                              >
+                                <IconEdit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => deleteItem("course", c.id)}
+                                className="w-7 h-7 rounded-lg border border-red-200 bg-white flex items-center justify-center hover:bg-red-50 text-red-600 cursor-pointer"
+                              >
+                                <IconTrash className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         <div className="p-4">
                           <span
                             className={`text-[8px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mb-2.5 ${
-                              c.format === "Live batch"
+                              (c.format === "Live batch" || c.format === "Live individual")
                                 ? "bg-badge-bg text-badge-text"
                                 : c.format === "Recorded"
                                 ? "bg-amber-100 text-amber-800"
@@ -1337,7 +1478,7 @@ export default function AdminPanel() {
                           <td className="py-2.5 px-3 text-xs">
                             <span
                               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                                c.format === "Live batch"
+                                (c.format === "Live batch" || c.format === "Live individual")
                                   ? "bg-badge-bg text-badge-text"
                                   : c.format === "Recorded"
                                   ? "bg-amber-100 text-amber-800"
@@ -1852,6 +1993,128 @@ export default function AdminPanel() {
               </div>
             </div>
           )}
+
+          {/* 7. BOOKINGS TAB */}
+          {activeTab === "bookings" && (
+            <div className="space-y-4">
+              {/* Toolbar */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-1 max-w-lg">
+                  <div className="relative flex-1 min-w-[240px]">
+                    <IconSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                    <input
+                      type="text"
+                      placeholder="Search bookings by parent, student, or item..."
+                      value={bookingSearch}
+                      onChange={(e) => setBookingSearch(e.target.value)}
+                      className="w-full text-xs pl-9 pr-3 py-2 border border-border-subtle rounded-lg bg-white outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto bg-white border border-border-subtle rounded-2xl shadow-sm">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-badge-bg/30 border-b border-border-subtle">
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-left">Booking ID</th>
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-left">Parent Details</th>
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-left">Student</th>
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-left">Booked Item</th>
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-left">Type</th>
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-left font-sans">Amount (₹)</th>
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-left">Payment Status</th>
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-left">Date</th>
+                      <th className="text-[9px] font-bold text-text-muted py-3 px-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBookings.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-10 text-center text-xs text-text-muted italic">
+                          No bookings found matching search criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredBookings.map((b) => (
+                        <tr key={b.id} className="border-b border-border-subtle/50 hover:bg-surface/30">
+                          <td className="py-3.5 px-4 text-xs font-mono text-primary font-bold">
+                            #{b.id.substring(0, 8)}
+                          </td>
+                          <td className="py-3.5 px-4 text-xs">
+                            <div className="font-bold text-primary">{b.parentName}</div>
+                            <div className="text-[10px] text-text-muted mt-0.5">{b.parentEmail}</div>
+                          </td>
+                          <td className="py-3.5 px-4 text-xs text-primary font-semibold">
+                            {b.studentName}
+                          </td>
+                          <td className="py-3.5 px-4 text-xs font-semibold text-[#1B3A6B]">
+                            {b.itemTitle}
+                          </td>
+                          <td className="py-3.5 px-4 text-xs">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              b.bookingType === "Course" 
+                                ? "bg-purple-50 text-purple-600 border border-purple-100" 
+                                : "bg-blue-50 text-blue-600 border border-blue-100"
+                            }`}>
+                              {b.bookingType}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-xs font-bold font-sans text-primary">
+                            ₹{b.amountPaid.toLocaleString()}
+                          </td>
+                          <td className="py-3.5 px-4 text-xs">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              b.paymentStatus === "paid" 
+                                ? "bg-green-50 text-green-700 border border-green-200" 
+                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                            }`}>
+                              {b.paymentStatus.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-xs text-text-muted">
+                            {new Date(b.createdAt).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="flex gap-1.5 justify-center">
+                              <button
+                                onClick={() => setSelectedBooking(b)}
+                                className="text-[10px] font-bold px-2 py-1 rounded border border-border-subtle bg-white text-primary hover:bg-slate-50 cursor-pointer"
+                              >
+                                Details
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (confirm("Are you sure you want to cancel this booking and all its classes?")) {
+                                    try {
+                                      await cancelBooking(b.id);
+                                      await loadData();
+                                    } catch (err: any) {
+                                      alert("Failed to cancel: " + err.message);
+                                    }
+                                  }
+                                }}
+                                disabled={b.status === "cancelled"}
+                                className={`text-[10px] font-bold px-2 py-1 rounded border border-red-200 bg-white text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed`}
+                              >
+                                {b.status === "cancelled" ? "Cancelled" : "Cancel"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -1922,8 +2185,8 @@ export default function AdminPanel() {
                         onChange={(e) => setDrawerForm({ ...drawerForm, format: e.target.value })}
                       >
                         <option>Live batch</option>
+                        <option>Live individual</option>
                         <option>Recorded</option>
-                        <option>Hourly</option>
                       </select>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -1949,6 +2212,54 @@ export default function AdminPanel() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  
+                  <div className="flex flex-col gap-1 relative">
+                    <label className="text-[10px] font-bold text-primary uppercase">Languages</label>
+                    <div 
+                      onClick={() => setCourseLangDropdownOpen(!courseLangDropdownOpen)}
+                      className="text-xs p-2.5 border border-border-subtle rounded-lg bg-white cursor-pointer flex justify-between items-center min-h-[38px] select-none"
+                    >
+                      <span className="truncate pr-4 text-primary font-medium">
+                        {(() => {
+                          const selectedLangs = Array.isArray(drawerForm.languages) ? drawerForm.languages : (drawerForm.languages ? [drawerForm.languages] : ["English"]);
+                          return selectedLangs.join(", ");
+                        })()}
+                      </span>
+                      <span className="text-slate-400 select-none text-[10px]">▼</span>
+                    </div>
+
+                    {courseLangDropdownOpen && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-40" 
+                          onClick={() => setCourseLangDropdownOpen(false)}
+                        />
+                        <div className="absolute top-[52px] left-0 right-0 z-50 bg-white border border-border-subtle rounded-xl shadow-lg p-3 max-h-48 overflow-y-auto space-y-2 animate-scale-up">
+                          {["English", "Hindi", "Malayalam", "Tamil", "Telugu", "Kannada", "Spanish", "French"].map((lang) => {
+                            const selectedLangs = Array.isArray(drawerForm.languages) ? drawerForm.languages : (drawerForm.languages ? [drawerForm.languages] : ["English"]);
+                            const isChecked = selectedLangs.includes(lang);
+                            return (
+                              <label key={lang} className="flex items-center gap-2.5 text-xs text-primary font-semibold cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-colors select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const newLangs = e.target.checked
+                                      ? [...selectedLangs, lang]
+                                      : selectedLangs.filter((l: string) => l !== lang);
+                                    setDrawerForm({ ...drawerForm, languages: newLangs });
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="rounded border-gray-300 text-secondary focus:ring-secondary w-4 h-4 cursor-pointer"
+                                />
+                                {lang}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Direct File Cover Image Upload */}
@@ -2029,11 +2340,11 @@ export default function AdminPanel() {
                       </div>
 
                       {/* Course format specific forms */}
-                      {drawerForm.format === "Live batch" && (
+                      {(drawerForm.format === "Live batch" || drawerForm.format === "Live individual") && (
                         <>
                           <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-primary uppercase">Live Inclusions (5 items)</label>
-                            {[0, 1, 2, 3, 4].map((idx) => {
+                            <label className="text-[10px] font-bold text-primary uppercase">Live Inclusions (toggle & edit)</label>
+                            {(() => {
                               const defaults = [
                                 "16 live sessions, 2x weekly",
                                 "Live on Zoom — join via browser/app",
@@ -2041,71 +2352,234 @@ export default function AdminPanel() {
                                 "7-day replay for missed classes",
                                 "Certificate on batch completion"
                               ];
-                              const currentVal = drawerForm.inclusions?.[idx] !== undefined ? drawerForm.inclusions[idx] : "";
-                              return (
-                                <input
-                                  key={idx}
-                                  className="text-xs p-2 border border-border-subtle rounded-lg outline-none mb-1"
-                                  type="text"
-                                  placeholder={defaults[idx]}
-                                  value={currentVal}
-                                  onChange={(e) => {
-                                    const newInc = [...(drawerForm.inclusions || ["", "", "", "", ""])];
-                                    newInc[idx] = e.target.value;
-                                    setDrawerForm({ ...drawerForm, inclusions: newInc });
-                                  }}
-                                />
-                              );
-                            })}
+                              // Initialize inclusions with defaults if empty
+                              const currentInclusions = drawerForm.inclusions && drawerForm.inclusions.length === 5
+                                ? drawerForm.inclusions
+                                : defaults;
+                              // Initialize enabled states (all enabled by default)
+                              const currentEnabled = drawerForm.inclusionsEnabled && drawerForm.inclusionsEnabled.length === 5
+                                ? drawerForm.inclusionsEnabled
+                                : [true, true, true, true, true];
+
+                              return [0, 1, 2, 3, 4].map((idx) => (
+                                <div key={idx} className="flex items-center gap-2 mb-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={currentEnabled[idx]}
+                                    onChange={() => {
+                                      const newEnabled = [...currentEnabled];
+                                      newEnabled[idx] = !newEnabled[idx];
+                                      setDrawerForm({
+                                        ...drawerForm,
+                                        inclusions: currentInclusions,
+                                        inclusionsEnabled: newEnabled,
+                                      });
+                                    }}
+                                    className="w-4 h-4 rounded border-border-subtle accent-secondary cursor-pointer shrink-0"
+                                  />
+                                  <input
+                                    className={`flex-1 text-xs p-2 border border-border-subtle rounded-lg outline-none transition-opacity ${
+                                      !currentEnabled[idx] ? "opacity-40 line-through" : ""
+                                    }`}
+                                    type="text"
+                                    value={currentInclusions[idx]}
+                                    onChange={(e) => {
+                                      const newInc = [...currentInclusions];
+                                      newInc[idx] = e.target.value;
+                                      setDrawerForm({
+                                        ...drawerForm,
+                                        inclusions: newInc,
+                                        inclusionsEnabled: currentEnabled,
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              ));
+                            })()}
                           </div>
 
-                          <div className="font-semibold text-[10px] text-text-muted uppercase tracking-wider mt-2 border-b border-border-subtle pb-1">
-                            Live Batch Timings
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] font-bold text-primary uppercase">Batch Start Date</label>
-                              <input
-                                className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                                type="text"
-                                placeholder="22 Jun 2026"
-                                value={drawerForm.batchStartDate || ""}
-                                onChange={(e) => setDrawerForm({ ...drawerForm, batchStartDate: e.target.value })}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] font-bold text-primary uppercase">Batch End Date</label>
-                              <input
-                                className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                                type="text"
-                                placeholder="14 Aug 2026"
-                                value={drawerForm.batchEndDate || ""}
-                                onChange={(e) => setDrawerForm({ ...drawerForm, batchEndDate: e.target.value })}
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] font-bold text-primary uppercase">Class Days</label>
-                              <input
-                                className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                                type="text"
-                                placeholder="Mon & Thu"
-                                value={drawerForm.classDays || ""}
-                                onChange={(e) => setDrawerForm({ ...drawerForm, classDays: e.target.value })}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] font-bold text-primary uppercase">Class Timing</label>
-                              <input
-                                className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                                type="text"
-                                placeholder="6:00–7:30 PM IST"
-                                value={drawerForm.classTiming || ""}
-                                onChange={(e) => setDrawerForm({ ...drawerForm, classTiming: e.target.value })}
-                              />
-                            </div>
-                          </div>
+                          {drawerForm.format === "Live batch" && (
+                            <>
+                              <div className="font-semibold text-[10px] text-text-muted uppercase tracking-wider mt-2 border-b border-border-subtle pb-1">
+                                Live Batch Timings
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] font-bold text-primary uppercase">Batch Start Date</label>
+                                  <input
+                                    className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none"
+                                    type="date"
+                                    value={drawerForm.batchStartDate || ""}
+                                    onChange={(e) => setDrawerForm({ ...drawerForm, batchStartDate: e.target.value })}
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] font-bold text-primary uppercase">Batch End Date</label>
+                                  <input
+                                    className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none"
+                                    type="date"
+                                    value={drawerForm.batchEndDate || ""}
+                                    onChange={(e) => setDrawerForm({ ...drawerForm, batchEndDate: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] font-bold text-primary uppercase">Class Days (Select all)</label>
+                                  <div className="grid grid-cols-2 gap-1 px-2 py-1.5 border border-border-subtle bg-white rounded-lg max-h-24 overflow-y-auto">
+                                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d) => {
+                                      const selectedDays = drawerForm.classDays ? drawerForm.classDays.split(",").map((s: string) => s.trim()) : [];
+                                      const isChecked = selectedDays.includes(d);
+                                      return (
+                                        <label key={d} className="flex items-center gap-1 text-[9px] text-primary font-semibold cursor-pointer">
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              let newDays = [...selectedDays];
+                                              if (e.target.checked) {
+                                                newDays.push(d);
+                                              } else {
+                                                newDays = newDays.filter((x) => x !== d);
+                                              }
+                                              const ordered = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].filter(x => newDays.includes(x));
+                                              setDrawerForm({ ...drawerForm, classDays: ordered.join(", ") });
+                                            }}
+                                            className="rounded border-slate-300 text-secondary focus:ring-secondary w-2.5 h-2.5 cursor-pointer"
+                                          />
+                                          {d.slice(0, 3)}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] font-bold text-primary uppercase">Class Timing</label>
+                                  <select
+                                    className="text-xs p-2.5 border border-border-subtle rounded-lg bg-white outline-none cursor-pointer font-semibold"
+                                    value={drawerForm.classTiming || "06:00 PM"}
+                                    onChange={(e) => setDrawerForm({ ...drawerForm, classTiming: e.target.value })}
+                                  >
+                                    {["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"].map((t) => (
+                                      <option key={t} value={t}>{t}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Auto-calculated session count */}
+                              {(() => {
+                                const start = drawerForm.batchStartDate;
+                                const end = drawerForm.batchEndDate;
+                                const daysStr = drawerForm.classDays || "";
+                                if (!start || !end || !daysStr) return null;
+
+                                const dayMap: Record<string, number> = {
+                                  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+                                  Thursday: 4, Friday: 5, Saturday: 6,
+                                };
+                                const selectedDayNums = daysStr
+                                  .split(",")
+                                  .map((d: string) => d.trim())
+                                  .filter((d: string) => d in dayMap)
+                                  .map((d: string) => dayMap[d]);
+
+                                let count = 0;
+                                const startDate = new Date(start);
+                                const endDate = new Date(end);
+                                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                                  if (selectedDayNums.includes(d.getDay())) count++;
+                                }
+
+                                // Auto-set totalSessions in drawerForm if changed
+                                if (count > 0 && Number(drawerForm.totalSessions) !== count) {
+                                  setTimeout(() => setDrawerForm((prev: any) => ({ ...prev, totalSessions: count })), 0);
+                                }
+
+                                const weeks = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7)));
+
+                                return (
+                                  <div className="flex items-center gap-3 bg-[#F0F6FF] border border-[#BDD0F8] rounded-xl p-3 mt-1">
+                                    <div className="w-9 h-9 rounded-lg bg-secondary/10 flex items-center justify-center shrink-0">
+                                      <span className="text-[16px] font-extrabold text-secondary">{count}</span>
+                                    </div>
+                                    <div>
+                                      <p className="text-[11px] font-bold text-primary">
+                                        Total Sessions: <span className="text-secondary">{count} classes</span>
+                                      </p>
+                                      <p className="text-[9px] text-text-muted mt-0.5">
+                                        Auto-calculated from {daysStr.split(",").length} day(s)/week over {weeks} week{weeks !== 1 ? "s" : ""}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              <div className="flex flex-col gap-1 mt-2">
+                                <label className="text-[9px] font-bold text-primary uppercase">Meeting / Join URL</label>
+                                <input
+                                  className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                                  type="url"
+                                  placeholder="https://zoom.us/j/..."
+                                  value={drawerForm.joinUrl || ""}
+                                  onChange={(e) => setDrawerForm({ ...drawerForm, joinUrl: e.target.value })}
+                                />
+                              </div>
+                            </>
+                          )}
+
+                          {drawerForm.format === "Live individual" && (
+                            <>
+                              <div className="font-semibold text-[10px] text-text-muted uppercase tracking-wider mt-2 border-b border-border-subtle pb-1">
+                                Live Individual Parameters
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] font-bold text-primary uppercase">Validity</label>
+                                  <select
+                                    className="text-xs p-2.5 border border-border-subtle rounded-lg bg-white outline-none cursor-pointer"
+                                    value={drawerForm.durationDays || 30}
+                                    onChange={(e) => setDrawerForm({ ...drawerForm, durationDays: Number(e.target.value) })}
+                                  >
+                                    <option value={10}>10 days</option>
+                                    <option value={30}>30 days</option>
+                                    <option value={60}>60 days</option>
+                                    <option value={90}>90 days</option>
+                                  </select>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] font-bold text-primary uppercase">Sessions</label>
+                                  <input
+                                    className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none font-semibold"
+                                    type="number"
+                                    placeholder="10"
+                                    value={drawerForm.totalSessions || 10}
+                                    onChange={(e) => setDrawerForm({ ...drawerForm, totalSessions: Number(e.target.value) })}
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[9px] font-bold text-primary uppercase">Per Week</label>
+                                  <input
+                                    className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none font-semibold"
+                                    type="number"
+                                    placeholder="2"
+                                    value={drawerForm.sessionsPerWeek || 2}
+                                    onChange={(e) => setDrawerForm({ ...drawerForm, sessionsPerWeek: Number(e.target.value) })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-1 mt-2">
+                                <label className="text-[9px] font-bold text-primary uppercase">Meeting / Join URL</label>
+                                <input
+                                  className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
+                                  type="url"
+                                  placeholder="https://zoom.us/j/..."
+                                  value={drawerForm.joinUrl || ""}
+                                  onChange={(e) => setDrawerForm({ ...drawerForm, joinUrl: e.target.value })}
+                                />
+                              </div>
+                            </>
+                          )}
                         </>
                       )}
 
@@ -2139,112 +2613,117 @@ export default function AdminPanel() {
                             })}
                           </div>
 
-                          <div className="flex flex-col gap-2 mt-2">
-                            <label className="text-[10px] font-bold text-primary uppercase">Course Curriculum Syllabus</label>
-                            <div className="space-y-3 p-3 bg-surface rounded-xl border border-border-subtle">
-                              {(drawerForm.curriculum || []).map((mod: any, mIdx: number) => (
-                                <div key={mIdx} className="border border-border-subtle bg-white rounded-lg p-2.5 space-y-2 relative">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const newCurr = [...drawerForm.curriculum];
-                                      newCurr.splice(mIdx, 1);
-                                      setDrawerForm({ ...drawerForm, curriculum: newCurr });
-                                    }}
-                                    className="absolute top-2 right-2 text-xs text-red-600 font-bold hover:underline cursor-pointer"
-                                  >
-                                    Remove
-                                  </button>
-                                  
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="text-[9px] font-bold text-slate-400">Module Name</span>
-                                    <input
-                                      className="text-xs p-1.5 border border-border-subtle rounded-md outline-none"
-                                      type="text"
-                                      placeholder="Module 1 — Limits"
-                                      value={mod.name || ""}
-                                      onChange={(e) => {
-                                        const newCurr = [...drawerForm.curriculum];
-                                        newCurr[mIdx] = { ...mod, name: e.target.value };
-                                        setDrawerForm({ ...drawerForm, curriculum: newCurr });
-                                      }}
-                                    />
-                                  </div>
+                          <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border-subtle">
+                            <label className="text-[10px] font-bold text-primary uppercase">Database Recorded Video Units ({courseUnits.length})</label>
+                            
+                            {!drawerEditId ? (
+                              <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-100 p-2.5 rounded-lg font-semibold">
+                                Please save the course first to manage its video units & lessons.
+                              </p>
+                            ) : (
+                              <div className="space-y-3">
+                                {/* Unit list */}
+                                {courseUnits.length === 0 ? (
+                                  <p className="text-[11px] text-text-muted italic py-2">No video units added to database yet.</p>
+                                ) : (
+                                  <div className="space-y-2 max-h-60 overflow-y-auto premium-scrollbar pr-1">
+                                    {courseUnits.map((u, index) => (
+                                      <div key={u.id} className="border border-border-subtle bg-surface rounded-xl p-3 flex flex-col gap-2 relative">
+                                        <div className="flex items-start justify-between gap-4">
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-[12px] font-bold text-primary truncate">
+                                              {index + 1}. {u.title}
+                                            </p>
+                                            <p className="text-[9px] text-text-muted font-mono truncate mt-0.5">
+                                              {u.youtube_url}
+                                            </p>
+                                            {u.description && (
+                                              <p className="text-[10px] text-text-muted line-clamp-1 mt-0.5">
+                                                {u.description}
+                                              </p>
+                                            )}
+                                          </div>
+                                          
+                                          {/* Delete action */}
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteUnit(u.id)}
+                                            className="text-red-600 text-[10px] font-bold hover:underline shrink-0"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
 
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="text-[9px] font-bold text-slate-400">Module Metadata</span>
-                                    <input
-                                      className="text-xs p-1.5 border border-border-subtle rounded-md outline-none"
-                                      type="text"
-                                      placeholder="5 lessons · 6h 20m"
-                                      value={mod.meta || ""}
-                                      onChange={(e) => {
-                                        const newCurr = [...drawerForm.curriculum];
-                                        newCurr[mIdx] = { ...mod, meta: e.target.value };
-                                        setDrawerForm({ ...drawerForm, curriculum: newCurr });
-                                      }}
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-bold text-slate-400">Lessons</span>
-                                    {(mod.lessons || []).map((les: string, lIdx: number) => (
-                                      <div key={lIdx} className="flex items-center gap-1.5 mb-1">
-                                        <input
-                                          className="text-[11px] p-1.5 border border-border-subtle rounded-md outline-none flex-1"
-                                          type="text"
-                                          placeholder={`Lesson ${lIdx + 1}`}
-                                          value={les}
-                                          onChange={(e) => {
-                                            const newLessons = [...mod.lessons];
-                                            newLessons[lIdx] = e.target.value;
-                                            const newCurr = [...drawerForm.curriculum];
-                                            newCurr[mIdx] = { ...mod, lessons: newLessons };
-                                            setDrawerForm({ ...drawerForm, curriculum: newCurr });
-                                          }}
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const newLessons = [...mod.lessons];
-                                            newLessons.splice(lIdx, 1);
-                                            const newCurr = [...drawerForm.curriculum];
-                                            newCurr[mIdx] = { ...mod, lessons: newLessons };
-                                            setDrawerForm({ ...drawerForm, curriculum: newCurr });
-                                          }}
-                                          className="text-red-600 text-xs px-1 hover:underline cursor-pointer"
-                                        >
-                                          ✕
-                                        </button>
+                                        {/* Move actions */}
+                                        <div className="flex items-center gap-2 border-t border-border-subtle/50 pt-2 mt-1">
+                                          <button
+                                            type="button"
+                                            disabled={index === 0}
+                                            onClick={() => handleMoveUnit(index, "up")}
+                                            className="text-[10px] font-bold text-secondary hover:underline disabled:opacity-40"
+                                          >
+                                            &uarr; Move Up
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={index === courseUnits.length - 1}
+                                            onClick={() => handleMoveUnit(index, "down")}
+                                            className="text-[10px] font-bold text-secondary hover:underline disabled:opacity-40"
+                                          >
+                                            &darr; Move Down
+                                          </button>
+                                          <span className="text-[9px] text-text-muted ml-auto">
+                                            Duration: {Math.round(u.duration_seconds / 60)} min
+                                          </span>
+                                        </div>
                                       </div>
                                     ))}
+                                  </div>
+                                )}
+
+                                {/* Add Unit form inline */}
+                                <div className="border border-dashed border-border-subtle rounded-xl p-3 space-y-2 bg-slate-50/50 mt-2">
+                                  <p className="text-[10px] font-bold text-primary uppercase">Add Video Unit</p>
+                                  <input
+                                    className="w-full text-xs p-2 border border-border-subtle rounded-lg bg-white outline-none"
+                                    type="text"
+                                    placeholder="Unit Title (e.g. Introduction to Limits)"
+                                    value={newUnitTitle}
+                                    onChange={(e) => setNewUnitTitle(e.target.value)}
+                                  />
+                                  <input
+                                    className="w-full text-xs p-2 border border-border-subtle rounded-lg bg-white outline-none"
+                                    type="url"
+                                    placeholder="YouTube Video URL"
+                                    value={newUnitUrl}
+                                    onChange={(e) => setNewUnitUrl(e.target.value)}
+                                  />
+                                  <textarea
+                                    className="w-full text-xs p-2 border border-border-subtle rounded-lg bg-white outline-none resize-none h-14"
+                                    placeholder="Unit Description / Syllabus preview..."
+                                    value={newUnitDesc}
+                                    onChange={(e) => setNewUnitDesc(e.target.value)}
+                                  />
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                      className="text-xs p-2 border border-border-subtle rounded-lg bg-white outline-none"
+                                      type="number"
+                                      placeholder="Duration (seconds)"
+                                      value={newUnitDur || ""}
+                                      onChange={(e) => setNewUnitDur(Number(e.target.value))}
+                                    />
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        const newLessons = [...(mod.lessons || []), ""];
-                                        const newCurr = [...drawerForm.curriculum];
-                                        newCurr[mIdx] = { ...mod, lessons: newLessons };
-                                        setDrawerForm({ ...drawerForm, curriculum: newCurr });
-                                      }}
-                                      className="text-[10px] font-semibold text-secondary hover:underline self-start mt-1 cursor-pointer"
+                                      disabled={unitSaving}
+                                      onClick={handleAddUnit}
+                                      className="text-xs font-bold py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 disabled:opacity-50"
                                     >
-                                      + Add Lesson
+                                      {unitSaving ? "Saving..." : "Add Unit"}
                                     </button>
                                   </div>
                                 </div>
-                              ))}
-                              
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newCurr = [...(drawerForm.curriculum || []), { name: "", meta: "", lessons: [""] }];
-                                  setDrawerForm({ ...drawerForm, curriculum: newCurr });
-                                }}
-                                className="w-full text-xs font-semibold py-2 border border-dashed border-border-subtle rounded-lg text-primary hover:border-secondary hover:text-secondary transition-colors mt-2 cursor-pointer"
-                              >
-                                + Add Module
-                              </button>
-                            </div>
+                              </div>
+                            )}
                           </div>
                         </>
                       )}
@@ -2293,11 +2772,11 @@ export default function AdminPanel() {
                       <label className="text-[10px] font-bold text-primary uppercase">Type</label>
                       <select
                         className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none bg-white cursor-pointer"
-                        value={drawerForm.type || "1-on-1"}
-                        onChange={(e) => setDrawerForm({ ...drawerForm, type: e.target.value })}
+                        value={drawerForm.type === "Group" ? "group session" : "1 on 1 session"}
+                        onChange={(e) => setDrawerForm({ ...drawerForm, type: e.target.value === "group session" ? "Group" : "1-on-1" })}
                       >
-                        <option>1-on-1</option>
-                        <option>Group</option>
+                        <option value="1 on 1 session">1 on 1 session</option>
+                        <option value="group session">group session</option>
                       </select>
                     </div>
                   </div>
@@ -2337,6 +2816,44 @@ export default function AdminPanel() {
                       <option>Inactive</option>
                     </select>
                   </div>
+
+                  {drawerForm.type === "Group" && (
+                    <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-border-subtle">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[9px] font-bold text-primary uppercase">Session Date</label>
+                          <input
+                            className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none font-semibold cursor-pointer"
+                            type="date"
+                            value={drawerForm.sessionDate || ""}
+                            onChange={(e) => setDrawerForm({ ...drawerForm, sessionDate: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[9px] font-bold text-primary uppercase">Session Time (IST)</label>
+                          <select
+                            className="text-xs p-2.5 border border-border-subtle rounded-lg bg-white outline-none cursor-pointer font-semibold"
+                            value={drawerForm.sessionTime || "10:00 AM"}
+                            onChange={(e) => setDrawerForm({ ...drawerForm, sessionTime: e.target.value })}
+                          >
+                            {["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"].map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-bold text-primary uppercase">Meeting / Join URL</label>
+                        <input
+                          className="text-xs p-2 border border-border-subtle bg-white rounded-lg outline-none font-semibold"
+                          type="url"
+                          placeholder="https://zoom.us/j/..."
+                          value={drawerForm.joinUrl || ""}
+                          onChange={(e) => setDrawerForm({ ...drawerForm, joinUrl: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Advanced Options Toggler */}
                   <button
@@ -2626,6 +3143,113 @@ export default function AdminPanel() {
                 className="flex-1 text-xs font-bold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors"
               >
                 Save changes
+              </button>
+            </footer>
+          </div>
+        </>
+      )}
+
+      {/* BOOKING DETAILS MODAL OVERLAY */}
+      {selectedBooking && (
+        <>
+          <div
+            onClick={() => setSelectedBooking(null)}
+            className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-[202] transition-opacity duration-300 animate-fade-in"
+          ></div>
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] bg-white rounded-3xl z-[203] shadow-2xl border border-border-subtle p-6 space-y-4 animate-scale-up">
+            <header className="flex items-center justify-between pb-3 border-b border-border-subtle">
+              <h3 className="font-heading text-sm font-extrabold text-primary">
+                Booking Details
+              </h3>
+              <button
+                onClick={() => setSelectedBooking(null)}
+                className="w-7 h-7 border border-border-subtle bg-surface hover:bg-badge-bg rounded-lg text-primary text-xs flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Booking ID:</span>
+                <span className="col-span-2 font-mono text-primary font-bold">#{selectedBooking.id}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Parent Name:</span>
+                <span className="col-span-2 text-primary font-bold">{selectedBooking.parentName}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Parent Email:</span>
+                <span className="col-span-2 text-primary font-semibold">{selectedBooking.parentEmail}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Student Name:</span>
+                <span className="col-span-2 text-primary font-semibold">{selectedBooking.studentName}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Booked Item:</span>
+                <span className="col-span-2 font-bold text-[#1B3A6B]">{selectedBooking.itemTitle}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Type:</span>
+                <span className="col-span-2 font-semibold">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                    selectedBooking.bookingType === "Course" 
+                      ? "bg-purple-50 text-purple-600 border border-purple-100" 
+                      : "bg-blue-50 text-blue-600 border border-blue-100"
+                  }`}>
+                    {selectedBooking.bookingType}
+                  </span>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5 font-sans">Amount Paid:</span>
+                <span className="col-span-2 font-extrabold text-primary font-sans">₹{selectedBooking.amountPaid.toLocaleString()}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Payment:</span>
+                <span className="col-span-2 font-semibold">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                    selectedBooking.paymentStatus === "paid" 
+                      ? "bg-green-50 text-green-700 border border-green-200" 
+                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                  }`}>
+                    {selectedBooking.paymentStatus.toUpperCase()}
+                  </span>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Status:</span>
+                <span className="col-span-2 font-semibold">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                    selectedBooking.status === "confirmed" 
+                      ? "bg-green-50 text-green-700 border border-green-200" 
+                      : "bg-red-50 text-red-700 border border-red-200"
+                  }`}>
+                    {selectedBooking.status.toUpperCase()}
+                  </span>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <span className="text-[10px] text-text-muted font-bold uppercase pt-0.5">Booked At:</span>
+                <span className="col-span-2 text-text-muted">
+                  {new Date(selectedBooking.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  })}
+                </span>
+              </div>
+            </div>
+
+            <footer className="pt-4 border-t border-border-subtle flex">
+              <button
+                onClick={() => setSelectedBooking(null)}
+                className="w-full text-xs font-bold py-2.5 rounded-xl bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
+              >
+                Close Details
               </button>
             </footer>
           </div>

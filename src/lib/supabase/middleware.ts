@@ -65,7 +65,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (pathname.startsWith("/mentor")) {
+  if (pathname.startsWith("/mentor") && !pathname.startsWith("/mentors")) {
     if (pathname === "/mentor/login") {
       if (user) {
         const { data: profile } = await supabase
