@@ -95,5 +95,21 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/dashboard")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/", request.url));
+    } else {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "parent" && profile?.role !== "admin") {
+        return NextResponse.redirect(new URL("/", request.url));
+      }
+    }
+  }
+
   return supabaseResponse;
 }

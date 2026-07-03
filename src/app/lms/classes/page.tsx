@@ -270,57 +270,7 @@ export default function StudentClassesPage() {
         </>
       )}
 
-      {/* Enrolled Courses & Sessions */}
-      {bookings.length > 0 && (
-        <div className="space-y-4 pt-6 border-t border-[#E6EBF8] mt-6">
-          <h2 className="text-[15px] font-bold text-[#1B3A6B] font-heading">
-            My Enrolled Courses & Sessions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bookings.map((b) => {
-              const isRecorded = b.bookingType === "Course" && b.courseFormat === "Recorded";
-              const CardWrapper = ({ children }: { children: React.ReactNode }) => {
-                if (isRecorded) {
-                  return (
-                    <Link href={`/lms/courses/${b.courseId}`} className="block">
-                      {children}
-                    </Link>
-                  );
-                }
-                return (
-                  <button
-                    onClick={() => handleOpenLiveBooking(b)}
-                    className="w-full text-left bg-transparent border-none p-0 cursor-pointer block"
-                  >
-                    {children}
-                  </button>
-                );
-              };
 
-              return (
-                <CardWrapper key={b.id}>
-                  <div className="bg-white rounded-2xl border border-[#D0DCF5] p-5 flex items-center justify-between gap-4 hover:shadow-md transition-all">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        isRecorded ? "bg-amber-50 text-amber-600" : "bg-purple-50 text-purple-600"
-                      }`}>
-                        <IconVideo className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-bold text-[#1B3A6B] truncate">{b.itemTitle}</p>
-                        <p className="text-[10px] text-[#9BA8C0] mt-0.5 font-semibold">
-                          Format: {b.courseFormat || b.bookingType} · Mentor: {b.mentorName}
-                        </p>
-                      </div>
-                    </div>
-                    <IconChevronRight className="w-4 h-4 text-[#9BA8C0] shrink-0" />
-                  </div>
-                </CardWrapper>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Live Booking Classes Drill-Down Modal */}
       {selectedLiveBooking && (

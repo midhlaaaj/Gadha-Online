@@ -140,6 +140,7 @@ interface SessionDetailsData {
   aboutSession: string;
   whatsCovered: string[];
   inclusions: string[];
+  inclusionsEnabled?: boolean[];
   durationOptions: string;
   platform: string;
   language: string;
@@ -486,7 +487,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
               <Link 
-                href="/mentors"
+                href={`/mentors/${session.mentor.id}`}
                 className="text-xs font-semibold px-4 py-2 rounded-lg border border-border-subtle hover:border-primary text-primary transition-colors whitespace-nowrap self-stretch sm:self-auto text-center"
               >
                 View profile
@@ -673,12 +674,16 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
           {/* What's included card */}
           <div className="bg-white border border-border-subtle rounded-2xl p-5 shadow-sm space-y-3">
             <p className="text-[9px] text-primary font-bold uppercase tracking-wider mb-1.5">What&apos;s included</p>
-            {inclusionsList.map((incItem: string, iIdx: number) => (
-              <div key={iIdx} className="flex items-center gap-3 text-xs text-slate-700 pb-2.5 last:pb-0 border-b border-slate-50 last:border-0">
-                {getInclusionIcon(iIdx)}
-                <span>{incItem}</span>
-              </div>
-            ))}
+            {inclusionsList.map((incItem: string, iIdx: number) => {
+              const isEnabled = !session.inclusionsEnabled || session.inclusionsEnabled[iIdx] !== false;
+              if (!isEnabled) return null;
+              return (
+                <div key={iIdx} className="flex items-center gap-3 text-xs text-slate-700 pb-2.5 last:pb-0 border-b border-slate-50 last:border-0">
+                  {getInclusionIcon(iIdx)}
+                  <span>{incItem}</span>
+                </div>
+              );
+            })}
           </div>
 
           {/* Guarantee card */}

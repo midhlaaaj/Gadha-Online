@@ -142,7 +142,7 @@ export default function Navbar() {
       localStorage.removeItem("tutoboard_user_cache");
     } catch (e) {}
     setMobileMenuOpen(false);
-    window.location.reload();
+    window.location.href = "/";
   };
 
   const openAuth = (mode: "signin" | "signup") => {

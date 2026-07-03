@@ -6,11 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 import {
   IconLayoutDashboard, IconVideo, IconClipboardList,
   IconFiles, IconChartBar, IconMessageCircle,
-  IconLogout,
+  IconLogout, IconBook,
 } from "@tabler/icons-react";
 
 const NAV = [
   { segment: "overview",    label: "Overview",     icon: IconLayoutDashboard },
+  { segment: "courses",     label: "My Courses",   icon: IconBook },
   { segment: "classes",     label: "Classes",      icon: IconVideo },
   { segment: "assignments", label: "Assignments",  icon: IconClipboardList },
   { segment: "resources",   label: "Resources",    icon: IconFiles },

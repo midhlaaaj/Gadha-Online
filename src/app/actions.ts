@@ -209,6 +209,7 @@ export async function getAdminData() {
       learningOutcomes: c.learning_outcomes || [],
       curriculum: c.curriculum || [],
       inclusions: c.inclusions || [],
+      inclusionsEnabled: c.inclusions_enabled || [],
       batchStartDate: c.batch_start_date || "",
       batchEndDate: c.batch_end_date || "",
       classDays: c.class_days || "",
@@ -248,6 +249,7 @@ export async function getAdminData() {
       aboutSession: s.about_session || "",
       whatsCovered: s.whats_covered || [],
       inclusions: s.inclusions || [],
+      inclusionsEnabled: s.inclusions_enabled || [],
       durationOptions: s.duration_options || "60 or 90 min",
       platform: s.platform || "Zoom",
       language: s.language || "English / Hindi",
@@ -590,6 +592,7 @@ export async function upsertSession(session: any) {
     about_session: session.aboutSession || "",
     whats_covered: session.whatsCovered || [],
     inclusions: session.inclusions || [],
+    inclusions_enabled: session.inclusionsEnabled || [true, true, true, true, true],
     duration_options: session.durationOptions || "60 or 90 min",
     platform: session.platform || "Zoom",
     language: session.language || "English / Hindi",
@@ -1343,10 +1346,10 @@ export async function getCoursesPageData() {
 }
 
 export async function getCourseDetails(id: string) {
-  const supabase = await createClient();
+  const adminClient = createAdminClient();
 
   // 1. Fetch Course details
-  const { data: c, error } = await supabase
+  const { data: c, error } = await adminClient
     .from("courses")
     .select("*, mentor:mentors(profile:profiles(full_name, avatar_url, email), expertise, rating, qualification, experience, bio)")
     .eq("id", id)
@@ -1354,6 +1357,48 @@ export async function getCourseDetails(id: string) {
 
   if (error || !c) {
     throw new Error(error ? error.message : "Course not found");
+  }
+
+  // Fetch Course Units to dynamically construct curriculum
+  const { data: dbUnits } = await adminClient
+    .from("course_units")
+    .select("id, title, duration_seconds, module_name")
+    .eq("course_id", id)
+    .order("order_index", { ascending: true });
+
+  const dynamicCurriculum: any[] = [];
+  if (dbUnits && dbUnits.length > 0) {
+    const modulesMap: Record<string, { lessons: string[]; duration: number }> = {};
+    const modulesList: string[] = [];
+
+    dbUnits.forEach((u: any) => {
+      const modName = u.module_name || "General Lessons";
+      if (!modulesMap[modName]) {
+        modulesMap[modName] = { lessons: [], duration: 0 };
+        modulesList.push(modName);
+      }
+      modulesMap[modName].lessons.push(u.title);
+      modulesMap[modName].duration += u.duration_seconds || 0;
+    });
+
+    modulesList.forEach((name) => {
+      const { lessons, duration } = modulesMap[name];
+      const hours = Math.floor(duration / 3600);
+      const minutes = Math.round((duration % 3600) / 60);
+      
+      let metaStr = `${lessons.length} lesson${lessons.length === 1 ? "" : "s"}`;
+      if (hours > 0) {
+        metaStr += ` · ${hours}h ${minutes}m`;
+      } else if (minutes > 0) {
+        metaStr += ` · ${minutes}m`;
+      }
+
+      dynamicCurriculum.push({
+        name,
+        meta: metaStr,
+        lessons
+      });
+    });
   }
 
   const style = mapSubjectToStyle(c.subject);
@@ -1381,12 +1426,14 @@ export async function getCourseDetails(id: string) {
       qualification: c.mentor?.qualification || "Educator",
       experience: c.mentor?.experience || 5,
       bio: c.mentor?.bio || "",
+      students: c.students_count || 420,
     },
     students: c.students_count,
     rating: Number(c.rating),
     learningOutcomes: c.learning_outcomes || [],
-    curriculum: c.curriculum || [],
+    curriculum: dynamicCurriculum.length > 0 ? dynamicCurriculum : (c.curriculum || []),
     inclusions: c.inclusions || [],
+    inclusionsEnabled: c.inclusions_enabled || [],
     batchStartDate: c.batch_start_date || "",
     batchEndDate: c.batch_end_date || "",
     classDays: c.class_days || "",
@@ -1401,7 +1448,7 @@ export async function getCourseDetails(id: string) {
   };
 
   // 2. Fetch Related Courses (same category/subject, excluding current course)
-  const { data: dbRelated } = await supabase
+  const { data: dbRelated } = await adminClient
     .from("courses")
     .select("*, mentor:mentors(profile:profiles(full_name))")
     .eq("status", "Active")
@@ -1427,7 +1474,7 @@ export async function getCourseDetails(id: string) {
 
   // Safe fallback if not enough related courses in same subject
   if (relatedMapped.length < 3) {
-    const { data: dbBackup } = await supabase
+    const { data: dbBackup } = await adminClient
       .from("courses")
       .select("*, mentor:mentors(profile:profiles(full_name))")
       .eq("status", "Active")
@@ -1575,6 +1622,7 @@ export async function getSessionDetails(id: string) {
     aboutSession: s.about_session || "",
     whatsCovered: s.whats_covered || [],
     inclusions: s.inclusions || [],
+    inclusionsEnabled: s.inclusions_enabled || [],
     durationOptions: s.duration_options || "60 or 90 min",
     platform: s.platform || "Zoom",
     language: s.language || "English / Hindi",
@@ -3903,7 +3951,7 @@ export async function getCourseUnits(courseId: string) {
   const adminClient = createAdminClient();
   const { data, error } = await adminClient
     .from("course_units")
-    .select("id, title, description, order_index, duration_seconds, youtube_url")
+    .select("id, title, description, order_index, duration_seconds, youtube_url, module_name")
     .eq("course_id", courseId)
     .order("order_index", { ascending: true });
   if (error) throw new Error(error.message);
@@ -3919,7 +3967,7 @@ export async function getCourseUnitsForStudent(courseId: string) {
   const adminClient = createAdminClient();
   const { data, error } = await adminClient
     .from("course_units")
-    .select("id, title, description, order_index, duration_seconds, youtube_url")
+    .select("id, title, description, order_index, duration_seconds, youtube_url, module_name")
     .eq("course_id", courseId)
     .order("order_index", { ascending: true });
   if (error) throw new Error(error.message);
@@ -3942,6 +3990,7 @@ export async function getCourseUnitsForStudent(courseId: string) {
       order_index: u.order_index,
       duration_seconds: u.duration_seconds,
       video_id: videoId,
+      module_name: u.module_name || "",
     };
   });
 }
@@ -3954,6 +4003,7 @@ export async function upsertCourseUnit(data: {
   youtubeUrl: string;
   orderIndex: number;
   durationSeconds?: number;
+  moduleName?: string;
 }) {
   const adminClient = createAdminClient();
   const payload: any = {
@@ -3963,6 +4013,7 @@ export async function upsertCourseUnit(data: {
     youtube_url: data.youtubeUrl,
     order_index: data.orderIndex,
     duration_seconds: data.durationSeconds || 0,
+    module_name: data.moduleName || null,
   };
   if (data.id) payload.id = data.id;
 
@@ -4496,4 +4547,166 @@ export async function addReview(review: {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function getStudentResources() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: resources, error } = await supabase
+    .from("resources")
+    .select(`
+      *,
+      mentor:mentors(
+        profile:profiles(full_name)
+      )
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return (resources || []).map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    type: r.type === "video" ? "link" : r.type,
+    subject: r.subject,
+    mentor: r.mentor?.profile?.full_name || "Unknown Mentor",
+    date: new Date(r.created_at).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    }),
+    size: r.size || undefined,
+    url: r.url
+  }));
+}
+
+export async function getStudentBookingDashboardDetails(bookingId: string) {
+  const adminClient = createAdminClient();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // 1. Fetch Booking info
+  const { data: b, error: bErr } = await adminClient
+    .from("bookings")
+    .select(`
+      id,
+      status,
+      payment_status,
+      amount_paid,
+      student_id,
+      session_id,
+      course_id,
+      created_at,
+      session:sessions(title, type, price, subject, join_url, mentor:mentors(id, profile:profiles(full_name))),
+      course:courses(title, format, price, subject, join_url, mentor:mentors(id, profile:profiles(full_name)))
+    `)
+    .eq("id", bookingId)
+    .single();
+
+  if (bErr || !b) throw new Error("Booking not found: " + (bErr?.message || ""));
+
+  // Verify student owns this booking
+  if (b.student_id !== user.id) {
+    // If not direct student, check if it's the parent of the student
+    const { data: student } = await adminClient
+      .from("students")
+      .select("parent_id")
+      .eq("id", b.student_id)
+      .single();
+    if (!student || student.parent_id !== user.id) {
+      throw new Error("Access denied: Not authorized to view this booking.");
+    }
+  }
+
+  const isCourse = !!b.course_id;
+  const rawTarget = (isCourse ? b.course : b.session) as any;
+  const target = Array.isArray(rawTarget) ? rawTarget[0] : rawTarget;
+
+  const rawMentor = target?.mentor;
+  const mentorObj = Array.isArray(rawMentor) ? rawMentor[0] : rawMentor;
+  const mentorId = mentorObj?.id;
+
+  const mentorProfile = mentorObj?.profile;
+  const profileObj = Array.isArray(mentorProfile) ? mentorProfile[0] : mentorProfile;
+  const mentorName = profileObj?.full_name || "Unknown Mentor";
+
+  const bookingDetails = {
+    id: b.id,
+    bookingType: isCourse ? "Course" : "Session",
+    courseFormat: isCourse ? target?.format : null,
+    courseId: b.course_id,
+    sessionId: b.session_id,
+    itemTitle: target?.title || "Untitled",
+    mentorName,
+    mentorId,
+    subject: target?.subject || "General",
+    amountPaid: Number(b.amount_paid || 0),
+    paymentStatus: b.payment_status,
+    status: b.status,
+    createdAt: b.created_at,
+    joinUrl: target?.join_url || null,
+  };
+
+  // 2. Fetch Scheduled classes for this booking
+  const { data: classes, error: classesErr } = await adminClient
+    .from("scheduled_classes")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .order("scheduled_at", { ascending: true });
+
+  // Resolve join URLs
+  const resolvedClasses = (classes || []).map((cls: any) => {
+    let resolvedJoinUrl = cls.join_url || bookingDetails.joinUrl;
+    return { ...cls, join_url: resolvedJoinUrl };
+  });
+
+  // 3. Fetch Assignments for this booking
+  const { data: assignments } = await adminClient
+    .from("assignments")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .order("due_date", { ascending: true });
+
+  // 4. Fetch Attendance records for this booking
+  const { data: attendance } = await adminClient
+    .from("attendance_records")
+    .select("*")
+    .eq("booking_id", bookingId);
+
+  // 5. Fetch resources for this mentor
+  let mappedResources: any[] = [];
+  if (mentorId) {
+    const { data: resources } = await adminClient
+      .from("resources")
+      .select("*")
+      .eq("mentor_id", mentorId)
+      .order("created_at", { ascending: false });
+
+    mappedResources = (resources || []).map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      type: r.type === "video" ? "link" : r.type,
+      subject: r.subject,
+      mentor: mentorName,
+      date: new Date(r.created_at).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      }),
+      size: r.size || undefined,
+      url: r.url
+    }));
+  }
+
+  return {
+    booking: bookingDetails,
+    classes: resolvedClasses,
+    assignments: assignments || [],
+    attendance: attendance || [],
+    resources: mappedResources,
+  };
+}
+
 

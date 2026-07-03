@@ -20,6 +20,65 @@ declare global {
   }
 }
 
+function RecordedCourseViewerSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Back button skeleton */}
+      <div className="h-4 w-28 rounded animate-shimmer" />
+
+      {/* Header skeleton */}
+      <div className="bg-white rounded-3xl border border-[#D0DCF5] p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse">
+        <div className="space-y-2.5 flex-1">
+          <div className="h-4.5 w-28 bg-slate-100 rounded" />
+          <div className="h-6 w-3/4 bg-slate-200 rounded mt-1" />
+          <div className="h-3.5 w-1/3 bg-slate-100 rounded" />
+        </div>
+        
+        {/* Progress stats skeleton */}
+        <div className="flex items-center gap-4 shrink-0 bg-slate-50 p-4 rounded-2xl border border-[#E6EBF8] w-full md:w-auto">
+          <div className="space-y-1.5 flex-1 text-right md:w-48">
+            <div className="h-3 w-20 bg-slate-200 rounded ml-auto" />
+            <div className="h-4 w-32 bg-slate-200 rounded ml-auto" />
+          </div>
+          <div className="w-12 h-12 rounded-full bg-slate-200 shrink-0" />
+        </div>
+      </div>
+
+      {/* Player and Playlist grid skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Player column */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="aspect-video bg-slate-200 rounded-3xl border border-[#D0DCF5] overflow-hidden animate-pulse" />
+          <div className="bg-white rounded-3xl border border-[#D0DCF5] p-6 space-y-3 animate-pulse">
+            <div className="h-5 w-1/2 bg-slate-200 rounded" />
+            <div className="space-y-2">
+              <div className="h-3 w-full bg-slate-100 rounded" />
+              <div className="h-3 w-4/5 bg-slate-100 rounded" />
+            </div>
+          </div>
+        </div>
+
+        {/* Playlist column */}
+        <div className="bg-white rounded-3xl border border-[#D0DCF5] p-5 space-y-4 h-fit animate-pulse">
+          <div className="h-4 w-28 bg-slate-200 rounded" />
+          <hr className="border-t border-[#F0F3FB]" />
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="p-3.5 rounded-2xl border border-[#D0DCF5] flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-slate-100 shrink-0" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-3.5 w-3/4 bg-slate-200 rounded" />
+                  <div className="h-2.5 w-1/3 bg-slate-100 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RecordedCourseViewerPage() {
   const params = useParams();
   const router = useRouter();
@@ -158,12 +217,7 @@ export default function RecordedCourseViewerPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <IconLoader className="w-8 h-8 text-[#2F7FE8] animate-spin" />
-        <p className="text-[12px] font-bold text-[#4A5A7A]">Loading Recorded Viewer...</p>
-      </div>
-    );
+    return <RecordedCourseViewerSkeleton />;
   }
 
   if (!course) {
@@ -190,7 +244,7 @@ export default function RecordedCourseViewerPage() {
         onClick={() => router.back()}
         className="inline-flex items-center gap-1 text-[11px] font-bold text-[#4A5A7A] hover:text-[#1B3A6B] transition-colors cursor-pointer"
       >
-        <IconChevronLeft className="w-4 h-4" /> Back to Classes
+        <IconChevronLeft className="w-4 h-4" /> Back to Courses
       </button>
 
       {/* Header card with completion state */}

@@ -268,6 +268,7 @@ interface CourseDetailsData {
   durationDays?: number;
   totalSessions?: number;
   sessionsPerWeek?: number;
+  inclusionsEnabled?: boolean[];
 }
 
 interface CourseDetailsResponse {
@@ -531,12 +532,20 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             ) : (
               getDetailsIcon(course.iconName)
             )}
-            {isLive ? (
-              <div className="absolute top-4 left-4 bg-primary text-white text-[10px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-                Live batch · Starts {course.batchStartDate || "Monday, 22 Jun"}
-              </div>
-            ) : (
+            {isLive ? (() => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const start = course.batchStartDate ? new Date(course.batchStartDate) : null;
+              if (start) start.setHours(0, 0, 0, 0);
+              const isStarted = start ? today >= start : false;
+
+              return (
+                <div className="absolute top-4 left-4 bg-primary text-white text-[10px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                  {isStarted ? "Live batch · In progress" : `Live batch · Starts ${course.batchStartDate || "Monday, 22 Jun"}`}
+                </div>
+              );
+            })() : (
               <div className="absolute top-4 left-4 bg-amber-100 text-amber-800 text-[10px] font-bold px-3.5 py-1.5 rounded-full">
                 Self-paced recorded content
               </div>
@@ -612,6 +621,38 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                     : "English"} {isLive && "· IST"}
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* MENTOR CARD */}
+          <div className="bg-white border border-border-subtle rounded-2xl p-[22px] shadow-sm">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center font-heading text-base font-bold text-accent shrink-0">
+                  {course.mentor.avatarText}
+                </div>
+                <div>
+                  <p className="text-[10px] text-secondary font-bold uppercase tracking-wider">Your mentor</p>
+                  <h4 className="font-heading text-base font-bold text-primary">{course.mentor.name}</h4>
+                  <p className="text-xs text-text-muted">{course.mentor.expertise} · {course.mentor.qualification} · {course.mentor.experience} yrs exp</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-semibold sm:border-l sm:border-border-subtle sm:pl-6 py-1">
+                <div>
+                  <strong className="text-primary text-base font-heading font-bold block">{course.mentor.students || 420}</strong>
+                  <span className="text-[10px] text-text-muted font-normal">Students</span>
+                </div>
+                <div>
+                  <strong className="text-primary text-base font-heading font-bold block">★ {course.mentor.rating}</strong>
+                  <span className="text-[10px] text-text-muted font-normal">Rating</span>
+                </div>
+              </div>
+              <Link 
+                href={`/mentors/${course.mentor.id}`}
+                className="text-xs font-semibold px-4 py-2 rounded-lg border border-border-subtle hover:border-primary text-primary transition-colors whitespace-nowrap self-stretch sm:self-auto text-center cursor-pointer"
+              >
+                View profile
+              </Link>
             </div>
           </div>
 
@@ -695,39 +736,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             </div>
           )}
 
-          {/* MENTOR DETAILS */}
-          <div className="space-y-3">
-            <h3 className="font-heading text-lg font-bold text-primary">
-              {isLive ? "Your live instructor" : "Meet your mentor"}
-            </h3>
-            <div className="bg-white border border-border-subtle rounded-2xl overflow-hidden flex flex-col sm:flex-row hover:shadow-sm transition-shadow">
-              <div className="w-full sm:w-[130px] bg-blue-50 flex items-center justify-center p-6 flex-shrink-0">
-                <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center font-heading text-2xl font-extrabold text-accent">
-                  {course.mentor.avatarText}
-                </div>
-              </div>
-              <div className="p-5 flex-1 flex flex-col justify-between">
-                <div>
-                  <h4 className="font-heading text-base font-bold text-primary mb-0.5">{course.mentor.name}</h4>
-                  <p className="text-xs text-secondary font-semibold mb-2">{course.mentor.expertise}</p>
-                  <p className="text-xs text-text-muted leading-relaxed mb-4">
-                    {course.mentor.bio || `${course.mentor.qualification} with ${course.mentor.experience} years of expert teaching experience.`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 text-xs border-t border-border-subtle pt-3 text-text-muted font-medium">
-                  <div>
-                    <strong className="text-primary font-bold">{course.mentor.students}</strong> students
-                  </div>
-                  <div>
-                    <strong className="text-primary font-bold">★ {course.mentor.rating}</strong> rating
-                  </div>
-                  <div>
-                    <strong className="text-primary font-bold">{isLive ? "6" : "12"}</strong> {isLive ? "live batches" : "courses"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+
 
           {/* AVAILABILITY CALENDAR (Only if Live individual course) */}
           {course.format === "Live individual" && (
@@ -971,12 +980,16 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
 
             {/* Inclusions */}
             <div className="space-y-3">
-              {inclusionsList.map((incItem: string, idx: number) => (
-                <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-700">
-                  {getInclusionIcon(idx)}
-                  <span>{incItem}</span>
-                </div>
-              ))}
+              {inclusionsList.map((incItem: string, idx: number) => {
+                const isEnabled = !course.inclusionsEnabled || course.inclusionsEnabled[idx] !== false;
+                if (!isEnabled) return null;
+                return (
+                  <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-700">
+                    {getInclusionIcon(idx)}
+                    <span>{incItem}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Timing parameters (Live batch only) */}

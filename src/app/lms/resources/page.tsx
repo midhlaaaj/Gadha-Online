@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IconFiles, IconFileTypePdf, IconPhoto, IconLink,
   IconDownload, IconSearch, IconFilter,
 } from "@tabler/icons-react";
+import { getStudentResources } from "../../actions";
 
-// ─── Mock resources (no DB table yet — show graceful empty state with good UX) ─
-// When a resources table is added, replace this with a getStudentResources() call.
-const MOCK_RESOURCES: {
-  id: string; name: string; type: "pdf" | "doc" | "image" | "link";
-  subject: string; mentor: string; date: string; size?: string; url?: string;
-}[] = [];
+interface ResourceItem {
+  id: string;
+  name: string;
+  type: "pdf" | "doc" | "image" | "link";
+  subject: string;
+  mentor: string;
+  date: string;
+  size?: string;
+  url?: string;
+}
 
 const ICON_MAP = {
   pdf:   { icon: IconFileTypePdf, bg: "#fee2e2", color: "#E24B4A" },
@@ -45,7 +50,7 @@ function ResourcesSkeleton() {
 }
 
 // ─── Resource card ──────────────────────────────────────────────────
-function ResourceCard({ r }: { r: typeof MOCK_RESOURCES[number] }) {
+function ResourceCard({ r }: { r: ResourceItem }) {
   const { icon: Icon, bg, color } = ICON_MAP[r.type] ?? ICON_MAP.doc;
   return (
     <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-[#D0DCF5] hover:shadow-sm transition-shadow">
@@ -79,12 +84,28 @@ function ResourceCard({ r }: { r: typeof MOCK_RESOURCES[number] }) {
 
 // ─── Main page ──────────────────────────────────────────────────────
 export default function StudentResourcesPage() {
+  const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
 
-  const subjects = [...new Set(MOCK_RESOURCES.map((r) => r.subject))];
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await getStudentResources();
+        setResources(data as ResourceItem[]);
+      } catch (e) {
+        console.error("Failed to load student resources:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
-  const filtered = MOCK_RESOURCES.filter((r) => {
+  const subjects = [...new Set(resources.map((r) => r.subject))];
+
+  const filtered = resources.filter((r) => {
     const matchSearch = r.name.toLowerCase().includes(search.toLowerCase()) ||
       r.subject.toLowerCase().includes(search.toLowerCase()) ||
       r.mentor.toLowerCase().includes(search.toLowerCase());
@@ -99,50 +120,56 @@ export default function StudentResourcesPage() {
         <p className="text-[13px] text-[#4A5A7A] mt-0.5">Notes, worksheets and files shared by your mentors.</p>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A5A7A]" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search files, subjects, mentors…"
-            className="w-full pl-9 pr-4 py-2.5 text-[13px] text-[#1B3A6B] bg-white border border-[#D0DCF5] rounded-xl outline-none focus:border-[#2F7FE8] transition-colors placeholder:text-[#4A5A7A]"
-          />
-        </div>
-        {subjects.length > 0 && (
-          <div className="relative">
-            <IconFilter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A5A7A]" />
-            <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              className="pl-9 pr-10 py-2.5 text-[13px] text-[#1B3A6B] bg-white border border-[#D0DCF5] rounded-xl outline-none focus:border-[#2F7FE8] appearance-none cursor-pointer"
-            >
-              <option value="all">All subjects</option>
-              {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-28 gap-4 text-center bg-white rounded-2xl border border-dashed border-[#D0DCF5]">
-          <IconFiles className="w-14 h-14 text-[#D0DCF5]" />
-          <h2 className="text-[16px] font-extrabold font-heading text-[#1B3A6B]">
-            {search || subjectFilter !== "all" ? "No matching resources" : "No resources yet"}
-          </h2>
-          <p className="text-[13px] text-[#4A5A7A] max-w-xs">
-            {search || subjectFilter !== "all"
-              ? "Try adjusting your search or filter."
-              : "Your mentors will share notes, worksheets and files here during your sessions."}
-          </p>
-        </div>
+      {loading ? (
+        <ResourcesSkeleton />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((r) => <ResourceCard key={r.id} r={r} />)}
-        </div>
+        <>
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A5A7A]" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search files, subjects, mentors…"
+                className="w-full pl-9 pr-4 py-2.5 text-[13px] text-[#1B3A6B] bg-white border border-[#D0DCF5] rounded-xl outline-none focus:border-[#2F7FE8] transition-colors placeholder:text-[#4A5A7A]"
+              />
+            </div>
+            {subjects.length > 0 && (
+              <div className="relative">
+                <IconFilter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4A5A7A]" />
+                <select
+                  value={subjectFilter}
+                  onChange={(e) => setSubjectFilter(e.target.value)}
+                  className="pl-9 pr-10 py-2.5 text-[13px] text-[#1B3A6B] bg-white border border-[#D0DCF5] rounded-xl outline-none focus:border-[#2F7FE8] appearance-none cursor-pointer text-ellipsis overflow-hidden whitespace-nowrap"
+                >
+                  <option value="all">All subjects</option>
+                  {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Content */}
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-28 gap-4 text-center bg-white rounded-2xl border border-dashed border-[#D0DCF5]">
+              <IconFiles className="w-14 h-14 text-[#D0DCF5]" />
+              <h2 className="text-[16px] font-extrabold font-heading text-[#1B3A6B]">
+                {search || subjectFilter !== "all" ? "No matching resources" : "No resources yet"}
+              </h2>
+              <p className="text-[13px] text-[#4A5A7A] max-w-xs">
+                {search || subjectFilter !== "all"
+                  ? "Try adjusting your search or filter."
+                  : "Your mentors will share notes, worksheets and files here during your sessions."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filtered.map((r) => <ResourceCard key={r.id} r={r} />)}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

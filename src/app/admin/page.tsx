@@ -169,7 +169,10 @@ export default function AdminPanel() {
   const [newUnitUrl, setNewUnitUrl] = useState("");
   const [newUnitDesc, setNewUnitDesc] = useState("");
   const [newUnitDur, setNewUnitDur] = useState(0);
+  const [newUnitModule, setNewUnitModule] = useState("");
   const [unitSaving, setUnitSaving] = useState(false);
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [editingUnitOrder, setEditingUnitOrder] = useState<number>(0);
 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -374,6 +377,7 @@ export default function AdminPanel() {
     setDrawerEditId(null);
     setShowMoreCourseDetails(false);
     setShowMoreSessionDetails(false);
+    handleCancelEditUnit();
   };
 
   // CRUD Save changes
@@ -464,6 +468,26 @@ export default function AdminPanel() {
   };
 
   // Recorded course units CRUD handlers
+  const handleStartEditUnit = (unit: any) => {
+    setEditingUnitId(unit.id);
+    setEditingUnitOrder(unit.order_index);
+    setNewUnitTitle(unit.title);
+    setNewUnitUrl(unit.youtube_url);
+    setNewUnitDesc(unit.description || "");
+    setNewUnitDur(unit.duration_seconds || 0);
+    setNewUnitModule(unit.module_name || "");
+  };
+
+  const handleCancelEditUnit = () => {
+    setEditingUnitId(null);
+    setEditingUnitOrder(0);
+    setNewUnitTitle("");
+    setNewUnitUrl("");
+    setNewUnitDesc("");
+    setNewUnitDur(0);
+    setNewUnitModule("");
+  };
+
   const handleAddUnit = async () => {
     if (!drawerEditId) return;
     if (!newUnitTitle.trim() || !newUnitUrl.trim()) {
@@ -473,21 +497,20 @@ export default function AdminPanel() {
     setUnitSaving(true);
     try {
       await upsertCourseUnit({
+        id: editingUnitId || undefined,
         courseId: drawerEditId,
         title: newUnitTitle.trim(),
         description: newUnitDesc.trim(),
         youtubeUrl: newUnitUrl.trim(),
-        orderIndex: courseUnits.length,
+        orderIndex: editingUnitId ? editingUnitOrder : courseUnits.length,
         durationSeconds: Number(newUnitDur || 0),
+        moduleName: newUnitModule.trim() || undefined,
       });
-      setNewUnitTitle("");
-      setNewUnitUrl("");
-      setNewUnitDesc("");
-      setNewUnitDur(0);
+      handleCancelEditUnit();
       const data = await getCourseUnits(drawerEditId);
       setCourseUnits(data);
     } catch (err: any) {
-      alert("Failed to add unit: " + err.message);
+      alert("Failed to save unit: " + err.message);
     } finally {
       setUnitSaving(false);
     }
@@ -2382,6 +2405,7 @@ export default function AdminPanel() {
                                       !currentEnabled[idx] ? "opacity-40 line-through" : ""
                                     }`}
                                     type="text"
+                                    placeholder={defaults[idx]}
                                     value={currentInclusions[idx]}
                                     onChange={(e) => {
                                       const newInc = [...currentInclusions];
@@ -2535,17 +2559,14 @@ export default function AdminPanel() {
                               </div>
                               <div className="grid grid-cols-3 gap-3">
                                 <div className="flex flex-col gap-1">
-                                  <label className="text-[9px] font-bold text-primary uppercase">Validity</label>
-                                  <select
-                                    className="text-xs p-2.5 border border-border-subtle rounded-lg bg-white outline-none cursor-pointer"
+                                  <label className="text-[9px] font-bold text-primary uppercase">Session Duration</label>
+                                  <input
+                                    className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none font-semibold"
+                                    type="number"
+                                    placeholder="30"
                                     value={drawerForm.durationDays || 30}
                                     onChange={(e) => setDrawerForm({ ...drawerForm, durationDays: Number(e.target.value) })}
-                                  >
-                                    <option value={10}>10 days</option>
-                                    <option value={30}>30 days</option>
-                                    <option value={60}>60 days</option>
-                                    <option value={90}>90 days</option>
-                                  </select>
+                                  />
                                 </div>
                                 <div className="flex flex-col gap-1">
                                   <label className="text-[9px] font-bold text-primary uppercase">Sessions</label>
@@ -2586,8 +2607,8 @@ export default function AdminPanel() {
                       {drawerForm.format === "Recorded" && (
                         <>
                           <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-primary uppercase">Recorded Inclusions (5 items)</label>
-                            {[0, 1, 2, 3, 4].map((idx) => {
+                            <label className="text-[10px] font-bold text-primary uppercase">Recorded Inclusions (toggle & edit)</label>
+                            {(() => {
                               const defaults = [
                                 "32 hours of content",
                                 "Access on mobile & desktop",
@@ -2595,22 +2616,51 @@ export default function AdminPanel() {
                                 "Lifetime access",
                                 "Weekly live Q&A with mentor"
                               ];
-                              const currentVal = drawerForm.inclusions?.[idx] !== undefined ? drawerForm.inclusions[idx] : "";
-                              return (
-                                <input
-                                  key={idx}
-                                  className="text-xs p-2 border border-border-subtle rounded-lg outline-none mb-1"
-                                  type="text"
-                                  placeholder={defaults[idx]}
-                                  value={currentVal}
-                                  onChange={(e) => {
-                                    const newInc = [...(drawerForm.inclusions || ["", "", "", "", ""])];
-                                    newInc[idx] = e.target.value;
-                                    setDrawerForm({ ...drawerForm, inclusions: newInc });
-                                  }}
-                                />
-                              );
-                            })}
+                              // Initialize inclusions with defaults if empty
+                              const currentInclusions = drawerForm.inclusions && drawerForm.inclusions.length === 5
+                                ? drawerForm.inclusions
+                                : defaults;
+                              // Initialize enabled states (all enabled by default)
+                              const currentEnabled = drawerForm.inclusionsEnabled && drawerForm.inclusionsEnabled.length === 5
+                                ? drawerForm.inclusionsEnabled
+                                : [true, true, true, true, true];
+
+                              return [0, 1, 2, 3, 4].map((idx) => (
+                                <div key={idx} className="flex items-center gap-2 mb-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={currentEnabled[idx]}
+                                    onChange={() => {
+                                      const newEnabled = [...currentEnabled];
+                                      newEnabled[idx] = !newEnabled[idx];
+                                      setDrawerForm({
+                                        ...drawerForm,
+                                        inclusions: currentInclusions,
+                                        inclusionsEnabled: newEnabled,
+                                      });
+                                    }}
+                                    className="w-4 h-4 rounded border-border-subtle accent-secondary cursor-pointer shrink-0"
+                                  />
+                                  <input
+                                    className={`flex-1 text-xs p-2 border border-border-subtle rounded-lg outline-none transition-opacity ${
+                                      !currentEnabled[idx] ? "opacity-40 line-through" : ""
+                                    }`}
+                                    type="text"
+                                    placeholder={defaults[idx]}
+                                    value={currentInclusions[idx]}
+                                    onChange={(e) => {
+                                      const newInc = [...currentInclusions];
+                                      newInc[idx] = e.target.value;
+                                      setDrawerForm({
+                                        ...drawerForm,
+                                        inclusions: newInc,
+                                        inclusionsEnabled: currentEnabled,
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              ));
+                            })()}
                           </div>
 
                           <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border-subtle">
@@ -2631,6 +2681,11 @@ export default function AdminPanel() {
                                       <div key={u.id} className="border border-border-subtle bg-surface rounded-xl p-3 flex flex-col gap-2 relative">
                                         <div className="flex items-start justify-between gap-4">
                                           <div className="min-w-0 flex-1">
+                                            {u.module_name && (
+                                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 tracking-wide inline-block mb-1">
+                                                {u.module_name}
+                                              </span>
+                                            )}
                                             <p className="text-[12px] font-bold text-primary truncate">
                                               {index + 1}. {u.title}
                                             </p>
@@ -2644,14 +2699,24 @@ export default function AdminPanel() {
                                             )}
                                           </div>
                                           
-                                          {/* Delete action */}
-                                          <button
-                                            type="button"
-                                            onClick={() => handleDeleteUnit(u.id)}
-                                            className="text-red-600 text-[10px] font-bold hover:underline shrink-0"
-                                          >
-                                            Delete
-                                          </button>
+                                          {/* Actions: Edit & Delete */}
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleStartEditUnit(u)}
+                                              className="text-secondary text-[10px] font-bold hover:underline cursor-pointer"
+                                            >
+                                              Edit
+                                            </button>
+                                            <span className="text-slate-300">|</span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDeleteUnit(u.id)}
+                                              className="text-red-600 text-[10px] font-bold hover:underline cursor-pointer"
+                                            >
+                                              Delete
+                                            </button>
+                                          </div>
                                         </div>
 
                                         {/* Move actions */}
@@ -2681,9 +2746,18 @@ export default function AdminPanel() {
                                   </div>
                                 )}
 
-                                {/* Add Unit form inline */}
+                                {/* Add/Edit Unit form inline */}
                                 <div className="border border-dashed border-border-subtle rounded-xl p-3 space-y-2 bg-slate-50/50 mt-2">
-                                  <p className="text-[10px] font-bold text-primary uppercase">Add Video Unit</p>
+                                  <p className="text-[10px] font-bold text-primary uppercase">
+                                    {editingUnitId ? "Edit Video Unit" : "Add Video Unit"}
+                                  </p>
+                                  <input
+                                    className="w-full text-xs p-2 border border-border-subtle rounded-lg bg-white outline-none font-semibold text-secondary"
+                                    type="text"
+                                    placeholder="Module / Group Name (e.g. Module 1 — Limits & Continuity)"
+                                    value={newUnitModule}
+                                    onChange={(e) => setNewUnitModule(e.target.value)}
+                                  />
                                   <input
                                     className="w-full text-xs p-2 border border-border-subtle rounded-lg bg-white outline-none"
                                     type="text"
@@ -2712,14 +2786,25 @@ export default function AdminPanel() {
                                       value={newUnitDur || ""}
                                       onChange={(e) => setNewUnitDur(Number(e.target.value))}
                                     />
-                                    <button
-                                      type="button"
-                                      disabled={unitSaving}
-                                      onClick={handleAddUnit}
-                                      className="text-xs font-bold py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 disabled:opacity-50"
-                                    >
-                                      {unitSaving ? "Saving..." : "Add Unit"}
-                                    </button>
+                                    <div className="flex gap-2">
+                                      {editingUnitId && (
+                                        <button
+                                          type="button"
+                                          onClick={handleCancelEditUnit}
+                                          className="flex-1 text-xs font-semibold py-2 border border-border-subtle rounded-lg text-primary bg-white hover:bg-slate-50 cursor-pointer"
+                                        >
+                                          Cancel
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        disabled={unitSaving}
+                                        onClick={handleAddUnit}
+                                        className="flex-1 text-xs font-bold py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 disabled:opacity-50 cursor-pointer"
+                                      >
+                                        {unitSaving ? "Saving..." : (editingUnitId ? "Save Unit" : "Add Unit")}
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -2888,8 +2973,8 @@ export default function AdminPanel() {
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-primary uppercase">Inclusions (5 items)</label>
-                        {[0, 1, 2, 3, 4].map((idx) => {
+                        <label className="text-[10px] font-bold text-primary uppercase">Session Inclusions (toggle & edit)</label>
+                        {(() => {
                           const defaults = [
                             "Live on Zoom — any device",
                             "Summary notes after session",
@@ -2897,22 +2982,49 @@ export default function AdminPanel() {
                             "Pre-session topic form",
                             "Secure payment via Razorpay"
                           ];
-                          const currentVal = drawerForm.inclusions?.[idx] !== undefined ? drawerForm.inclusions[idx] : "";
-                          return (
-                            <input
-                              key={idx}
-                              className="text-xs p-2 border border-border-subtle rounded-lg outline-none mb-1"
-                              type="text"
-                              placeholder={defaults[idx]}
-                              value={currentVal}
-                              onChange={(e) => {
-                                const newInc = [...(drawerForm.inclusions || ["", "", "", "", ""])];
-                                newInc[idx] = e.target.value;
-                                setDrawerForm({ ...drawerForm, inclusions: newInc });
-                              }}
-                            />
-                          );
-                        })}
+                          const currentInclusions = drawerForm.inclusions && drawerForm.inclusions.length === 5
+                            ? drawerForm.inclusions
+                            : defaults;
+                          const currentEnabled = drawerForm.inclusionsEnabled && drawerForm.inclusionsEnabled.length === 5
+                            ? drawerForm.inclusionsEnabled
+                            : [true, true, true, true, true];
+
+                          return [0, 1, 2, 3, 4].map((idx) => (
+                            <div key={idx} className="flex items-center gap-2 mb-1">
+                              <input
+                                type="checkbox"
+                                checked={currentEnabled[idx]}
+                                onChange={() => {
+                                  const newEnabled = [...currentEnabled];
+                                  newEnabled[idx] = !newEnabled[idx];
+                                  setDrawerForm({
+                                    ...drawerForm,
+                                    inclusions: currentInclusions,
+                                    inclusionsEnabled: newEnabled,
+                                  });
+                                }}
+                                className="w-4 h-4 rounded border-border-subtle accent-secondary cursor-pointer shrink-0"
+                              />
+                              <input
+                                className={`flex-1 text-xs p-2 border border-border-subtle rounded-lg outline-none transition-opacity ${
+                                  !currentEnabled[idx] ? "opacity-40 line-through" : ""
+                                }`}
+                                type="text"
+                                placeholder={defaults[idx]}
+                                value={currentInclusions[idx]}
+                                onChange={(e) => {
+                                  const newInc = [...currentInclusions];
+                                  newInc[idx] = e.target.value;
+                                  setDrawerForm({
+                                    ...drawerForm,
+                                    inclusions: newInc,
+                                    inclusionsEnabled: currentEnabled,
+                                  });
+                                }}
+                              />
+                            </div>
+                          ));
+                        })()}
                       </div>
 
                       <div className="font-semibold text-[10px] text-text-muted uppercase tracking-wider mt-2 border-b border-border-subtle pb-1">
@@ -2922,58 +3034,85 @@ export default function AdminPanel() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1">
                           <label className="text-[9px] font-bold text-primary uppercase">Duration Options</label>
-                          <input
-                            className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                            type="text"
-                            placeholder="60 or 90 min"
-                            value={drawerForm.durationOptions || ""}
+                          <select
+                            className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none font-semibold cursor-pointer"
+                            value={drawerForm.durationOptions || "60 or 90 min"}
                             onChange={(e) => setDrawerForm({ ...drawerForm, durationOptions: e.target.value })}
-                          />
+                          >
+                            {["60 min", "90 min", "60 or 90 min"].map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
                         </div>
                         <div className="flex flex-col gap-1">
                           <label className="text-[9px] font-bold text-primary uppercase">Platform</label>
-                          <input
-                            className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                            type="text"
-                            placeholder="Zoom"
-                            value={drawerForm.platform || ""}
+                          <select
+                            className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none font-semibold cursor-pointer"
+                            value={drawerForm.platform || "Zoom"}
                             onChange={(e) => setDrawerForm({ ...drawerForm, platform: e.target.value })}
-                          />
+                          >
+                            {["Zoom", "Google Meet", "Microsoft Teams"].map((plat) => (
+                              <option key={plat} value={plat}>{plat}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1">
                           <label className="text-[9px] font-bold text-primary uppercase">Language</label>
-                          <input
-                            className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                            type="text"
-                            placeholder="English / Hindi"
-                            value={drawerForm.language || ""}
+                          <select
+                            className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none font-semibold cursor-pointer"
+                            value={drawerForm.language || "English"}
                             onChange={(e) => setDrawerForm({ ...drawerForm, language: e.target.value })}
-                          />
+                          >
+                            {["English", "Hindi", "English / Hindi", "Spanish", "French"].map((lang) => (
+                              <option key={lang} value={lang}>{lang}</option>
+                            ))}
+                          </select>
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-primary uppercase">Days</label>
-                          <input
-                            className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                            type="text"
-                            placeholder="Mon – Sat"
-                            value={drawerForm.days || ""}
-                            onChange={(e) => setDrawerForm({ ...drawerForm, days: e.target.value })}
-                          />
+                          <label className="text-[9px] font-bold text-primary uppercase">Days (Select all)</label>
+                          <div className="grid grid-cols-2 gap-1 px-2 py-1.5 border border-border-subtle bg-white rounded-lg max-h-24 overflow-y-auto">
+                            {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d) => {
+                              const selectedDays = drawerForm.days ? drawerForm.days.split(",").map((s: string) => s.trim()) : [];
+                              const isChecked = selectedDays.includes(d);
+                              return (
+                                <label key={d} className="flex items-center gap-1 text-[9px] text-[#1B3A6B] font-semibold cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      let newDays = [...selectedDays];
+                                      if (e.target.checked) {
+                                        newDays.push(d);
+                                      } else {
+                                        newDays = newDays.filter((x) => x !== d);
+                                      }
+                                      const ordered = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].filter(x => newDays.includes(x));
+                                      setDrawerForm({ ...drawerForm, days: ordered.join(", ") });
+                                    }}
+                                    className="rounded border-slate-300 text-secondary focus:ring-secondary w-2.5 h-2.5 cursor-pointer"
+                                  />
+                                  {d.slice(0, 3)}
+                                </label>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex flex-col gap-1">
                         <label className="text-[9px] font-bold text-primary uppercase">Reschedule Policy</label>
-                        <input
-                          className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none"
-                          type="text"
-                          placeholder="Up to 4 hrs before"
-                          value={drawerForm.reschedulePolicy || ""}
+                        <select
+                          className="text-xs p-2.5 border border-border-subtle bg-white rounded-lg outline-none font-semibold cursor-pointer"
+                          value={drawerForm.reschedulePolicy || "Up to 4 hrs before"}
                           onChange={(e) => setDrawerForm({ ...drawerForm, reschedulePolicy: e.target.value })}
-                        />
+                        >
+                          {["Up to 4 hrs before", "Up to 24 hrs before", "No-reschedule, recording provided if missed", "No-reschedule"].map((pol) => (
+                            <option key={pol} value={pol}>{pol}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   )}

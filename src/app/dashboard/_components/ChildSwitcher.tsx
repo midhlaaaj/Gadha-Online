@@ -44,11 +44,16 @@ export function ChildSwitcher() {
         const joinedFirst = all.filter((k) => k.joined);
         const fallback = joinedFirst[0] ?? all[0] ?? null;
 
-        setActive(found ?? fallback);
+        const activeChild = found ?? fallback;
+        setActive(activeChild);
+
+        if (!paramId && activeChild) {
+          router.replace(`/dashboard/${segment}?child=${activeChild.id}`);
+        }
       })
       .catch(() => setChildren([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [searchParams, segment, router]);
 
   // Close dropdown on outside click
   useEffect(() => {
