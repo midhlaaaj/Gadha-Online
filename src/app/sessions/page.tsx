@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   IconSearch,
@@ -23,6 +23,8 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import { getSessionsPageData } from "../actions";
+import BookingModal from "@/components/BookingModal";
+
 
 // Dynamic Icon Picker Helper
 const getIconComponent = (name: string) => {
@@ -64,6 +66,14 @@ const getSubjectBgColor = (subject: string) => {
 function SessionsPageContent() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeBooking, setActiveBooking] = useState<{
+    id: string;
+    type: "course" | "session";
+    title: string;
+    price: number;
+    mentorName: string;
+    isLiveIndividual?: boolean;
+  } | null>(null);
 
   const searchParams = useSearchParams();
   const mentorParam = searchParams.get("mentor") || "";
@@ -78,6 +88,15 @@ function SessionsPageContent() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  
+  const categoriesList = useMemo(() => {
+    const list = new Set<string>();
+    sessions.forEach((s) => {
+      if (s.subject) list.add(s.subject);
+    });
+    return Array.from(list);
+  }, [sessions]);
+
   
   const [sortOption, setSortOption] = useState("Most popular");
   const [currentPage, setCurrentPage] = useState(1);
@@ -296,7 +315,7 @@ function SessionsPageContent() {
                             Category
                           </div>
                           <div className="flex flex-col">
-                            {["Mathematics", "Science", "Programming", "English"].map((cat) => (
+                            {categoriesList.map((cat) => (
                               <div
                                 key={cat}
                                 onClick={() => handleCategoryCheckbox(cat)}
@@ -427,7 +446,7 @@ function SessionsPageContent() {
         {/* TOPBAR (Tabs & Sort) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-subtle mb-6">
           <div className="flex items-center gap-1.5 overflow-x-auto premium-scrollbar pb-2 sm:pb-0">
-            {["All sessions", "Mathematics", "Science", "Programming", "English"].map((tab) => (
+            {["All sessions", ...categoriesList].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabSelect(tab)}
@@ -561,9 +580,19 @@ function SessionsPageContent() {
 
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 mb-3 inline-block">
-                      {s.type} Session
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-badge-bg text-badge-text border border-badge-border">
+                        {s.subject}
+                      </span>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        {s.type} Session
+                      </span>
+                      {s.class_level && (
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                          {s.class_level}
+                        </span>
+                      )}
+                    </div>
                     <h3 className="font-heading text-base font-bold text-primary mb-1 leading-tight">
                       {s.title}
                     </h3>
@@ -587,7 +616,17 @@ function SessionsPageContent() {
                     </div>
 
                     <div className="flex gap-2">
-                      <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer">
+                      <button
+                        onClick={() => setActiveBooking({
+                          id: s.id,
+                          type: "session",
+                          title: s.title,
+                          price: s.price,
+                          mentorName: s.mentor,
+                          isLiveIndividual: s.type === "1-on-1"
+                        })}
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
+                      >
                         Book now
                       </button>
                       <a
@@ -685,7 +724,18 @@ function SessionsPageContent() {
           </div>
         </div>
       </footer>
-
+      {activeBooking && (
+        <BookingModal
+          isOpen={!!activeBooking}
+          onClose={() => setActiveBooking(null)}
+          targetId={activeBooking.id}
+          targetType={activeBooking.type}
+          title={activeBooking.title}
+          price={activeBooking.price}
+          mentorName={activeBooking.mentorName}
+          isLiveIndividual={!!activeBooking.isLiveIndividual}
+        />
+      )}
     </div>
   );
 }

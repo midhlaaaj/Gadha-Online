@@ -239,6 +239,7 @@ interface CourseDetailsData {
   subject: string;
   format: string;
   price: number;
+  class_level?: string;
   mentor: {
     id: string;
     name: string;
@@ -464,24 +465,24 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           ? course.learningOutcomes
           : getDynamicLearningOutcomes(course.subject);
 
-        const inclusionsList = (course.inclusions && course.inclusions.length === 5 && course.inclusions.every((x: string) => x !== ""))
-          ? course.inclusions
-          : (isLive
-              ? [
-                  "16 live sessions, 2x weekly",
-                  "Live on Zoom — join via browser/app",
-                  "Live doubt-solving every class",
-                  "7-day replay for missed classes",
-                  "Certificate on batch completion"
-                ]
-              : [
-                  "32 hours of content",
-                  "Access on mobile & desktop",
-                  "Certificate of completion",
-                  "Lifetime access",
-                  "Weekly live Q&A with mentor"
-                ]
-            );
+        const defaults = isLive
+          ? [
+              "16 live sessions, 2x weekly",
+              "Live on Zoom — join via browser/app",
+              "Live doubt-solving every class",
+              "7-day replay for missed classes",
+              "Certificate on batch completion"
+            ]
+          : [
+              "32 hours of content",
+              "Access on mobile & desktop",
+              "Certificate of completion",
+              "Lifetime access",
+              "Weekly live Q&A with mentor"
+            ];
+        const inclusionsList = [0, 1, 2, 3, 4].map((idx) => {
+          return (course.inclusions && course.inclusions[idx]) || defaults[idx];
+        });
 
         const getInclusionIcon = (idx: number) => {
           if (isLive) {
@@ -558,6 +559,11 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
               <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
                 {course.subject}
               </span>
+              {course.class_level && (
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                  {course.class_level}
+                </span>
+              )}
               {isLive ? (
                 <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-red-50 text-red-600 border border-red-150 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>

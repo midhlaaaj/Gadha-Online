@@ -136,6 +136,7 @@ function TodayClassCard({ cls }: { cls: Stats["todayClasses"][number] }) {
   const endAt = new Date(scheduledAt.getTime() + cls.durationMinutes * 60000);
   const now = new Date();
   const isLive = scheduledAt <= now && now <= endAt;
+  const isPast = now > endAt;
 
   return (
     <div className={`flex items-center gap-4 px-4 py-3.5 rounded-xl border transition-all ${isLive ? "border-red-200 bg-red-50/40" : "border-[#E6EBF8] bg-[#F5F7FF]"}`}>
@@ -156,6 +157,10 @@ function TodayClassCard({ cls }: { cls: Stats["todayClasses"][number] }) {
             </a>
           )}
         </div>
+      ) : isPast ? (
+        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-400 whitespace-nowrap">
+          Session ended
+        </span>
       ) : (
         <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#EBF2FF] text-[#2F7FE8] whitespace-nowrap">
           Upcoming

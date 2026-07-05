@@ -134,6 +134,7 @@ interface SessionDetailsData {
   subject: string;
   type: string;
   price: number;
+  class_level?: string;
   bookings: number;
   colorBg: string;
   iconName: string;
@@ -146,6 +147,9 @@ interface SessionDetailsData {
   language: string;
   days: string;
   reschedulePolicy: string;
+  sessionDate?: string;
+  sessionTime?: string;
+  isRepeatable?: boolean;
   mentor: {
     id: string;
     name: string;
@@ -327,15 +331,16 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
           : getCoveredTopics(session.subject);
 
         // Inclusions array binding
-        const inclusionsList = (session.inclusions && session.inclusions.length === 5 && session.inclusions.every((x: string) => x !== ""))
-          ? session.inclusions
-          : [
-              "Live on Zoom — any device",
-              "Summary notes after session",
-              "Free reschedule up to 4 hrs before",
-              "Pre-session topic form",
-              "Secure payment via Razorpay"
-            ];
+        const defaults = [
+          "Live on Zoom — any device",
+          "Summary notes after session",
+          "Free reschedule up to 4 hrs before",
+          "Pre-session topic form",
+          "Secure payment via Razorpay"
+        ];
+        const inclusionsList = [0, 1, 2, 3, 4].map((idx) => {
+          return (session.inclusions && session.inclusions[idx]) || defaults[idx];
+        });
 
         const getInclusionIcon = (idx: number) => {
           switch (idx) {
@@ -426,6 +431,11 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
               <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
                 {session.subject}
               </span>
+              {session.class_level && (
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                  {session.class_level}
+                </span>
+              )}
               <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-150 flex items-center gap-1">
                 <IconClock className="w-3 h-3 text-amber-500" />
                 HOURLY SESSION
@@ -646,6 +656,30 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
                   {session.type === "Group" ? "/ session" : "/ hour"}
                 </span>
               </div>
+
+              {session.type === "Group" && (
+                <div className="mt-3 p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5 text-xs text-left">
+                  <div className="flex items-center gap-2 text-primary font-semibold">
+                    <IconCalendar className="w-4 h-4 text-secondary shrink-0" />
+                    <span>
+                      {session.isRepeatable
+                        ? `Every ${session.days || "Saturday"}`
+                        : (session.sessionDate
+                            ? new Date(session.sessionDate).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })
+                            : "Date TBA")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-text-muted font-medium pl-6">
+                    <IconClock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>{session.sessionTime || "Time TBA"} IST</span>
+                  </div>
+                  {session.isRepeatable && (
+                    <div className="text-[10px] text-blue-700 bg-blue-50/60 border border-blue-100 rounded-lg p-2 mt-1.5 font-medium leading-relaxed">
+                      📅 This group session runs every week. Book for the day that works best for you.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* CTA Buttons */}

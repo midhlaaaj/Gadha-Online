@@ -445,6 +445,11 @@ export default function Home() {
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-badge-bg text-badge-text inline-block">
                           {c.subject}
                         </span>
+                        {c.class_level && (
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 inline-block">
+                            {c.class_level}
+                          </span>
+                        )}
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-block ${
                           c.format === "Recorded"
                             ? "bg-emerald-50 text-emerald-700"
@@ -560,6 +565,11 @@ export default function Home() {
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-badge-bg text-badge-text inline-block">
                           {s.subject}
                         </span>
+                        {s.class_level && (
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 inline-block">
+                            {s.class_level}
+                          </span>
+                        )}
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-block ${
                           s.type === "Group"
                             ? "bg-purple-50 text-purple-700"

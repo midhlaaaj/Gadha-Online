@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   IconSearch,
@@ -23,6 +23,8 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import { getCoursesPageData } from "../actions";
+import BookingModal from "@/components/BookingModal";
+
 
 // Dynamic Icon Picker Helper
 const getIconComponent = (name: string) => {
@@ -76,6 +78,14 @@ function getCourseLevel(title: string) {
 function CoursesPageContent() {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeBooking, setActiveBooking] = useState<{
+    id: string;
+    type: "course" | "session";
+    title: string;
+    price: number;
+    mentorName: string;
+    isLiveIndividual?: boolean;
+  } | null>(null);
 
   const searchParams = useSearchParams();
   const mentorParam = searchParams.get("mentor") || "";
@@ -91,6 +101,15 @@ function CoursesPageContent() {
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  
+  const categoriesList = useMemo(() => {
+    const list = new Set<string>();
+    courses.forEach((c) => {
+      if (c.subject) list.add(c.subject);
+    });
+    return Array.from(list);
+  }, [courses]);
+
   
   const [sortOption, setSortOption] = useState("Most popular");
   const [currentPage, setCurrentPage] = useState(1);
@@ -338,7 +357,7 @@ function CoursesPageContent() {
                             Category
                           </div>
                           <div className="flex flex-col">
-                            {["Mathematics", "Science", "Programming", "English", "Test Prep"].map((cat) => (
+                            {categoriesList.map((cat) => (
                               <div
                                 key={cat}
                                 onClick={() => handleCategoryCheckbox(cat)}
@@ -495,7 +514,7 @@ function CoursesPageContent() {
         {/* TOPBAR (Tabs & Sort) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-subtle mb-6">
           <div className="flex items-center gap-1.5 overflow-x-auto premium-scrollbar pb-2 sm:pb-0">
-            {["All courses", "Mathematics", "Science", "Programming", "English", "Test Prep"].map((tab) => (
+            {["All courses", ...categoriesList].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabSelect(tab)}
@@ -662,6 +681,11 @@ function CoursesPageContent() {
                       <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-badge-bg text-badge-text">
                         {c.subject}
                       </span>
+                      {c.class_level && (
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                          {c.class_level}
+                        </span>
+                      )}
                       <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                         c.format === "Live batch"
                           ? "bg-green-50 text-green-700 border border-green-150"
@@ -696,7 +720,17 @@ function CoursesPageContent() {
                     </div>
 
                     <div className="flex gap-2">
-                      <button className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer">
+                      <button
+                        onClick={() => setActiveBooking({
+                          id: c.id,
+                          type: "course",
+                          title: c.title,
+                          price: c.price,
+                          mentorName: c.mentor,
+                          isLiveIndividual: c.format === "Live individual"
+                        })}
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
+                      >
                         Book now
                       </button>
                       <a href={`/courses/${c.id}`} className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center">
@@ -793,7 +827,18 @@ function CoursesPageContent() {
           </div>
         </div>
       </footer>
-
+      {activeBooking && (
+        <BookingModal
+          isOpen={!!activeBooking}
+          onClose={() => setActiveBooking(null)}
+          targetId={activeBooking.id}
+          targetType={activeBooking.type}
+          title={activeBooking.title}
+          price={activeBooking.price}
+          mentorName={activeBooking.mentorName}
+          isLiveIndividual={!!activeBooking.isLiveIndividual}
+        />
+      )}
     </div>
   );
 }

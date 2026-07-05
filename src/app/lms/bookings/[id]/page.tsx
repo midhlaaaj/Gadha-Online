@@ -250,8 +250,14 @@ export default function StudentBookingDashboardPage() {
               classes.map((c: any) => {
                 const now = new Date();
                 const classTime = new Date(c.scheduled_at);
+                const bookingCreatedAt = new Date(booking.createdAt);
+                const isBeforeEnrollment = classTime < bookingCreatedAt;
+
                 const minsUntil = (classTime.getTime() - now.getTime()) / 60000;
                 const canJoin = c.status === "scheduled" && minsUntil <= 15 && minsUntil > -120;
+                const isPastClass = minsUntil < -(c.duration_minutes || 60);
+
+                const classAttendance = attendance?.find((a: any) => a.scheduled_class_id === c.id);
 
                 const formatCountdown = () => {
                   if (minsUntil <= 0) return null;
@@ -269,11 +275,17 @@ export default function StudentBookingDashboardPage() {
                   <div key={c.id} className="bg-white rounded-2xl border border-[#D0DCF5] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-xs transition-shadow">
                     <div className="flex items-start gap-3.5 min-w-0">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        c.status === "completed" 
-                          ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
-                          : c.status === "cancelled" 
-                            ? "bg-red-50 text-red-600 border border-red-100" 
-                            : "bg-[#F5F8FF] text-[#2F7FE8] border border-[#E6EBF8]"
+                        classAttendance?.status === "present"
+                          ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                          : classAttendance?.status === "absent"
+                            ? "bg-red-50 text-red-600 border border-red-100"
+                            : classAttendance?.status === "excused"
+                              ? "bg-amber-50 text-amber-600 border border-amber-100"
+                              : c.status === "completed" 
+                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
+                                : c.status === "cancelled" 
+                                  ? "bg-red-50 text-red-600 border border-red-100" 
+                                  : "bg-[#F5F8FF] text-[#2F7FE8] border border-[#E6EBF8]"
                       }`}>
                         <IconVideo className="w-5 h-5" />
                       </div>
@@ -287,8 +299,30 @@ export default function StudentBookingDashboardPage() {
                     </div>
 
                     <div className="shrink-0 flex items-center gap-2 self-start sm:self-auto">
-                      {c.status === "scheduled" && (
-                        canJoin && c.join_url ? (
+                      {classAttendance ? (
+                        classAttendance.status === "present" ? (
+                          <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full whitespace-nowrap">
+                            Attended
+                          </span>
+                        ) : classAttendance.status === "absent" ? (
+                          <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-3 py-1.5 rounded-full whitespace-nowrap">
+                            Absent
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full whitespace-nowrap">
+                            Excused
+                          </span>
+                        )
+                      ) : isBeforeEnrollment ? (
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full whitespace-nowrap">
+                          Not Enrolled
+                        </span>
+                      ) : c.status === "scheduled" && (
+                        isPastClass ? (
+                          <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full whitespace-nowrap">
+                            Session ended
+                          </span>
+                        ) : canJoin && c.join_url ? (
                           <a
                             href={c.join_url}
                             target="_blank"

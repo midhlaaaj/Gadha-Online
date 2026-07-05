@@ -122,25 +122,34 @@ export async function getHomepageData() {
     .eq("is_active", true)
     .order("rating", { ascending: false });
 
-  const mentors = (dbMentors || []).map((m: any) => {
-    const name = m.profile?.full_name || "Unknown Mentor";
-    const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
-    return {
-      id: m.id,
-      name,
-      subject: m.expertise.join(" & "),
-      rating: Number(m.rating),
-      students: 420,
-      courses: 10,
-      rate: Number(m.hourly_rate),
-      verified: m.verified || false,
-      avatarText: init,
-      avatarBg: "#1B3A6B",
-      qualification: m.qualification || "Educator",
-      experience: m.experience || 5,
-      bio: m.bio || "",
-    };
-  });
+  const mentors = (dbMentors || [])
+    .filter((m: any) => {
+      const hasBio = m.bio && m.bio.trim() !== "" && m.bio !== "Biography...";
+      const hasExpertise = m.expertise && m.expertise.length > 0;
+      const hasRate = m.hourly_rate && Number(m.hourly_rate) > 0;
+      const hasQual = m.qualification && m.qualification.trim() !== "" && m.qualification !== "Educator";
+      const hasExp = m.experience && Number(m.experience) > 0;
+      return hasBio && hasExpertise && hasRate && hasQual && hasExp;
+    })
+    .map((m: any) => {
+      const name = m.profile?.full_name || "Unknown Mentor";
+      const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+      return {
+        id: m.id,
+        name,
+        subject: m.expertise.join(" & "),
+        rating: Number(m.rating),
+        students: 420,
+        courses: 10,
+        rate: Number(m.hourly_rate),
+        verified: m.verified || false,
+        avatarText: init,
+        avatarBg: "#1B3A6B",
+        qualification: m.qualification || "Educator",
+        experience: m.experience || 5,
+        bio: m.bio || "",
+      };
+    });
 
   return {
     settings: settings || {
@@ -170,7 +179,7 @@ export async function getHomepageData() {
 
 export async function getAdminData() {
   noStore();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // 1. Get Hero settings
   const { data: settings } = await supabase
@@ -185,7 +194,73 @@ export async function getAdminData() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  // 3. Get All Courses
+  // 3. Get All Bookings for Admin (Moved to top to compute dynamic enrollment counts)
+  const { data: dbBookings } = await supabase
+    .from("bookings")
+    .select(`
+      *,
+      parent:parents(profile:profiles(full_name, email)),
+      student:students(profile:profiles(full_name, email)),
+      course:courses(title),
+      session:sessions(title)
+    `)
+    .order("created_at", { ascending: false });
+
+  const bookings = (dbBookings || []).map((b: any) => {
+    const studentProfile = b.student?.profile;
+    const studentName = studentProfile?.full_name || "Unknown Student";
+    const studentEmail = studentProfile?.email || "";
+
+    const parentProfile = b.parent?.profile;
+    let parentEmail = parentProfile?.email || "";
+    let parentName = parentProfile?.full_name || "";
+
+    if (!parentEmail && studentEmail) {
+      parentEmail = studentEmail;
+    }
+    if (!parentName || parentName === "Unknown Parent") {
+      parentName = parentEmail || "Unknown Parent";
+    }
+
+    let itemTitle = "1-on-1 Direct Private Session";
+    let bookingType = "1-on-1 Session";
+    
+    if (b.course) {
+      itemTitle = b.course.title;
+      bookingType = "Course";
+    } else if (b.session) {
+      itemTitle = b.session.title;
+      bookingType = "Session";
+    }
+
+    return {
+      id: b.id,
+      parentName,
+      parentEmail,
+      studentName,
+      bookingType,
+      itemTitle,
+      amountPaid: Number(b.amount_paid),
+      status: b.status,
+      paymentStatus: b.payment_status,
+      createdAt: b.created_at,
+    };
+  });
+
+  // Calculate actual database enrollment count per course / session
+  const courseBookingCounts: Record<string, number> = {};
+  const sessionBookingCounts: Record<string, number> = {};
+
+  (dbBookings || []).forEach((b: any) => {
+    if (b.course_id) {
+      courseBookingCounts[b.course_id] = (courseBookingCounts[b.course_id] || 0) + 1;
+    }
+    if (b.session_id) {
+      sessionBookingCounts[b.session_id] = (sessionBookingCounts[b.session_id] || 0) + 1;
+    }
+  });
+
+  // 4. Get All Courses
   const { data: dbCourses } = await supabase
     .from("courses")
     .select("*, mentor:mentors(profile:profiles(full_name))")
@@ -193,6 +268,7 @@ export async function getAdminData() {
 
   const courses = (dbCourses || []).map((c: any) => {
     const style = mapSubjectToStyle(c.subject);
+    const dbBookingCount = courseBookingCounts[c.id] || 0;
     return {
       id: c.id,
       title: c.title,
@@ -203,7 +279,7 @@ export async function getAdminData() {
       format: c.format,
       price: Number(c.price),
       mentor: c.mentor?.profile?.full_name || "Unknown Mentor",
-      students: c.students_count,
+      students: dbBookingCount, // Dynamic enrolled students count
       rating: Number(c.rating),
       status: c.status,
       learningOutcomes: c.learning_outcomes || [],
@@ -223,7 +299,7 @@ export async function getAdminData() {
     };
   });
 
-  // 4. Get All Sessions
+  // 5. Get All Sessions
   const { data: dbSessions } = await supabase
     .from("sessions")
     .select("*, mentor:mentors(profile:profiles(full_name, avatar_url))")
@@ -232,6 +308,7 @@ export async function getAdminData() {
   const sessions = (dbSessions || []).map((s: any) => {
     const name = s.mentor?.profile?.full_name || "Unknown Mentor";
     const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+    const dbBookingCount = sessionBookingCounts[s.id] || 0;
     return {
       id: s.id,
       title: s.title,
@@ -240,7 +317,7 @@ export async function getAdminData() {
       mentorAvatar: init,
       mentorColor: s.color_bg || "#1B3A6B",
       type: s.type,
-      bookings: s.bookings_count,
+      bookings: dbBookingCount, // Dynamic bookings count
       subject: s.subject,
       price: Number(s.price),
       status: s.status,
@@ -253,14 +330,15 @@ export async function getAdminData() {
       durationOptions: s.duration_options || "60 or 90 min",
       platform: s.platform || "Zoom",
       language: s.language || "English / Hindi",
-      days: s.days || "Mon – Sat",
+      days: (s.days || "Mon – Sat").replace(/^Every\s+/i, ""),
       reschedulePolicy: s.reschedule_policy || "Up to 4 hrs before",
       sessionDate: s.session_date || "",
       sessionTime: s.session_time || "",
+      isRepeatable: s.is_repeatable || false,
     };
   });
 
-  // 5. Get All Mentors
+  // 6. Get All Mentors
   const { data: dbMentors } = await supabase
     .from("mentors")
     .select("*, profile:profiles(full_name, avatar_url, email)")
@@ -318,50 +396,6 @@ export async function getAdminData() {
 
   const mentors = [...pendingInvites, ...activeMentors];
 
-  // 6. Get All Bookings for Admin
-  const { data: dbBookings } = await supabase
-    .from("bookings")
-    .select(`
-      *,
-      parent:parents(profile:profiles(full_name, email)),
-      student:students(profile:profiles(full_name)),
-      course:courses(title),
-      session:sessions(title)
-    `)
-    .order("created_at", { ascending: false });
-
-  const bookings = (dbBookings || []).map((b: any) => {
-    const parentProfile = b.parent?.profile;
-    const parentName = parentProfile?.full_name || "Unknown Parent";
-    const parentEmail = parentProfile?.email || "";
-
-    const studentProfile = b.student?.profile;
-    const studentName = studentProfile?.full_name || "Unknown Student";
-
-    let itemTitle = "1-on-1 Direct Private Session";
-    let bookingType = "1-on-1 Session";
-    
-    if (b.course) {
-      itemTitle = b.course.title;
-      bookingType = "Course";
-    } else if (b.session) {
-      itemTitle = b.session.title;
-      bookingType = "Session";
-    }
-
-    return {
-      id: b.id,
-      parentName,
-      parentEmail,
-      studentName,
-      bookingType,
-      itemTitle,
-      amountPaid: Number(b.amount_paid),
-      status: b.status,
-      paymentStatus: b.payment_status,
-      createdAt: b.created_at,
-    };
-  });
 
   return {
     settings: settings || {
@@ -455,6 +489,7 @@ export async function upsertCourse(course: any) {
     subject: course.subject,
     format: course.format,
     price: Number(course.price),
+    class_level: course.classLevel || null,
     mentor_id: mentorId,
     status: course.status,
     cover_image_url: course.coverImageUrl || "",
@@ -586,6 +621,7 @@ export async function upsertSession(session: any) {
     subject: session.subject,
     type: session.type,
     price: Number(session.price),
+    class_level: session.classLevel || null,
     status: session.status,
     color_bg: session.colorBg || "#ede9fe",
     icon_name: session.iconName || "writing",
@@ -596,11 +632,12 @@ export async function upsertSession(session: any) {
     duration_options: session.durationOptions || "60 or 90 min",
     platform: session.platform || "Zoom",
     language: session.language || "English / Hindi",
-    days: session.days || "Mon – Sat",
+    days: (session.days || "Mon – Sat").replace(/^Every\s+/i, ""),
     reschedule_policy: session.reschedulePolicy || "Up to 4 hrs before",
-    session_date: session.sessionDate || null,
+    session_date: session.isRepeatable ? null : (session.sessionDate || null),
     session_time: session.sessionTime || "",
     join_url: session.joinUrl || null,
+    is_repeatable: session.isRepeatable || false,
   };
 
   const isNew = !session.id || session.id.startsWith("s-");
@@ -674,28 +711,17 @@ export async function upsertMentor(mentor: any) {
     if (error) throw new Error(error.message);
   } else if (mentor.id.startsWith("inv-")) {
     const dbId = mentor.id.replace("inv-", "");
-    const expertiseArray = mentor.subject
-      ? mentor.subject.split("&").map((s: string) => s.trim())
-      : ["Mathematics"];
 
     const { error } = await supabase
       .from("mentor_invitations")
       .update({
         email: mentor.email.trim().toLowerCase(),
         full_name: mentor.name,
-        hourly_rate: Number(mentor.rate || 0.00),
-        expertise: expertiseArray,
-        qualification: mentor.qualification || "Educator",
-        experience: Number(mentor.experience || 1),
       })
       .eq("id", dbId);
 
     if (error) throw new Error(error.message);
   } else {
-    const expertiseArray = mentor.subject
-      ? mentor.subject.split("&").map((s: string) => s.trim())
-      : ["Mathematics"];
-
     const { error: profileErr } = await supabase
       .from("profiles")
       .update({ 
@@ -709,11 +735,6 @@ export async function upsertMentor(mentor: any) {
     const { error: mentorErr } = await supabase
       .from("mentors")
       .update({
-        bio: mentor.bio,
-        expertise: expertiseArray,
-        hourly_rate: Number(mentor.rate),
-        qualification: mentor.qualification,
-        experience: Number(mentor.experience),
         verified: mentor.verified,
       })
       .eq("id", mentor.id);
@@ -1341,6 +1362,7 @@ export async function getCoursesPageData() {
       iconName: style.iconName,
       coverImageUrl: c.cover_image_url || "",
       languages: c.languages || ["English"],
+      class_level: c.class_level || "",
     };
   });
 }
@@ -1415,6 +1437,7 @@ export async function getCourseDetails(id: string) {
     subject: c.subject,
     format: c.format,
     price: Number(c.price),
+    class_level: c.class_level || "",
     mentor: {
       id: c.mentor_id,
       name: mentorName,
@@ -1587,6 +1610,7 @@ export async function getSessionsPageData() {
       status: s.status,
       colorBg: s.color_bg || "#ede9fe",
       iconName: s.icon_name || "writing",
+      class_level: s.class_level || "",
     };
   });
 }
@@ -1619,6 +1643,7 @@ export async function getSessionDetails(id: string) {
     bookings: s.bookings_count,
     colorBg: s.color_bg || "#ede9fe",
     iconName: s.icon_name || "writing",
+    class_level: s.class_level || "",
     aboutSession: s.about_session || "",
     whatsCovered: s.whats_covered || [],
     inclusions: s.inclusions || [],
@@ -1626,10 +1651,11 @@ export async function getSessionDetails(id: string) {
     durationOptions: s.duration_options || "60 or 90 min",
     platform: s.platform || "Zoom",
     language: s.language || "English / Hindi",
-    days: s.days || "Mon – Sat",
+    days: (s.days || "").replace(/^Every\s+/i, ""),
     reschedulePolicy: s.reschedule_policy || "Up to 4 hrs before",
     sessionDate: s.session_date || "",
     sessionTime: s.session_time || "",
+    isRepeatable: s.is_repeatable || false,
     mentor: {
       id: s.mentor_id,
       name: mentorName,
@@ -1716,26 +1742,35 @@ export async function getMentorsPageData() {
 
   if (error) throw new Error(error.message);
 
-  return (dbMentors || []).map((m: any) => {
-    const name = m.profile?.full_name || "Unknown Mentor";
-    const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
-    return {
-      id: m.id,
-      name,
-      expertise: m.expertise || [],
-      subject: (m.expertise || []).join(" & "),
-      rating: Number(m.rating),
-      students: 420,
-      courses: 10,
-      rate: Number(m.hourly_rate),
-      verified: m.verified || false,
-      avatarText: init,
-      avatarBg: "#1B3A6B",
-      qualification: m.qualification || "Educator",
-      experience: m.experience || 5,
-      bio: m.bio || "",
-    };
-  });
+  return (dbMentors || [])
+    .filter((m: any) => {
+      const hasBio = m.bio && m.bio.trim() !== "" && m.bio !== "Biography...";
+      const hasExpertise = m.expertise && m.expertise.length > 0;
+      const hasRate = m.hourly_rate && Number(m.hourly_rate) > 0;
+      const hasQual = m.qualification && m.qualification.trim() !== "" && m.qualification !== "Educator";
+      const hasExp = m.experience && Number(m.experience) > 0;
+      return hasBio && hasExpertise && hasRate && hasQual && hasExp;
+    })
+    .map((m: any) => {
+      const name = m.profile?.full_name || "Unknown Mentor";
+      const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+      return {
+        id: m.id,
+        name,
+        expertise: m.expertise || [],
+        subject: (m.expertise || []).join(" & "),
+        rating: Number(m.rating),
+        students: 420,
+        courses: 10,
+        rate: Number(m.hourly_rate),
+        verified: m.verified || false,
+        avatarText: init,
+        avatarBg: "#1B3A6B",
+        qualification: m.qualification || "Educator",
+        experience: m.experience || 5,
+        bio: m.bio || "",
+      };
+    });
 }
 
 export async function getMentorDetailsData(mentorId: string) {
@@ -1757,6 +1792,7 @@ export async function getMentorDetailsData(mentorId: string) {
   const mentorMapped = {
     id: m.id,
     name,
+    email: m.profile?.email || "",
     expertise: m.expertise || [],
     subject: (m.expertise || []).join(" & "),
     rating: Number(m.rating),
@@ -1769,6 +1805,7 @@ export async function getMentorDetailsData(mentorId: string) {
     qualification: m.qualification || "Educator",
     experience: m.experience || 5,
     bio: m.bio || "",
+    availability: m.availability || {},
   };
 
   // 2. Fetch Mentor Courses
@@ -1825,10 +1862,56 @@ export async function getMentorDetailsData(mentorId: string) {
     };
   });
 
+  // 4. Fetch Mentor Scheduled Classes
+  const { data: dbClasses } = await supabase
+    .from("scheduled_classes")
+    .select(`
+      id, 
+      title, 
+      scheduled_at, 
+      duration_minutes,
+      student:students(profile:profiles(full_name)),
+      booking:bookings(
+        id,
+        course_id,
+        session_id,
+        course:courses(title, format),
+        session:sessions(title, type)
+      )
+    `)
+    .eq("mentor_id", mentorId);
+
+  const classesMapped = (dbClasses || []).map((cls: any) => {
+    const studentName = cls.student?.profile?.full_name || "Unknown Student";
+    let bookingType = "1-on-1 Session";
+    let itemName = cls.title;
+
+    if (cls.booking) {
+      if (cls.booking.course) {
+        bookingType = `Course (${cls.booking.course.format || "Live batch"})`;
+        itemName = cls.booking.course.title || cls.title;
+      } else if (cls.booking.session) {
+        bookingType = `Session (${cls.booking.session.type || "1-on-1"})`;
+        itemName = cls.booking.session.title || cls.title;
+      }
+    }
+
+    return {
+      id: cls.id,
+      title: cls.title,
+      itemName,
+      bookingType,
+      studentName,
+      scheduledAt: cls.scheduled_at,
+      durationMinutes: cls.duration_minutes || 60,
+    };
+  });
+
   return {
     mentor: mentorMapped,
     courses: coursesMapped,
     sessions: sessionsMapped,
+    scheduledClasses: classesMapped,
   };
 }
 
@@ -2030,6 +2113,24 @@ export async function inviteChild(data: {
 
   if (error) throw new Error(error.message);
 
+  // 3. Auto-register a shadow auth account for the child so they are immediately active and bookable
+  const prefix = emailLower.split('@')[0];
+  const password = `${prefix}123`;
+
+  try {
+    await adminClient.auth.admin.createUser({
+      email: emailLower,
+      password: password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: data.name,
+        role: "student"
+      }
+    });
+  } catch (authError: any) {
+    console.error("Shadow auth creation failed for child:", authError.message);
+  }
+
   revalidatePath("/my-children");
   return { success: true };
 }
@@ -2100,6 +2201,43 @@ export async function getParentBookings() {
 
     const mentorName = target?.mentor?.profile?.full_name || "Unknown Mentor";
 
+    let dateTimeStr = "";
+    let durationStr = "";
+
+    if (!isCourse) {
+      dateTimeStr = "Wed, 18 Jun · 9:00 AM";
+      durationStr = "60 min";
+    } else {
+      const format = target?.format || "Live batch";
+      if (format === "Recorded") {
+        dateTimeStr = "Enrolled · Self-paced";
+        durationStr = "Lifetime Access";
+      } else {
+        const durationDays = target?.duration_days ? Number(target.duration_days) : 0;
+        const durationWeeks = durationDays > 0 ? Math.ceil(durationDays / 7) : 8;
+        dateTimeStr = `Enrolled · ${durationWeeks} weeks`;
+
+        if (target?.batch_start_date) {
+          try {
+            const start = new Date(target.batch_start_date);
+            const now = new Date();
+            const diffMs = now.getTime() - start.getTime();
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const currentWeek = Math.max(1, Math.ceil((diffDays + 1) / 7));
+            if (currentWeek <= durationWeeks) {
+              durationStr = `Week ${currentWeek} of ${durationWeeks}`;
+            } else {
+              durationStr = "Completed";
+            }
+          } catch (e) {
+            durationStr = `Week 1 of ${durationWeeks}`;
+          }
+        } else {
+          durationStr = `Week 1 of ${durationWeeks}`;
+        }
+      }
+    }
+
     return {
       id: b.id,
       studentId: b.student_id,
@@ -2114,8 +2252,8 @@ export async function getParentBookings() {
       status: b.status, // pending, confirmed, cancelled, completed
       colorBg: !isCourse ? (target?.color_bg || "#ede9fe") : (target?.subject === "Programming" ? "#dcfce7" : target?.subject === "Mathematics" ? "#dbeafe" : target?.subject === "Science" ? "#fef9c3" : "#ede9fe"),
       iconName: !isCourse ? (target?.icon_name || "writing") : (target?.subject === "Programming" ? "code" : target?.subject === "Mathematics" ? "math" : target?.subject === "Science" ? "flask" : "book"),
-      dateTime: !isCourse ? "Wed, 18 Jun · 9:00 AM" : "Enrolled · 8 weeks", // Mock default timestamps
-      duration: !isCourse ? "60 min" : "Week 3 of 8",
+      dateTime: dateTimeStr,
+      duration: durationStr,
       batchStartDate: isCourse ? target?.batch_start_date : null,
       batchEndDate: isCourse ? target?.batch_end_date : null,
       durationDays: isCourse ? target?.duration_days : null,
@@ -3709,12 +3847,14 @@ export async function bookCourseOrSessionAction(data: {
     // Schedule class for Group Session as per configured date/time in admin panel
     const { data: sessionData } = await supabase
       .from("sessions")
-      .select("session_date, session_time")
+      .select("session_date, session_time, is_repeatable")
       .eq("id", data.targetId)
       .single();
 
-    if (sessionData && sessionData.session_date && sessionData.session_time) {
-      const date = new Date(sessionData.session_date);
+    const targetDateStr = sessionData?.is_repeatable ? data.selectedDate : sessionData?.session_date;
+
+    if (sessionData && targetDateStr && sessionData.session_time) {
+      const date = new Date(targetDateStr);
       
       // Parse timing like "05:00 PM"
       const timeMatch = sessionData.session_time.match(/^(\d+):?(\d*)\s*(AM|PM)$/i);
@@ -4352,16 +4492,22 @@ export async function cancelBooking(bookingId: string) {
 // STUDENT: Scheduled classes with resolved join_url by booking type
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getStudentScheduledClassesResolved(studentId: string) {
+export async function getStudentScheduledClassesResolved(bookingId: string) {
   const adminClient = createAdminClient();
 
   const { data: classes, error } = await adminClient
     .from("scheduled_classes")
-    .select("*, booking:bookings(course_id, session_id)")
-    .eq("student_id", studentId)
+    .select("*, booking:bookings(course_id, session_id, created_at)")
+    .eq("booking_id", bookingId)
     .order("scheduled_at", { ascending: true });
 
   if (error) throw new Error(error.message);
+
+  // Fetch attendance records for this booking to attach status
+  const { data: attendance } = await adminClient
+    .from("attendance_records")
+    .select("*")
+    .eq("booking_id", bookingId);
 
   // For each class, resolve the correct join_url
   const resolved = await Promise.all((classes || []).map(async (cls: any) => {
@@ -4383,7 +4529,15 @@ export async function getStudentScheduledClassesResolved(studentId: string) {
       if (session?.join_url) resolvedJoinUrl = session.join_url;
     }
 
-    return { ...cls, join_url: resolvedJoinUrl };
+    const attendanceRec = (attendance || []).find((a: any) => a.scheduled_class_id === cls.id);
+    const attendanceStatus = attendanceRec ? attendanceRec.status : null;
+
+    return { 
+      ...cls, 
+      join_url: resolvedJoinUrl,
+      attendance_status: attendanceStatus,
+      booking_created_at: cls.booking?.created_at || null
+    };
   }));
 
   return resolved;
@@ -4707,6 +4861,347 @@ export async function getStudentBookingDashboardDetails(bookingId: string) {
     attendance: attendance || [],
     resources: mappedResources,
   };
+}
+
+export async function getAdminSchedules() {
+  noStore();
+  const supabase = createAdminClient();
+
+  const { data: dbClasses, error } = await supabase
+    .from("scheduled_classes")
+    .select(`
+      *,
+      student:students(id, profile:profiles(full_name, email)),
+      mentor:mentors(id, profile:profiles(full_name)),
+      booking:bookings(
+        id,
+        course:courses(id, title, subject, format),
+        session:sessions(id, title, subject, type)
+      ),
+      attendance_records(id, status)
+    `)
+    .order("scheduled_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching scheduled classes:", error);
+    return [];
+  }
+
+  return (dbClasses || []).map((cls: any) => {
+    const courseTitle = cls.booking?.course?.title || cls.booking?.session?.title || "1-on-1 Direct Private Session";
+    const lessonTopic = cls.title;
+    const mentorName = cls.mentor?.profile?.full_name || "Unknown Mentor";
+    
+    const dateObj = new Date(cls.scheduled_at);
+    const dateStr = dateObj.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).split("/").reverse().join("-");
+
+    const timeStr = dateObj.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const subject = cls.booking?.course?.subject || cls.booking?.session?.subject || cls.subject || "General";
+    
+    let itemType: "course" | "session" = "session";
+    let subType = "1 on 1";
+    if (cls.booking?.course) {
+      itemType = "course";
+      const f = cls.booking.course.format?.toLowerCase() || "";
+      if (f.includes("batch")) subType = "Live Batch";
+      else if (f.includes("individual")) subType = "Live Individual";
+      else if (f.includes("recorded")) subType = "Recorded";
+      else subType = "Recorded";
+    } else if (cls.booking?.session) {
+      itemType = "session";
+      const t = cls.booking.session.type?.toLowerCase() || "";
+      if (t.includes("group")) subType = "Group";
+      else subType = "1 on 1";
+    }
+
+    return {
+      id: cls.id,
+      courseTitle,
+      lessonTopic,
+      date: dateStr,
+      time: timeStr,
+      scheduledAt: cls.scheduled_at,
+      mentor: mentorName,
+      mentorId: cls.mentor_id,
+      zoomLink: cls.join_url,
+      subject,
+      itemType,
+      subType,
+      studentInfo: {
+        studentId: cls.student?.id,
+        studentName: cls.student?.profile?.full_name || "Unknown Student",
+        studentEmail: cls.student?.profile?.email || "",
+        bookingId: cls.booking?.id,
+        scheduledClassId: cls.id,
+        attendanceRecordId: cls.attendance_records?.[0]?.id || null,
+        status: cls.attendance_records?.[0]?.status || "unmarked",
+      }
+    };
+  });
+}
+
+export async function markAdminAttendance(records: {
+  studentId: string;
+  scheduledClassId: string;
+  bookingId: string;
+  status: "present" | "absent" | "excused";
+  date: string;
+  subject: string;
+}[]) {
+  noStore();
+  const supabase = createAdminClient();
+
+  const results = [];
+  for (const record of records) {
+    // Check if record exists
+    const { data: existing } = await supabase
+      .from("attendance_records")
+      .select("id")
+      .eq("student_id", record.studentId)
+      .eq("scheduled_class_id", record.scheduledClassId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      // Update
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .update({
+          status: record.status,
+          session_date: record.date,
+          subject: record.subject,
+        })
+        .eq("id", existing.id)
+        .select();
+      if (error) throw error;
+      results.push(data);
+    } else {
+      // Insert
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .insert({
+          student_id: record.studentId,
+          scheduled_class_id: record.scheduledClassId,
+          booking_id: record.bookingId || null,
+          status: record.status,
+          session_date: record.date,
+          subject: record.subject,
+        })
+        .select();
+      if (error) throw error;
+      results.push(data);
+    }
+  }
+
+  revalidatePath("/admin/schedules");
+  return { success: true, count: results.length };
+}
+
+export async function getAdminCourseDetails(courseId: string) {
+  noStore();
+  const supabase = createAdminClient();
+
+  // 1. Fetch Course details
+  const { data: course, error } = await supabase
+    .from("courses")
+    .select("*, mentor:mentors(profile:profiles(full_name, avatar_url, email), qualification, experience, rating)")
+    .eq("id", courseId)
+    .single();
+
+  if (error || !course) {
+    throw new Error(error ? error.message : "Course not found");
+  }
+
+  // 2. Fetch bookings for this course
+  const { data: dbBookings } = await supabase
+    .from("bookings")
+    .select(`
+      *,
+      student:students(profile:profiles(full_name, email)),
+      parent:parents(profile:profiles(full_name, email))
+    `)
+    .eq("course_id", courseId)
+    .order("created_at", { ascending: false });
+
+  const bookings = (dbBookings || []).map((b: any) => {
+    return {
+      id: b.id,
+      studentName: b.student?.profile?.full_name || "Unknown Student",
+      studentEmail: b.student?.profile?.email || "",
+      parentName: b.parent?.profile?.full_name || "Unknown Parent",
+      parentEmail: b.parent?.profile?.email || "",
+      amountPaid: Number(b.amount_paid),
+      status: b.status,
+      paymentStatus: b.payment_status,
+      createdAt: b.created_at,
+    };
+  });
+
+  return {
+    course: {
+      id: course.id,
+      title: course.title,
+      description: course.description || "",
+      aboutCourse: course.about_course || "",
+      coverImageUrl: course.cover_image_url || "",
+      subject: course.subject,
+      format: course.format,
+      price: Number(course.price),
+      status: course.status,
+      rating: Number(course.rating),
+      durationDays: Number(course.duration_days || 30),
+      totalSessions: Number(course.total_sessions || 10),
+      sessionsPerWeek: Number(course.sessions_per_week || 2),
+      classDays: course.class_days || "",
+      classTiming: course.class_timing || "",
+      languages: course.languages || ["English"],
+      mentor: course.mentor ? {
+        name: course.mentor.profile?.full_name || "Unknown Mentor",
+        email: course.mentor.profile?.email || "",
+        avatarUrl: course.mentor.profile?.avatar_url || "",
+        qualification: course.mentor.qualification || "Educator",
+        experience: course.mentor.experience || 5,
+        rating: Number(course.mentor.rating || 5.0),
+      } : null,
+    },
+    bookings,
+  };
+}
+
+export async function getAdminSessionDetails(sessionId: string) {
+  noStore();
+  const supabase = createAdminClient();
+
+  // 1. Fetch Session details
+  const { data: session, error } = await supabase
+    .from("sessions")
+    .select("*, mentor:mentors(profile:profiles(full_name, avatar_url, email), qualification, experience, rating)")
+    .eq("id", sessionId)
+    .single();
+
+  if (error || !session) {
+    throw new Error(error ? error.message : "Session not found");
+  }
+
+  // 2. Fetch bookings for this session
+  const { data: dbBookings } = await supabase
+    .from("bookings")
+    .select(`
+      *,
+      student:students(profile:profiles(full_name, email)),
+      parent:parents(profile:profiles(full_name, email))
+    `)
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: false });
+
+  const bookings = (dbBookings || []).map((b: any) => {
+    return {
+      id: b.id,
+      studentName: b.student?.profile?.full_name || "Unknown Student",
+      studentEmail: b.student?.profile?.email || "",
+      parentName: b.parent?.profile?.full_name || "Unknown Parent",
+      parentEmail: b.parent?.profile?.email || "",
+      amountPaid: Number(b.amount_paid),
+      status: b.status,
+      paymentStatus: b.payment_status,
+      createdAt: b.created_at,
+    };
+  });
+
+  return {
+    session: {
+      id: session.id,
+      title: session.title,
+      description: session.description || "",
+      aboutSession: session.about_session || "",
+      subject: session.subject,
+      type: session.type,
+      price: Number(session.price),
+      status: session.status,
+      colorBg: session.color_bg || "#ede9fe",
+      iconName: session.icon_name || "writing",
+      durationOptions: session.duration_options || "60 or 90 min",
+      platform: session.platform || "Zoom",
+      language: session.language || "English / Hindi",
+      days: session.days || "Mon – Sat",
+      reschedulePolicy: session.reschedule_policy || "Up to 4 hrs before",
+      sessionDate: session.session_date || "",
+      sessionTime: session.session_time || "",
+      isRepeatable: session.is_repeatable || false,
+      mentor: session.mentor ? {
+        name: session.mentor.profile?.full_name || "Unknown Mentor",
+        email: session.mentor.profile?.email || "",
+        avatarUrl: session.mentor.profile?.avatar_url || "",
+        qualification: session.mentor.qualification || "Educator",
+        experience: session.mentor.experience || 5,
+        rating: Number(session.mentor.rating || 5.0),
+      } : null,
+    },
+    bookings,
+  };
+}
+
+export async function updateMentorRate(mentorId: string, rate: number) {
+  noStore();
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("mentors")
+    .update({ hourly_rate: rate })
+    .eq("id", mentorId);
+
+  if (error) throw error;
+  revalidatePath(`/admin/mentors/${mentorId}`);
+  return { success: true };
+}
+
+export async function updateMentorProfileByAdmin(mentorId: string, data: {
+  name: string;
+  email: string;
+  rate: number;
+  verified: boolean;
+  qualification: string;
+  experience: number;
+  bio: string;
+}) {
+  noStore();
+  const supabase = createAdminClient();
+
+  // 1. Update mentors table
+  const { error: mentorError } = await supabase
+    .from("mentors")
+    .update({
+      hourly_rate: data.rate,
+      verified: data.verified,
+      qualification: data.qualification,
+      experience: data.experience,
+      bio: data.bio
+    })
+    .eq("id", mentorId);
+
+  if (mentorError) throw mentorError;
+
+  // 2. Update profiles table
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      full_name: data.name,
+      email: data.email
+    })
+    .eq("id", mentorId);
+
+  if (profileError) throw profileError;
+
+  revalidatePath(`/admin/mentors/${mentorId}`);
+  return { success: true };
 }
 
 

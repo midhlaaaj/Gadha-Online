@@ -57,7 +57,18 @@ export default function BookingModal({
   const [role, setRole] = useState<string | null>(null);
   const [children, setChildren] = useState<ChildStudent[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
-  const dateInputRef = useRef<HTMLInputElement>(null);
+  const [existingBookings, setExistingBookings] = useState<any[]>([]);
+  const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState<number>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.getMonth();
+  });
+  const [currentYear, setCurrentYear] = useState<number>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.getFullYear();
+  });
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +163,7 @@ export default function BookingModal({
           try {
             const { data: sess } = await supabase
               .from("sessions")
-              .select("id, type, price, session_date, session_time, mentor_id")
+              .select("id, type, price, session_date, session_time, mentor_id, is_repeatable, days")
               .eq("id", targetId)
               .single();
             if (sess) {
@@ -160,6 +171,9 @@ export default function BookingModal({
               if (sess.type === "Group") {
                 if (sess.session_date) {
                   setSelectedDateStr(sess.session_date);
+                  const d = new Date(sess.session_date);
+                  setCurrentMonth(d.getMonth());
+                  setCurrentYear(d.getFullYear());
                 }
                 if (sess.session_time) {
                   setSelectedSlotTime(sess.session_time);
@@ -210,6 +224,12 @@ export default function BookingModal({
             console.error("Failed to load mentor availability:", e);
           }
         }
+
+        // Check for existing bookings to detect duplicates
+        const { data: dbBookings } = await supabase
+          .from("bookings")
+          .select("student_id, course_id, session_id");
+        setExistingBookings(dbBookings || []);
       } catch (err: unknown) {
         console.error(err);
         setError("Failed to load details. Please try again.");
@@ -222,11 +242,14 @@ export default function BookingModal({
   }, [isOpen, targetId, supabase, targetType]);
 
   useEffect(() => {
-    if (!isTimeDropdownOpen) return;
-
     const handleOutsideClick = (e: MouseEvent) => {
-      const container = document.getElementById("time-selector-wrapper");
-      if (container && !container.contains(e.target as Node)) {
+      const dateWrapper = document.getElementById("date-selector-wrapper");
+      if (dateWrapper && !dateWrapper.contains(e.target as Node)) {
+        setIsDateDropdownOpen(false);
+      }
+
+      const timeWrapper = document.getElementById("time-selector-wrapper");
+      if (timeWrapper && !timeWrapper.contains(e.target as Node)) {
         setIsTimeDropdownOpen(false);
       }
     };
@@ -235,7 +258,7 @@ export default function BookingModal({
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, [isTimeDropdownOpen]);
+  }, []);
 
   const getAvailableTimesList = () => {
     const defaultTimes = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"];
@@ -326,11 +349,41 @@ export default function BookingModal({
     return defaultTimes;
   };
 
+  const getIsDateValidForRepeatable = (dateStr: string) => {
+    if (!sessionDetails?.is_repeatable) return true;
+    if (!sessionDetails.days) return true;
+    const allowedDays = sessionDetails.days.split(",").map((s: string) => s.trim().toLowerCase());
+    if (allowedDays.length === 0) return true;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      const dayName = d.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+      const dayNameShort = d.toLocaleDateString("en-US", { weekday: "short" }).toLowerCase();
+      return allowedDays.includes(dayName) || allowedDays.includes(dayNameShort) || allowedDays.some((ad: string) => ad.startsWith(dayNameShort));
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const isRepeatableDateValid = !selectedDateStr || getIsDateValidForRepeatable(selectedDateStr);
+
   const availableTimes = getAvailableTimesList();
   const isCurrentTimeAvailable = availableTimes.includes(selectedSlotTime);
 
+  const currentStudentId = role === "student" ? (user?.id || "") : selectedStudentId;
+
+  const hasAlreadyBooked = (() => {
+    if (!currentStudentId || existingBookings.length === 0) return false;
+    return existingBookings.some((b) => {
+      if (b.student_id !== currentStudentId) return false;
+      if (targetType === "course" && b.course_id === targetId) return true;
+      if (targetType === "session" && b.session_id === targetId) return true;
+      return false;
+    });
+  })();
+
   const isCustomScheduled = targetType === "mentor" || 
-    (targetType === "session" && sessionDetails?.type === "1-on-1") ||
+    (targetType === "session" && (sessionDetails?.type === "1-on-1" || sessionDetails?.is_repeatable)) ||
     (targetType === "course" && courseDetails?.format === "Live individual");
 
   if (!isOpen) return null;
@@ -340,12 +393,25 @@ export default function BookingModal({
     setBookingLoading(true);
 
     try {
+      if (hasAlreadyBooked) {
+        const studentName = role === "parent"
+          ? (children.find((c) => c.id === selectedStudentId)?.name || "this student")
+          : "you";
+        throw new Error(`Already booked for ${studentName}.`);
+      }
 
       if (role === "parent" && !selectedStudentId) {
         throw new Error("Please select a student for this booking.");
       }
 
-      if (isCustomScheduled && !isCurrentTimeAvailable) {
+      if (sessionDetails?.is_repeatable) {
+        if (!selectedDateStr) {
+          throw new Error("Please select a date for the session.");
+        }
+        if (!getIsDateValidForRepeatable(selectedDateStr)) {
+          throw new Error(`This group session occurs every ${sessionDetails.days}. Please pick a date that falls on one of these days.`);
+        }
+      } else if (isCustomScheduled && !isCurrentTimeAvailable) {
         throw new Error("The tutor is not available at the selected date and time. Please select an available slot.");
       }
 
@@ -458,18 +524,12 @@ export default function BookingModal({
             </div>
             <div className="flex flex-col gap-2 w-full mt-2">
               <a
-                href={role === "student" ? "/lms/overview" : "/bookings"}
+                href={role === "student" ? "/lms/courses" : "/bookings"}
                 className="py-3.5 bg-secondary text-white text-xs font-bold rounded-xl hover:bg-secondary/95 shadow-md text-center transition-all flex items-center justify-center gap-1.5"
               >
-                <span>Go to Portal</span>
+                <span>Go to Bookings</span>
                 <IconChevronRight className="w-4 h-4" />
               </a>
-              <button
-                onClick={onClose}
-                className="py-2.5 text-slate-500 hover:text-slate-700 text-xs font-semibold hover:underline"
-              >
-                Close Window
-              </button>
             </div>
           </div>
         ) : (
@@ -486,7 +546,7 @@ export default function BookingModal({
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-secondary font-bold uppercase tracking-wider">
-                  {targetType === "mentor" ? "1-on-1 session" : targetType}
+                  {targetType === "mentor" ? "1-on-1 session" : (targetType === "session" && sessionDetails?.type === "Group" ? "Group Session" : targetType)}
                 </p>
                 <h4 className="font-heading text-sm font-bold text-primary truncate">{title}</h4>
                 <p className="text-[11px] text-text-muted mt-0.5">Mentor: {mentorName}</p>
@@ -524,6 +584,21 @@ export default function BookingModal({
                     </select>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Already Booked Warning (Parent/Student) */}
+            {hasAlreadyBooked && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3.5 space-y-1.5 animate-fade-in text-left">
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  <IconAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Already Booked</span>
+                </div>
+                <p className="text-[10px] text-amber-700 leading-relaxed font-semibold">
+                  {role === "parent"
+                    ? `This ${targetType === "session" && sessionDetails?.type === "Group" ? "group session" : targetType} is already booked for ${children.find((c) => c.id === selectedStudentId)?.name || "this student"}.`
+                    : `You have already booked this ${targetType === "session" && sessionDetails?.type === "Group" ? "group session" : targetType}.`}
+                </p>
               </div>
             )}
 
@@ -602,84 +677,194 @@ export default function BookingModal({
                         Select Date
                       </label>
                       <div 
-                        onClick={() => {
-                          if (dateInputRef.current) {
-                            try {
-                              dateInputRef.current.showPicker();
-                            } catch (e) {
-                              console.error(e);
-                            }
-                          }
-                        }}
+                        onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
                         className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg bg-white text-primary hover:border-slate-300 transition-all cursor-pointer pr-10 flex items-center justify-between relative select-none"
                         style={{ minHeight: "46px" }}
                       >
                         <span>{displayDateLabel}</span>
                         <IconCalendar className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
-                        
-                        <input
-                          ref={dateInputRef}
-                          type="date"
-                          min={getTomorrowDateString()}
-                          max={getMaxDateString()}
-                          value={selectedDateStr}
-                          onChange={(e) => setSelectedDateStr(e.target.value)}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        />
                       </div>
+
+                      {isDateDropdownOpen && (() => {
+                        const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+                        const startWeekday = firstDayOfMonth.getDay();
+                        const numDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+                        
+                        const blanks = Array(startWeekday).fill(null);
+                        const days = Array.from({ length: numDays }, (_, i) => i + 1);
+                        const gridCells = [...blanks, ...days];
+
+                        const weekdays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+                        const monthLabel = new Date(currentYear, currentMonth).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+                        const prevMonth = (e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          if (currentMonth === 0) {
+                            setCurrentMonth(11);
+                            setCurrentYear(currentYear - 1);
+                          } else {
+                            setCurrentMonth(currentMonth - 1);
+                          }
+                        };
+
+                        const nextMonth = (e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          if (currentMonth === 11) {
+                            setCurrentMonth(0);
+                            setCurrentYear(currentYear + 1);
+                          } else {
+                            setCurrentMonth(currentMonth + 1);
+                          }
+                        };
+
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        tomorrow.setHours(0, 0, 0, 0);
+
+                        const maxDate = new Date();
+                        maxDate.setDate(maxDate.getDate() + 90);
+                        maxDate.setHours(23, 59, 59, 999);
+
+                        return (
+                          <div className="absolute top-full left-0 mt-1.5 z-[110] bg-white border border-slate-200 rounded-xl shadow-xl p-4 w-72 animate-fade-in select-none">
+                            {/* Calendar Header */}
+                            <div className="flex items-center justify-between mb-3">
+                              <button 
+                                type="button"
+                                onClick={prevMonth}
+                                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors cursor-pointer"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                              </button>
+                              <span className="text-xs font-bold text-primary">{monthLabel}</span>
+                              <button 
+                                type="button"
+                                onClick={nextMonth}
+                                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors cursor-pointer"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                              </button>
+                            </div>
+
+                            {/* Weekdays Header */}
+                            <div className="grid grid-cols-7 gap-1 text-center mb-1">
+                              {weekdays.map((wd) => (
+                                <span key={wd} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{wd}</span>
+                              ))}
+                            </div>
+
+                            {/* Days Grid */}
+                            <div className="grid grid-cols-7 gap-1 text-center">
+                              {gridCells.map((cell, index) => {
+                                if (cell === null) {
+                                  return <div key={`blank-${index}`} />;
+                                }
+
+                                const dateObj = new Date(currentYear, currentMonth, cell);
+                                const yyyy = dateObj.getFullYear();
+                                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                                const dd = String(dateObj.getDate()).padStart(2, '0');
+                                const dateStr = `${yyyy}-${mm}-${dd}`;
+
+                                const isPast = dateObj < tomorrow;
+                                const isTooFar = dateObj > maxDate;
+                                const isValidRepeatDay = getIsDateValidForRepeatable(dateStr);
+                                const isSelectable = !isPast && !isTooFar && (!sessionDetails?.is_repeatable || isValidRepeatDay);
+                                const isSelected = selectedDateStr === dateStr;
+
+                                return (
+                                  <button
+                                    key={`day-${cell}`}
+                                    type="button"
+                                    disabled={!isSelectable}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedDateStr(dateStr);
+                                      setIsDateDropdownOpen(false);
+                                    }}
+                                    className={`aspect-square w-full rounded-full flex items-center justify-center text-[11px] font-semibold transition-all relative ${
+                                      isSelected
+                                        ? "bg-secondary text-white font-bold shadow-md shadow-secondary/20"
+                                        : isSelectable
+                                          ? "text-primary hover:bg-slate-100 hover:text-secondary cursor-pointer"
+                                          : "text-slate-300 bg-slate-50/20 cursor-not-allowed opacity-40 line-through"
+                                    }`}
+                                  >
+                                    {cell}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* TIME SELECTOR */}
-                    <div id="time-selector-wrapper" className="space-y-1.5 text-left relative min-w-0 w-full">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Select Time (IST)
-                      </label>
-                      <div 
-                        onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
-                        className={`w-full text-xs font-semibold p-3.5 border rounded-lg bg-white text-primary transition-all cursor-pointer pr-10 flex items-center justify-between relative select-none ${
-                          !isCurrentTimeAvailable
-                            ? "border-amber-300 focus-within:border-amber-400 hover:border-amber-400"
-                            : "border-slate-200 hover:border-slate-300 focus-within:border-secondary"
-                        }`}
-                        style={{ minHeight: "46px" }}
-                      >
-                        <span className={!isCurrentTimeAvailable ? "text-amber-800" : ""}>{selectedSlotTime}</span>
-                        <IconClock className="w-4 h-4 text-slate-400 absolute right-3" />
-                      </div>
-
-                      {isTimeDropdownOpen && (
-                        <div className="absolute left-0 right-0 top-full mt-1.5 z-[100] max-h-36 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg divide-y divide-slate-50 premium-scrollbar">
-                          {["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"].map((t) => {
-                            const isAvailable = availableTimes.includes(t);
-                            return (
-                              <div
-                                key={t}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!isAvailable) return;
-                                  setSelectedSlotTime(t);
-                                  setIsTimeDropdownOpen(false);
-                                }}
-                                className={`px-4 py-3 text-xs font-semibold relative z-[101] transition-colors ${
-                                  !isAvailable
-                                    ? "text-slate-300 bg-slate-50/50 cursor-not-allowed line-through"
-                                    : "cursor-pointer hover:bg-slate-50 text-primary"
-                                } ${
-                                  selectedSlotTime === t && isAvailable ? "text-secondary font-bold bg-[#F5F8FF]" : ""
-                                }`}
-                              >
-                                {t}
-                                {!isAvailable && <span className="absolute right-3 text-[9px] font-bold text-slate-300 normal-case no-underline">Unavailable</span>}
-                              </div>
-                            );
-                          })}
+                    {sessionDetails?.is_repeatable ? (
+                      <div className="space-y-1.5 text-left relative min-w-0 w-full">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Session Time (IST)
+                        </label>
+                        <div 
+                          className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-between min-h-[46px] select-none"
+                        >
+                          <span>{selectedSlotTime || sessionDetails?.session_time || "10:00 AM"}</span>
+                          <IconClock className="w-4 h-4 text-slate-400" />
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div id="time-selector-wrapper" className="space-y-1.5 text-left relative min-w-0 w-full">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Select Time (IST)
+                        </label>
+                        <div 
+                          onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
+                          className={`w-full text-xs font-semibold p-3.5 border rounded-lg bg-white text-primary transition-all cursor-pointer pr-10 flex items-center justify-between relative select-none ${
+                            !isCurrentTimeAvailable
+                              ? "border-amber-300 focus-within:border-amber-400 hover:border-amber-400"
+                              : "border-slate-200 hover:border-slate-300 focus-within:border-secondary"
+                          }`}
+                          style={{ minHeight: "46px" }}
+                        >
+                          <span className={!isCurrentTimeAvailable ? "text-amber-800" : ""}>{selectedSlotTime}</span>
+                          <IconClock className="w-4 h-4 text-slate-400 absolute right-3" />
+                        </div>
+
+                        {isTimeDropdownOpen && (
+                          <div className="absolute left-0 right-0 top-full mt-1.5 z-[100] max-h-36 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg divide-y divide-slate-50 premium-scrollbar">
+                            {["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"].map((t) => {
+                              const isAvailable = availableTimes.includes(t);
+                              return (
+                                <div
+                                  key={t}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!isAvailable) return;
+                                    setSelectedSlotTime(t);
+                                    setIsTimeDropdownOpen(false);
+                                  }}
+                                  className={`px-4 py-3 text-xs font-semibold relative z-[101] transition-colors ${
+                                    !isAvailable
+                                      ? "text-slate-300 bg-slate-50/50 cursor-not-allowed line-through"
+                                      : "cursor-pointer hover:bg-slate-50 text-primary"
+                                  } ${
+                                    selectedSlotTime === t && isAvailable ? "text-secondary font-bold bg-[#F5F8FF]" : ""
+                                  }`}
+                                >
+                                  {t}
+                                  {!isAvailable && <span className="absolute right-3 text-[9px] font-bold text-slate-300 normal-case no-underline">Unavailable</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Unavailability Warnings & Suggestions */}
-                  {selectedDateStr && !isCurrentTimeAvailable && (
+                  {!sessionDetails?.is_repeatable && selectedDateStr && !isCurrentTimeAvailable && (
                     <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3.5 space-y-2 animate-fade-in text-left">
                       <div className="flex items-center gap-2 text-xs font-bold">
                         <IconAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -704,6 +889,19 @@ export default function BookingModal({
                       ) : (
                         <p className="text-[10px] text-amber-700">Tutor is completely unavailable on this day. Please select another date.</p>
                       )}
+                    </div>
+                  )}
+
+                  {/* Wrong day selected for weekly group session */}
+                  {sessionDetails?.is_repeatable && selectedDateStr && !isRepeatableDateValid && (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3.5 space-y-1.5 animate-fade-in text-left">
+                      <div className="flex items-center gap-2 text-xs font-bold">
+                        <IconAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Please select a valid session day</span>
+                      </div>
+                      <p className="text-[10px] text-amber-700 leading-relaxed font-semibold">
+                        This group session occurs every <strong className="text-amber-900 font-bold">{sessionDetails.days}</strong>. Please pick a date that falls on one of these days.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -795,27 +993,52 @@ export default function BookingModal({
             {targetType === "session" && sessionDetails?.type === "Group" && (
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Scheduled timing
+                  Group Session Details
                 </label>
                 <div className="border border-slate-100 rounded-xl p-3.5 space-y-2 text-left bg-slate-50/50">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-text-muted flex items-center gap-1.5">
-                      <IconCalendar className="w-4 h-4 text-slate-400" />
-                      Session Date
-                    </span>
-                    <strong className="text-primary font-bold">
-                      {sessionDetails.session_date
-                        ? new Date(sessionDetails.session_date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
-                        : "TBA"}
-                    </strong>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-text-muted flex items-center gap-1.5">
-                      <IconClock className="w-4 h-4 text-slate-400" />
-                      Timing (IST)
-                    </span>
-                    <strong className="text-secondary font-bold">{sessionDetails.session_time || "TBA"}</strong>
-                  </div>
+                  {sessionDetails.is_repeatable ? (
+                    <>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-text-muted flex items-center gap-1.5">
+                          <IconCalendar className="w-4 h-4 text-slate-400" />
+                          Your Session
+                        </span>
+                        <strong className="text-primary font-bold">
+                          {selectedDateStr
+                            ? new Date(selectedDateStr).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })
+                            : "Select a date above"}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-text-muted flex items-center gap-1.5">
+                          <IconClock className="w-4 h-4 text-slate-400" />
+                          Timing (IST)
+                        </span>
+                        <strong className="text-secondary font-bold">{sessionDetails.session_time || "TBA"}</strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-text-muted flex items-center gap-1.5">
+                          <IconCalendar className="w-4 h-4 text-slate-400" />
+                          Session Date
+                        </span>
+                        <strong className="text-primary font-bold">
+                          {sessionDetails.session_date
+                            ? new Date(sessionDetails.session_date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+                            : "TBA"}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-text-muted flex items-center gap-1.5">
+                          <IconClock className="w-4 h-4 text-slate-400" />
+                          Timing (IST)
+                        </span>
+                        <strong className="text-secondary font-bold">{sessionDetails.session_time || "TBA"}</strong>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -861,7 +1084,7 @@ export default function BookingModal({
               </button>
               <button
                 onClick={handleBooking}
-                disabled={bookingLoading || (role === "parent" && children.length === 0)}
+                disabled={bookingLoading || (role === "parent" && children.length === 0) || hasAlreadyBooked}
                 className="flex-1 py-3.5 bg-secondary text-white text-xs font-bold rounded-xl hover:bg-secondary/95 shadow-md flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-center"
               >
                 {bookingLoading ? (

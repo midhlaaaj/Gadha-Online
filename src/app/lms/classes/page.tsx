@@ -313,6 +313,7 @@ export default function StudentClassesPage() {
                     const classTime = new Date(c.scheduled_at);
                     const minsUntil = (classTime.getTime() - now.getTime()) / 60000;
                     const canJoin = c.status === "scheduled" && minsUntil <= 15 && minsUntil > -120;
+                    const isPastClass = minsUntil < -(c.duration_minutes || 60);
 
                     const formatCountdown = () => {
                       if (minsUntil <= 0) return null;
@@ -335,8 +336,30 @@ export default function StudentClassesPage() {
                           </p>
                         </div>
                         <div className="shrink-0 flex items-center gap-2">
-                          {c.status === "scheduled" && (
-                            canJoin && c.join_url ? (
+                          {c.attendance_status ? (
+                            c.attendance_status === "present" ? (
+                              <span className="text-[9px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full whitespace-nowrap">
+                                Attended
+                              </span>
+                            ) : c.attendance_status === "absent" ? (
+                              <span className="text-[9px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-full whitespace-nowrap">
+                                Absent
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full whitespace-nowrap">
+                                Excused
+                              </span>
+                            )
+                          ) : c.booking_created_at && (new Date(c.scheduled_at) < new Date(c.booking_created_at)) ? (
+                            <span className="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full whitespace-nowrap">
+                              Not Enrolled
+                            </span>
+                          ) : c.status === "scheduled" && (
+                            isPastClass ? (
+                              <span className="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full whitespace-nowrap">
+                                Session ended
+                              </span>
+                            ) : canJoin && c.join_url ? (
                               <a
                                 href={c.join_url}
                                 target="_blank"
