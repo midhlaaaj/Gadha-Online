@@ -201,10 +201,23 @@ export async function getAdminData() {
       *,
       parent:parents(profile:profiles(full_name, email)),
       student:students(profile:profiles(full_name, email)),
-      course:courses(title),
-      session:sessions(title)
+      course:courses(title, mentor_id, mentor:mentors(profile:profiles(full_name))),
+      session:sessions(title, mentor_id, mentor:mentors(profile:profiles(full_name)))
     `)
     .order("created_at", { ascending: false });
+
+  // Scheduled classes per booking, used by the admin confirmation UI to show
+  // (and optionally revise) the date/time a parent picked at booking time.
+  const { data: dbScheduledClasses } = await supabase
+    .from("scheduled_classes")
+    .select("id, booking_id, scheduled_at")
+    .order("scheduled_at", { ascending: true });
+
+  const classesByBooking: Record<string, { id: string; scheduled_at: string }[]> = {};
+  (dbScheduledClasses || []).forEach((c: any) => {
+    if (!classesByBooking[c.booking_id]) classesByBooking[c.booking_id] = [];
+    classesByBooking[c.booking_id].push({ id: c.id, scheduled_at: c.scheduled_at });
+  });
 
   const bookings = (dbBookings || []).map((b: any) => {
     const studentProfile = b.student?.profile;
@@ -224,14 +237,24 @@ export async function getAdminData() {
 
     let itemTitle = "1-on-1 Direct Private Session";
     let bookingType = "1-on-1 Session";
-    
+    let mentorName = "";
+
     if (b.course) {
       itemTitle = b.course.title;
       bookingType = "Course";
+      mentorName = b.course.mentor?.profile?.full_name || "";
     } else if (b.session) {
       itemTitle = b.session.title;
       bookingType = "Session";
+      mentorName = b.session.mentor?.profile?.full_name || "";
     }
+
+    const bookingClasses = classesByBooking[b.id] || [];
+    const isSingleClassBooking = bookingClasses.length === 1;
+
+    const paid = Number(b.amount_paid || 0);
+    const total = Number(b.total_amount || paid || 0);
+    const remaining = Math.max(0, total - paid);
 
     return {
       id: b.id,
@@ -240,10 +263,21 @@ export async function getAdminData() {
       studentName,
       bookingType,
       itemTitle,
-      amountPaid: Number(b.amount_paid),
+      mentorName,
+      amountPaid: paid,
+      totalAmount: total,
+      remainingBalance: remaining,
+      dueDate: b.due_date || null,
       status: b.status,
       paymentStatus: b.payment_status,
+      paymentMethod: b.payment_method || "",
+      paymentReference: b.payment_reference || "",
+      paymentCollectedAt: b.payment_collected_at || null,
+      mentorConfirmed: b.mentor_confirmed || false,
+      adminNotes: b.admin_notes || "",
       createdAt: b.created_at,
+      scheduledClassId: isSingleClassBooking ? bookingClasses[0].id : null,
+      scheduledAt: isSingleClassBooking ? bookingClasses[0].scheduled_at : null,
     };
   });
 
@@ -296,6 +330,7 @@ export async function getAdminData() {
       colorBg: style.colorBg,
       iconName: style.iconName,
       languages: c.languages || ["English"],
+      classLevel: c.class_level || "",
     };
   });
 
@@ -335,6 +370,7 @@ export async function getAdminData() {
       sessionDate: s.session_date || "",
       sessionTime: s.session_time || "",
       isRepeatable: s.is_repeatable || false,
+      classLevel: s.class_level || "",
     };
   });
 
@@ -425,6 +461,8 @@ export async function getAdminData() {
       showOnSite: t.show_on_site,
       avatarBg: t.avatar_bg,
       avatarText: t.avatar_text,
+      mediaUrl: t.media_url || "",
+      mediaType: t.media_type || "",
     })),
     courses,
     sessions,
@@ -769,6 +807,50 @@ export async function deleteMentor(id: string) {
 // TESTIMONIALS
 // ----------------------------------------------------
 
+export async function uploadTestimonialMedia(formData: FormData) {
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("No file provided");
+
+  const mediaType: "image" | "video" = file.type.startsWith("video/") ? "video" : "image";
+
+  const supabase = createAdminClient();
+
+  const bucketName = "testimonial-media";
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.error("Storage list error:", listError);
+  }
+  const bucketExists = buckets?.some(b => b.name === bucketName);
+
+  if (!bucketExists) {
+    const { error: createError } = await supabase.storage.createBucket(bucketName, {
+      public: true,
+      fileSizeLimit: 26214400, // 25MB, video reviews need more headroom than images
+    });
+    if (createError) {
+      console.warn("Storage bucket creation error or warning:", createError);
+    }
+  }
+
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, buffer, {
+      contentType: file.type,
+      duplex: "half",
+    } as any);
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  return { publicUrl, mediaType };
+}
+
 export async function upsertTestimonial(testimonial: any) {
   const supabase = createAdminClient();
 
@@ -787,6 +869,8 @@ export async function upsertTestimonial(testimonial: any) {
     show_on_site: testimonial.showOnSite,
     avatar_bg: testimonial.avatarBg || "#1B3A6B",
     avatar_text: init,
+    media_url: testimonial.mediaUrl || null,
+    media_type: testimonial.mediaUrl ? testimonial.mediaType || null : null,
   };
 
   const isNew = !testimonial.id || testimonial.id.startsWith("t-");
@@ -1582,6 +1666,53 @@ export async function uploadCourseCover(formData: FormData) {
   return { publicUrl };
 }
 
+export async function uploadBookingAttachment(formData: FormData) {
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("No file provided");
+
+  const supabase = createAdminClient();
+
+  // Ensure bucket exists
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.error("Storage list error:", listError);
+  }
+  
+  const bucketName = "booking-attachments";
+  const bucketExists = buckets?.some(b => b.name === bucketName);
+
+  if (!bucketExists) {
+    const { error: createError } = await supabase.storage.createBucket(bucketName, {
+      public: true,
+      fileSizeLimit: 5242880, // 5MB
+    });
+    if (createError) {
+      console.warn("Storage bucket creation error or warning:", createError);
+    }
+  }
+
+  // Upload file
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+  
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, buffer, {
+      contentType: file.type,
+      duplex: "half",
+    } as any);
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  return { publicUrl };
+}
+
 export async function getSessionsPageData() {
   noStore();
   const supabase = await createClient();
@@ -2164,6 +2295,46 @@ export async function resendChildInvitation(invitationId: string) {
     .eq("id", invitationId);
 
   if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INDEPENDENT STUDENT SELF-SIGNUP
+// Reuses the student_invitations mechanism the handle_new_user() trigger
+// already checks, instead of trusting a client-supplied role on signUp.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function createSelfStudentInvite(email: string, fullName: string) {
+  const emailLower = email.trim().toLowerCase();
+  const adminClient = createAdminClient();
+
+  const { data: existingProfile } = await adminClient
+    .from("profiles")
+    .select("email")
+    .eq("email", emailLower)
+    .maybeSingle();
+  if (existingProfile) {
+    throw new Error("This email is already registered.");
+  }
+
+  // Clear any stale self-signup invite for this email (parent_id is null for
+  // independent student signups) so retries don't accumulate duplicates.
+  await adminClient
+    .from("student_invitations")
+    .delete()
+    .is("parent_id", null)
+    .eq("email", emailLower);
+
+  const { error } = await adminClient
+    .from("student_invitations")
+    .insert([{
+      parent_id: null,
+      email: emailLower,
+      full_name: fullName,
+      status: "pending",
+    }]);
+  if (error) throw new Error(error.message);
+
   return { success: true };
 }
 
@@ -3585,52 +3756,26 @@ export async function checkMentorInvitation(email: string) {
   }
 }
 
-export async function bookCourseOrSessionAction(data: {
+// Shared core: resolves a course/session/mentor target and creates the
+// booking + its scheduled_classes rows (always as pending/pending_confirmation
+// — callers that need it confirmed immediately, e.g. admin manual bookings,
+// call finalizeBookingConfirmation right after). Always runs on the admin
+// client since admin-initiated bookings have no "owning" caller session that
+// would satisfy the bookings-table RLS insert policies.
+async function createBookingRecord(params: {
   targetId: string;
   targetType: "course" | "session" | "mentor";
   studentId: string;
+  parentId: string | null;
   durationMinutes?: number;
   selectedSlot?: { day: string; time: string };
   selectedDate?: string;
-}) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized: Please sign in.");
-
-  // Resolve user role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  let parentId: string;
-  let studentId: string = data.studentId;
-
-  if (profile?.role === "parent") {
-    parentId = user.id;
-    // Verify student belongs to this parent
-    const { data: student } = await supabase
-      .from("students")
-      .select("parent_id")
-      .eq("id", studentId)
-      .single();
-    if (!student || student.parent_id !== parentId) {
-      throw new Error("Invalid student selection.");
-    }
-  } else if (profile?.role === "student") {
-    // Resolve parent
-    const { data: student } = await supabase
-      .from("students")
-      .select("parent_id")
-      .eq("id", user.id)
-      .single();
-    if (!student) throw new Error("Student profile not found.");
-    parentId = student.parent_id;
-    studentId = user.id;
-  } else {
-    throw new Error("Only parents and students can make bookings.");
-  }
+  subject?: string;
+  topicDetails?: string;
+  attachmentUrl?: string;
+}): Promise<{ bookingId: string }> {
+  const adminClient = createAdminClient();
+  const { targetId, targetType, studentId, parentId } = params;
 
   let amountPaid = 0;
   let title = "";
@@ -3641,11 +3786,11 @@ export async function bookCourseOrSessionAction(data: {
   let sessionId: string | null = null;
   let courseId: string | null = null;
 
-  if (data.targetType === "course") {
-    const { data: course, error: fetchErr } = await supabase
+  if (targetType === "course") {
+    const { data: course, error: fetchErr } = await adminClient
       .from("courses")
       .select("title, subject, price, mentor_id, format")
-      .eq("id", data.targetId)
+      .eq("id", targetId)
       .single();
     if (fetchErr || !course) throw new Error("Course not found.");
     amountPaid = Number(course.price);
@@ -3654,17 +3799,17 @@ export async function bookCourseOrSessionAction(data: {
     mentorId = course.mentor_id;
     iconName = course.subject === "Programming" ? "code" : course.subject === "Mathematics" ? "math" : course.subject === "Science" ? "flask" : "book";
     isLiveIndividual = course.format === "Live individual";
-    courseId = data.targetId;
-  } else if (data.targetType === "session") {
-    const { data: session, error: fetchErr } = await supabase
+    courseId = targetId;
+  } else if (targetType === "session") {
+    const { data: session, error: fetchErr } = await adminClient
       .from("sessions")
       .select("title, subject, price, mentor_id, type, icon_name")
-      .eq("id", data.targetId)
+      .eq("id", targetId)
       .single();
     if (fetchErr || !session) throw new Error("Session not found.");
-    
+
     let basePrice = Number(session.price);
-    if (data.durationMinutes === 90) {
+    if (params.durationMinutes === 90) {
       amountPaid = Math.round(basePrice * 1.5);
     } else {
       amountPaid = basePrice;
@@ -3674,12 +3819,12 @@ export async function bookCourseOrSessionAction(data: {
     mentorId = session.mentor_id;
     iconName = session.icon_name || "book";
     isLiveIndividual = session.type === "1-on-1";
-    sessionId = data.targetId;
-  } else if (data.targetType === "mentor") {
-    const { data: mentor, error: fetchErr } = await supabase
+    sessionId = targetId;
+  } else if (targetType === "mentor") {
+    const { data: mentor, error: fetchErr } = await adminClient
       .from("mentors")
       .select("id, hourly_rate, expertise, profile:profiles(full_name)")
-      .eq("id", data.targetId)
+      .eq("id", targetId)
       .single();
     if (fetchErr || !mentor) throw new Error("Mentor not found.");
 
@@ -3687,19 +3832,19 @@ export async function bookCourseOrSessionAction(data: {
     const mentorName = (profileData as { full_name?: string } | null)?.full_name || "Mentor";
     const hourlyRate = Number(mentor.hourly_rate) || 500;
     const basePrice = hourlyRate;
-    if (data.durationMinutes === 90) {
+    if (params.durationMinutes === 90) {
       amountPaid = Math.round(basePrice * 1.5);
     } else {
       amountPaid = basePrice;
     }
     mentorId = mentor.id;
-    subject = mentor.expertise?.[0] || "General";
+    subject = params.subject || mentor.expertise?.[0] || "General";
     title = `1-on-1 Session with ${mentorName}`;
     iconName = subject === "Programming" ? "code" : subject === "Mathematics" ? "math" : subject === "Science" ? "flask" : "book";
     isLiveIndividual = true;
 
     // Find or create default 1-on-1 session for this mentor
-    const { data: existingSession } = await supabase
+    const { data: existingSession } = await adminClient
       .from("sessions")
       .select("id")
       .eq("mentor_id", mentor.id)
@@ -3711,7 +3856,7 @@ export async function bookCourseOrSessionAction(data: {
     if (existingSession) {
       sessionId = existingSession.id;
     } else {
-      const { data: newSession, error: createErr } = await supabase
+      const { data: newSession, error: createErr } = await adminClient
         .from("sessions")
         .insert({
           mentor_id: mentor.id,
@@ -3736,8 +3881,8 @@ export async function bookCourseOrSessionAction(data: {
   const bookingData: any = {
     parent_id: parentId,
     student_id: studentId,
-    status: "confirmed",
-    payment_status: "paid",
+    status: "pending",
+    payment_status: "unpaid",
     amount_paid: amountPaid,
   };
 
@@ -3747,7 +3892,7 @@ export async function bookCourseOrSessionAction(data: {
     bookingData.session_id = sessionId;
   }
 
-  const { data: newBooking, error: bookingErr } = await supabase
+  const { data: newBooking, error: bookingErr } = await adminClient
     .from("bookings")
     .insert([bookingData])
     .select("id")
@@ -3755,17 +3900,17 @@ export async function bookCourseOrSessionAction(data: {
 
   if (bookingErr) {
     if (bookingErr.code === "23505") {
-      throw new Error("You have already booked this target for this student.");
+      throw new Error("This student already has a booking for this target.");
     }
     throw new Error(bookingErr.message);
   }
 
-  if (isLiveIndividual && data.selectedSlot) {
+  if (isLiveIndividual && params.selectedSlot) {
     let scheduledAtStr = "";
 
-    if (data.targetType === "mentor" && data.selectedDate) {
-      const date = new Date(data.selectedDate);
-      const timeMatch = data.selectedSlot.time.match(/^(\d+):?(\d*)\s*(AM|PM)$/i);
+    if (targetType === "mentor" && params.selectedDate) {
+      const date = new Date(params.selectedDate);
+      const timeMatch = params.selectedSlot.time.match(/^(\d+):?(\d*)\s*(AM|PM)$/i);
       let hours = 9;
       let minutes = 0;
       if (timeMatch) {
@@ -3784,9 +3929,9 @@ export async function bookCourseOrSessionAction(data: {
       const daysOfWeek: Record<string, number> = {
         Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6
       };
-      const targetDay = daysOfWeek[data.selectedSlot.day] ?? 1;
-      
-      const timeMatch = data.selectedSlot.time.match(/^(\d+)\s*(AM|PM)$/i);
+      const targetDay = daysOfWeek[params.selectedSlot.day] ?? 1;
+
+      const timeMatch = params.selectedSlot.time.match(/^(\d+)\s*(AM|PM)$/i);
       let hours = 9;
       if (timeMatch) {
         let rawHours = parseInt(timeMatch[1], 10);
@@ -3795,18 +3940,18 @@ export async function bookCourseOrSessionAction(data: {
         if (meridiem === "AM" && rawHours === 12) rawHours = 0;
         hours = rawHours;
       }
-      
+
       const scheduledAt = new Date();
       const currentDay = scheduledAt.getDay();
       let daysToAdd = targetDay - currentDay;
       if (daysToAdd <= 0) daysToAdd += 7;
-      
+
       scheduledAt.setDate(scheduledAt.getDate() + daysToAdd);
       scheduledAt.setHours(hours, 0, 0, 0);
       scheduledAtStr = scheduledAt.toISOString();
     }
 
-    const duration = data.durationMinutes || 60;
+    const duration = params.durationMinutes || 60;
     const classData = {
       booking_id: newBooking.id,
       student_id: studentId,
@@ -3815,13 +3960,14 @@ export async function bookCourseOrSessionAction(data: {
       subject: subject,
       scheduled_at: scheduledAtStr,
       duration_minutes: duration,
-      status: "scheduled",
+      status: "pending_confirmation",
       join_url: null,
       icon_name: iconName,
+      topic_details: params.topicDetails || null,
+      attachment_url: params.attachmentUrl || null,
     };
-    
-    const adminClient = createAdminClient();
-    const { data: insertedClass, error: classErr } = await adminClient
+
+    const { error: classErr } = await adminClient
       .from("scheduled_classes")
       .insert([classData])
       .select("id")
@@ -3831,31 +3977,22 @@ export async function bookCourseOrSessionAction(data: {
       throw new Error("Booking created but failed to schedule class: " + classErr.message);
     }
 
-    // Fire mentor notifications
-    if (mentorId) {
-      const { data: studentProfile } = await adminClient
-        .from("profiles").select("full_name").eq("id", studentId).single();
-      await createMentorNotifications({
-        mentorId,
-        itemTitle: title,
-        studentName: studentProfile?.full_name || "A student",
-        firstClassAt: scheduledAtStr,
-        classId: insertedClass?.id || null,
-      }).catch(console.error);
-    }
-  } else if (data.targetType === "session" && !isLiveIndividual) {
+    // Mentor is contacted manually by the admin team once the booking is
+    // reviewed — no in-app notification is fired until the admin confirms it
+    // (see finalizeBookingConfirmation).
+  } else if (targetType === "session" && !isLiveIndividual) {
     // Schedule class for Group Session as per configured date/time in admin panel
-    const { data: sessionData } = await supabase
+    const { data: sessionData } = await adminClient
       .from("sessions")
       .select("session_date, session_time, is_repeatable")
-      .eq("id", data.targetId)
+      .eq("id", targetId)
       .single();
 
-    const targetDateStr = sessionData?.is_repeatable ? data.selectedDate : sessionData?.session_date;
+    const targetDateStr = sessionData?.is_repeatable ? params.selectedDate : sessionData?.session_date;
 
     if (sessionData && targetDateStr && sessionData.session_time) {
       const date = new Date(targetDateStr);
-      
+
       // Parse timing like "05:00 PM"
       const timeMatch = sessionData.session_time.match(/^(\d+):?(\d*)\s*(AM|PM)$/i);
       let hours = 9;
@@ -3879,14 +4016,15 @@ export async function bookCourseOrSessionAction(data: {
         title: title,
         subject: subject,
         scheduled_at: date.toISOString(),
-        duration_minutes: data.durationMinutes || 60,
-        status: "scheduled",
+        duration_minutes: params.durationMinutes || 60,
+        status: "pending_confirmation",
         join_url: null,
         icon_name: iconName,
+        topic_details: params.topicDetails || null,
+        attachment_url: params.attachmentUrl || null,
       };
 
-      const adminClient = createAdminClient();
-      const { data: insertedGroupClass, error: classErr } = await adminClient
+      const { error: classErr } = await adminClient
         .from("scheduled_classes")
         .insert([classData])
         .select("id")
@@ -3895,31 +4033,19 @@ export async function bookCourseOrSessionAction(data: {
       if (classErr) {
         throw new Error("Booking created but failed to schedule group session class: " + classErr.message);
       }
-
-      if (mentorId) {
-        const { data: studentProfile } = await adminClient
-          .from("profiles").select("full_name").eq("id", studentId).single();
-        await createMentorNotifications({
-          mentorId,
-          itemTitle: title,
-          studentName: studentProfile?.full_name || "A student",
-          firstClassAt: date.toISOString(),
-          classId: insertedGroupClass?.id || null,
-        }).catch(console.error);
-      }
     }
-  } else if (data.targetType === "course" && !isLiveIndividual) {
+  } else if (targetType === "course" && !isLiveIndividual) {
     // Schedule recurring classes for Live batch courses spanning start to end date
-    const { data: courseData } = await supabase
+    const { data: courseData } = await adminClient
       .from("courses")
       .select("batch_start_date, batch_end_date, class_days, class_timing, format")
-      .eq("id", data.targetId)
+      .eq("id", targetId)
       .single();
 
     if (courseData && courseData.format === "Live batch" && courseData.batch_start_date && courseData.batch_end_date && courseData.class_days && courseData.class_timing) {
       const startDate = new Date(courseData.batch_start_date);
       const endDate = new Date(courseData.batch_end_date);
-      
+
       // Parse timing like "05:00 PM"
       const timeMatch = courseData.class_timing.match(/^(\d+):?(\d*)\s*(AM|PM)$/i);
       let hours = 9;
@@ -3968,7 +4094,7 @@ export async function bookCourseOrSessionAction(data: {
             subject: subject,
             scheduled_at: classDate.toISOString(),
             duration_minutes: 60,
-            status: "scheduled",
+            status: "pending_confirmation",
             join_url: null,
             icon_name: iconName,
           });
@@ -3977,7 +4103,6 @@ export async function bookCourseOrSessionAction(data: {
       }
 
       if (classesToInsert.length > 0) {
-        const adminClient = createAdminClient();
         const { error: classErr } = await adminClient
           .from("scheduled_classes")
           .insert(classesToInsert);
@@ -3985,21 +4110,75 @@ export async function bookCourseOrSessionAction(data: {
         if (classErr) {
           throw new Error("Booking created but failed to schedule batch course classes: " + classErr.message);
         }
-
-        if (mentorId) {
-          const { data: studentProfile } = await adminClient
-            .from("profiles").select("full_name").eq("id", studentId).single();
-          await createMentorNotifications({
-            mentorId,
-            itemTitle: title,
-            studentName: studentProfile?.full_name || "A student",
-            firstClassAt: classesToInsert[0]?.scheduled_at || null,
-            classId: null,
-          }).catch(console.error);
-        }
       }
     }
   }
+
+  return { bookingId: newBooking.id };
+}
+
+export async function bookCourseOrSessionAction(data: {
+  targetId: string;
+  targetType: "course" | "session" | "mentor";
+  studentId: string;
+  durationMinutes?: number;
+  selectedSlot?: { day: string; time: string };
+  selectedDate?: string;
+  subject?: string;
+  topicDetails?: string;
+  attachmentUrl?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized: Please sign in.");
+
+  // Resolve user role
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  let parentId: string | null;
+  let studentId: string = data.studentId;
+
+  if (profile?.role === "parent") {
+    parentId = user.id;
+    // Verify student belongs to this parent
+    const { data: student } = await supabase
+      .from("students")
+      .select("parent_id")
+      .eq("id", studentId)
+      .single();
+    if (!student || student.parent_id !== parentId) {
+      throw new Error("Invalid student selection.");
+    }
+  } else if (profile?.role === "student") {
+    // Resolve parent
+    const { data: student } = await supabase
+      .from("students")
+      .select("parent_id")
+      .eq("id", user.id)
+      .single();
+    if (!student) throw new Error("Student profile not found.");
+    parentId = student.parent_id;
+    studentId = user.id;
+  } else {
+    throw new Error("Only parents and students can make bookings.");
+  }
+
+  await createBookingRecord({
+    targetId: data.targetId,
+    targetType: data.targetType,
+    studentId,
+    parentId,
+    durationMinutes: data.durationMinutes,
+    selectedSlot: data.selectedSlot,
+    selectedDate: data.selectedDate,
+    subject: data.subject,
+    topicDetails: data.topicDetails,
+    attachmentUrl: data.attachmentUrl,
+  });
 
   revalidatePath("/bookings");
   revalidatePath("/dashboard/overview");
@@ -4390,6 +4569,52 @@ export async function markNotificationsRead(ids: string[]) {
   return { success: true };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PARENT / STUDENT NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getUserNotifications() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient
+    .from("user_notifications")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function getUnreadUserNotificationCount() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const adminClient = createAdminClient();
+  const { count } = await adminClient
+    .from("user_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("is_read", false);
+
+  return count || 0;
+}
+
+export async function markUserNotificationsRead(ids: string[]) {
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .from("user_notifications")
+    .update({ is_read: true })
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
 async function createMentorNotifications(params: {
   mentorId: string;
   itemTitle: string;
@@ -4468,8 +4693,27 @@ export async function updateSessionJoinUrl(sessionId: string, joinUrl: string) {
 // CANCEL BOOKING (Admin)
 // ─────────────────────────────────────────────────────────────────────────────
 
+async function buildUserNotificationLinks(adminClient: ReturnType<typeof createAdminClient>, userIds: string[]) {
+  const { data } = await adminClient.from("profiles").select("id, role").in("id", userIds);
+  const links: Record<string, string> = {};
+  (data || []).forEach((p: any) => {
+    links[p.id] = p.role === "student" ? "/lms/courses" : "/bookings";
+  });
+  return links;
+}
+
 export async function cancelBooking(bookingId: string) {
   const adminClient = createAdminClient();
+
+  const { data: booking } = await adminClient
+    .from("bookings")
+    .select(`
+      student_id, parent_id,
+      course:courses(title),
+      session:sessions(title)
+    `)
+    .eq("id", bookingId)
+    .single();
 
   const { error: bookErr } = await adminClient
     .from("bookings")
@@ -4483,9 +4727,487 @@ export async function cancelBooking(bookingId: string) {
     .eq("booking_id", bookingId);
   if (classErr) throw new Error(classErr.message);
 
+  if (booking) {
+    const courseData = Array.isArray(booking.course) ? booking.course[0] : booking.course;
+    const sessionData = Array.isArray(booking.session) ? booking.session[0] : booking.session;
+    const itemTitle = (courseData as any)?.title || (sessionData as any)?.title || "your session";
+
+    const recipientIds = new Set<string>([booking.student_id]);
+    if (booking.parent_id) recipientIds.add(booking.parent_id);
+    const links = await buildUserNotificationLinks(adminClient, Array.from(recipientIds));
+
+    const notifRows = Array.from(recipientIds).map((uid) => ({
+      user_id: uid,
+      type: "booking_cancelled",
+      title: "Booking Cancelled",
+      message: `Your booking for "${itemTitle}" has been cancelled.`,
+      link_url: links[uid] || "/bookings",
+    }));
+    const { error: notifErr } = await adminClient.from("user_notifications").insert(notifRows);
+    if (notifErr) console.error(notifErr);
+  }
+
   revalidatePath("/admin");
   revalidatePath("/dashboard/classes");
+  revalidatePath("/bookings");
+  revalidatePath("/lms/courses");
   return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FINALIZE BOOKING CONFIRMATION (Admin) — manual payment collection +
+// mentor availability confirmation, replacing the old instant auto-confirm.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function finalizeBookingConfirmation(bookingId: string, params: {
+  paymentMethod: string;
+  paymentReference?: string;
+  amountCollected: number;
+  revisedDate?: string;
+  revisedTime?: string;
+  adminNotes?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const adminClient = createAdminClient();
+
+  const { data: booking, error: bookingFetchErr } = await adminClient
+    .from("bookings")
+    .select(`
+      id, student_id, parent_id,
+      course:courses(title, mentor_id),
+      session:sessions(title, mentor_id)
+    `)
+    .eq("id", bookingId)
+    .single();
+  if (bookingFetchErr || !booking) throw new Error("Booking not found.");
+
+  const courseData = Array.isArray(booking.course) ? booking.course[0] : booking.course;
+  const sessionData = Array.isArray(booking.session) ? booking.session[0] : booking.session;
+  const itemTitle = (courseData as any)?.title || (sessionData as any)?.title || "1-on-1 Session";
+  const mentorId = (courseData as any)?.mentor_id || (sessionData as any)?.mentor_id || null;
+
+  // If this booking has exactly one scheduled class (a 1-on-1/single group
+  // session, not a multi-class batch), allow the admin to revise the date/time
+  // the parent originally picked.
+  const { data: existingClasses } = await adminClient
+    .from("scheduled_classes")
+    .select("id, scheduled_at")
+    .eq("booking_id", bookingId)
+    .order("scheduled_at", { ascending: true });
+
+  if (existingClasses && existingClasses.length === 1 && params.revisedDate && params.revisedTime) {
+    const timeMatch = params.revisedTime.match(/^(\d+):?(\d*)\s*(AM|PM)$/i);
+    let hours = 9;
+    let minutes = 0;
+    if (timeMatch) {
+      let rawHours = parseInt(timeMatch[1], 10);
+      if (timeMatch[2]) minutes = parseInt(timeMatch[2], 10);
+      const meridiem = timeMatch[3].toUpperCase();
+      if (meridiem === "PM" && rawHours < 12) rawHours += 12;
+      if (meridiem === "AM" && rawHours === 12) rawHours = 0;
+      hours = rawHours;
+    }
+    const revisedAt = new Date(params.revisedDate);
+    revisedAt.setHours(hours, minutes, 0, 0);
+
+    const { error: rescheduleErr } = await adminClient
+      .from("scheduled_classes")
+      .update({ scheduled_at: revisedAt.toISOString() })
+      .eq("id", existingClasses[0].id);
+    if (rescheduleErr) throw new Error(rescheduleErr.message);
+  }
+
+  const { error: classErr } = await adminClient
+    .from("scheduled_classes")
+    .update({ status: "scheduled" })
+    .eq("booking_id", bookingId);
+  if (classErr) throw new Error(classErr.message);
+
+  const { error: updateErr } = await adminClient
+    .from("bookings")
+    .update({
+      status: "confirmed",
+      payment_status: "paid",
+      amount_paid: params.amountCollected,
+      payment_method: params.paymentMethod,
+      payment_reference: params.paymentReference || null,
+      payment_collected_at: new Date().toISOString(),
+      payment_collected_by: user.id,
+      mentor_confirmed: true,
+      mentor_confirmed_at: new Date().toISOString(),
+      admin_notes: params.adminNotes || null,
+    })
+    .eq("id", bookingId);
+  if (updateErr) throw new Error(updateErr.message);
+
+  const { data: finalClasses } = await adminClient
+    .from("scheduled_classes")
+    .select("id, scheduled_at")
+    .eq("booking_id", bookingId)
+    .order("scheduled_at", { ascending: true });
+  const firstClassAt = finalClasses?.[0]?.scheduled_at || null;
+
+  const { data: studentProfile } = await adminClient
+    .from("profiles").select("full_name").eq("id", booking.student_id).single();
+
+  if (mentorId) {
+    await createMentorNotifications({
+      mentorId,
+      itemTitle,
+      studentName: studentProfile?.full_name || "A student",
+      firstClassAt,
+      classId: finalClasses?.[0]?.id || null,
+    }).catch(console.error);
+  }
+
+  const dateLabel = firstClassAt
+    ? new Date(firstClassAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })
+    : null;
+
+  const recipientIds = new Set<string>([booking.student_id]);
+  if (booking.parent_id) recipientIds.add(booking.parent_id);
+  const links = await buildUserNotificationLinks(adminClient, Array.from(recipientIds));
+
+  const notifRows = Array.from(recipientIds).map((uid) => ({
+    user_id: uid,
+    type: "booking_confirmed",
+    title: "Booking Confirmed",
+    message: dateLabel
+      ? `Your booking for "${itemTitle}" is confirmed — scheduled ${dateLabel} IST.`
+      : `Your booking for "${itemTitle}" is confirmed.`,
+    link_url: links[uid] || "/bookings",
+  }));
+  const { error: notifErr } = await adminClient.from("user_notifications").insert(notifRows);
+  if (notifErr) console.error(notifErr);
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/bookings");
+  revalidatePath("/lms/courses");
+  revalidatePath("/mentor/classes");
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MANUAL BOOKING (Admin) — phone/walk-in orders entered directly by staff
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function searchAdminCustomers(query: string) {
+  const term = query.trim().replace(/[,()%]/g, "");
+  if (term.length < 2) return [];
+
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient
+    .from("profiles")
+    .select("id, full_name, email, role")
+    .in("role", ["parent", "student"])
+    .or(`full_name.ilike.%${term}%,email.ilike.%${term}%`)
+    .limit(15);
+
+  if (error) throw new Error(error.message);
+
+  const parentIds = (data || []).filter((p: any) => p.role === "parent").map((p: any) => p.id);
+  const childrenCountByParent: Record<string, number> = {};
+  if (parentIds.length > 0) {
+    const { data: children } = await adminClient
+      .from("students")
+      .select("id, parent_id")
+      .in("parent_id", parentIds);
+    (children || []).forEach((c: any) => {
+      childrenCountByParent[c.parent_id] = (childrenCountByParent[c.parent_id] || 0) + 1;
+    });
+  }
+
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    fullName: p.full_name,
+    email: p.email,
+    role: p.role as "parent" | "student",
+    childrenCount: p.role === "parent" ? (childrenCountByParent[p.id] || 0) : undefined,
+  }));
+}
+
+export async function getAdminParentChildren(parentId: string) {
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient
+    .from("students")
+    .select("id, grade_level, profile:profiles(full_name, email)")
+    .eq("parent_id", parentId);
+  if (error) throw new Error(error.message);
+
+  return (data || []).map((s: any) => {
+    const profileData = Array.isArray(s.profile) ? s.profile[0] : s.profile;
+    return {
+      id: s.id,
+      name: profileData?.full_name || "Child",
+      email: profileData?.email || "",
+      grade: s.grade_level || "",
+    };
+  });
+}
+
+// Creates an independent student account (no parent) for phone/walk-in
+// customers who don't have one yet — mirrors the shadow-account pattern
+// inviteChild() already uses for parent-invited children.
+export async function createManualStudentAccount(email: string, fullName: string) {
+  const emailLower = email.trim().toLowerCase();
+  if (!emailLower) throw new Error("Email is required.");
+
+  const adminClient = createAdminClient();
+
+  const { data: existingProfile } = await adminClient
+    .from("profiles")
+    .select("id")
+    .eq("email", emailLower)
+    .maybeSingle();
+  if (existingProfile) {
+    throw new Error("An account with this email already exists — search for it instead.");
+  }
+
+  const tempPassword = `${emailLower.split("@")[0]}${Math.floor(1000 + Math.random() * 9000)}`;
+
+  const { data: created, error } = await adminClient.auth.admin.createUser({
+    email: emailLower,
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName.trim() || emailLower.split("@")[0],
+      role: "student",
+    },
+  });
+
+  if (error || !created?.user) {
+    throw new Error(error?.message || "Failed to create student account.");
+  }
+
+  return { studentId: created.user.id, tempPassword };
+}
+
+export async function createManualBooking(params: {
+  targetId: string;
+  targetType: "course" | "session" | "mentor";
+  studentId: string;
+  parentId: string | null;
+  durationMinutes?: number;
+  selectedSlot?: { day: string; time: string };
+  selectedDate?: string;
+  subject?: string;
+  topicDetails?: string;
+  paymentMode?: "full" | "partial" | "none";
+  paymentDone?: boolean;
+  paymentMethod?: string;
+  paymentReference?: string;
+  amountCollected?: number;
+  totalAmount?: number;
+  dueDate?: string;
+  adminNotes?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { bookingId } = await createBookingRecord({
+    targetId: params.targetId,
+    targetType: params.targetType,
+    studentId: params.studentId,
+    parentId: params.parentId,
+    durationMinutes: params.durationMinutes,
+    selectedSlot: params.selectedSlot,
+    selectedDate: params.selectedDate,
+    subject: params.subject,
+    topicDetails: params.topicDetails,
+  });
+
+  const adminClient = createAdminClient();
+
+  let mode = params.paymentMode;
+  if (!mode) {
+    mode = params.paymentDone ? "full" : "none";
+  }
+
+  const calculatedTotal = Number(params.totalAmount || params.amountCollected || 0);
+  const collected = Number(params.amountCollected || 0);
+
+  if (mode === "full") {
+    let amount = collected || calculatedTotal;
+    if (!amount) {
+      const { data: b } = await adminClient.from("bookings").select("amount_paid").eq("id", bookingId).single();
+      amount = Number(b?.amount_paid || 0);
+    }
+    await finalizeBookingConfirmation(bookingId, {
+      paymentMethod: params.paymentMethod || "Cash",
+      paymentReference: params.paymentReference,
+      amountCollected: amount,
+      adminNotes: params.adminNotes,
+    });
+    if (calculatedTotal) {
+      await adminClient.from("bookings").update({ total_amount: calculatedTotal }).eq("id", bookingId);
+    }
+  } else if (mode === "partial") {
+    const remaining = Math.max(0, calculatedTotal - collected);
+
+    // Confirm classes so join_urls and schedule are active for student
+    await adminClient.from("scheduled_classes").update({ status: "scheduled" }).eq("booking_id", bookingId);
+
+    const { error: updateErr } = await adminClient
+      .from("bookings")
+      .update({
+        status: "confirmed",
+        payment_status: "partially_paid",
+        amount_paid: collected,
+        total_amount: calculatedTotal,
+        due_date: params.dueDate || null,
+        payment_method: params.paymentMethod || "Cash",
+        payment_reference: params.paymentReference || null,
+        payment_collected_at: new Date().toISOString(),
+        payment_collected_by: user.id,
+        mentor_confirmed: true,
+        mentor_confirmed_at: new Date().toISOString(),
+        admin_notes: params.adminNotes || null,
+      })
+      .eq("id", bookingId);
+
+    if (updateErr) throw new Error(updateErr.message);
+
+    // Try logging installment branch
+    try {
+      await adminClient.from("booking_payment_logs").insert({
+        booking_id: bookingId,
+        amount: collected,
+        payment_method: params.paymentMethod || "Cash",
+        payment_reference: params.paymentReference || null,
+        notes: `Initial partial payment. Remaining due: ₹${remaining.toLocaleString()}`,
+        recorded_by: user.id,
+        created_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn("Could not insert into booking_payment_logs:", err);
+    }
+
+    // Send Notifications to Student, Parent & Admin
+    const recipientIds = new Set<string>([params.studentId]);
+    if (params.parentId) recipientIds.add(params.parentId);
+
+    const dueText = params.dueDate ? ` Dues of ₹${remaining.toLocaleString()} are scheduled for ${params.dueDate}.` : ` Remaining balance of ₹${remaining.toLocaleString()} is due soon.`;
+    const notifRows = Array.from(recipientIds).map((uid) => ({
+      user_id: uid,
+      type: "booking_partially_paid",
+      title: "Booking Confirmed (Partial Payment)",
+      message: `Your booking is confirmed with an initial deposit of ₹${collected.toLocaleString()}.${dueText}`,
+      link_url: "/bookings",
+    }));
+    await adminClient.from("user_notifications").insert(notifRows).catch(console.error);
+
+  } else if (params.adminNotes) {
+    await adminClient.from("bookings").update({ admin_notes: params.adminNotes, total_amount: calculatedTotal }).eq("id", bookingId);
+  }
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/admin/payments");
+  revalidatePath("/bookings");
+  revalidatePath("/lms/courses");
+  revalidatePath("/mentor/classes");
+  return { success: true, bookingId };
+}
+
+export async function recordBookingInstallment(params: {
+  bookingId: string;
+  amountPaid: number;
+  paymentMethod: string;
+  paymentReference?: string;
+  notes?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const adminClient = createAdminClient();
+
+  const { data: booking, error } = await adminClient
+    .from("bookings")
+    .select("id, amount_paid, total_amount, payment_status, student_id, parent_id, course:courses(title), session:sessions(title)")
+    .eq("id", params.bookingId)
+    .single();
+
+  if (error || !booking) throw new Error("Booking not found");
+
+  const currentPaid = Number(booking.amount_paid || 0);
+  const newPaid = currentPaid + Number(params.amountPaid);
+  const totalAmount = Number(booking.total_amount || currentPaid);
+  const newPaymentStatus = newPaid >= totalAmount ? "paid" : "partially_paid";
+
+  // Update booking record
+  const { error: updateErr } = await adminClient
+    .from("bookings")
+    .update({
+      amount_paid: newPaid,
+      payment_status: newPaymentStatus,
+      payment_method: params.paymentMethod,
+      payment_reference: params.paymentReference || null,
+      payment_collected_at: new Date().toISOString(),
+    })
+    .eq("id", params.bookingId);
+
+  if (updateErr) throw new Error(updateErr.message);
+
+  // Insert installment log
+  try {
+    await adminClient.from("booking_payment_logs").insert({
+      booking_id: params.bookingId,
+      amount: params.amountPaid,
+      payment_method: params.paymentMethod,
+      payment_reference: params.paymentReference || null,
+      notes: params.notes || null,
+      recorded_by: user.id,
+      created_at: new Date().toISOString(),
+    });
+  } catch (logErr) {
+    console.warn("Could not insert into booking_payment_logs:", logErr);
+  }
+
+  // Send notifications to Student & Parent
+  const courseData = Array.isArray(booking.course) ? booking.course[0] : booking.course;
+  const sessionData = Array.isArray(booking.session) ? booking.session[0] : booking.session;
+  const itemTitle = (courseData as any)?.title || (sessionData as any)?.title || "Booking";
+
+  const recipientIds = new Set<string>();
+  if (booking.student_id) recipientIds.add(booking.student_id);
+  if (booking.parent_id) recipientIds.add(booking.parent_id);
+
+  const notifRows = Array.from(recipientIds).map((uid) => ({
+    user_id: uid,
+    type: "payment_received",
+    title: newPaymentStatus === "paid" ? "Full Payment Completed" : "Payment Installment Received",
+    message: `Payment installment of ₹${params.amountPaid.toLocaleString()} recorded for "${itemTitle}". Total paid: ₹${newPaid.toLocaleString()} of ₹${totalAmount.toLocaleString()}.`,
+    link_url: "/bookings",
+  }));
+
+  if (notifRows.length > 0) {
+    await adminClient.from("user_notifications").insert(notifRows).catch(console.error);
+  }
+
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin/bookings");
+  revalidatePath("/bookings");
+  return { success: true, newPaid, newPaymentStatus };
+}
+
+export async function getBookingPaymentLogs(bookingId: string) {
+  const adminClient = createAdminClient();
+  try {
+    const { data: logs, error } = await adminClient
+      .from("booking_payment_logs")
+      .select("*")
+      .eq("booking_id", bookingId)
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+    return logs || [];
+  } catch (err) {
+    return [];
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4561,7 +5283,7 @@ export async function getStudentBookingsWithJoinUrls(studentId: string) {
       course:courses(title, format, price, subject, join_url, mentor:mentors(profile:profiles(full_name)))
     `)
     .eq("student_id", studentId)
-    .eq("status", "confirmed");
+    .neq("status", "cancelled");
 
   if (error) throw new Error(error.message);
 
@@ -5064,6 +5786,8 @@ export async function getAdminCourseDetails(courseId: string) {
       classDays: course.class_days || "",
       classTiming: course.class_timing || "",
       languages: course.languages || ["English"],
+      classLevel: course.class_level || "",
+      learningOutcomes: course.learning_outcomes || [],
       mentor: course.mentor ? {
         name: course.mentor.profile?.full_name || "Unknown Mentor",
         email: course.mentor.profile?.email || "",
@@ -5137,6 +5861,7 @@ export async function getAdminSessionDetails(sessionId: string) {
       sessionDate: session.session_date || "",
       sessionTime: session.session_time || "",
       isRepeatable: session.is_repeatable || false,
+      classLevel: session.class_level || "",
       mentor: session.mentor ? {
         name: session.mentor.profile?.full_name || "Unknown Mentor",
         email: session.mentor.profile?.email || "",

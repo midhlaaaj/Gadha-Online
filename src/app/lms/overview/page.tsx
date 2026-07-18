@@ -21,7 +21,7 @@ function OverviewSkeleton() {
   return (
     <div className="space-y-6">
       <div><Skel className="h-7 w-56 mb-2" /><Skel className="h-4 w-72" /></div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="bg-white rounded-2xl border border-[#E6EBF8] p-5 space-y-3">
             <Skel className="h-9 w-9" /><Skel className="h-8 w-16" /><Skel className="h-3 w-24" />
@@ -256,7 +256,7 @@ export default function StudentOverviewPage() {
       </div>
 
       {/* Stat grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={IconCalendarCheck} label="Attendance"
           value={stats?.attendanceRate !== null && stats?.attendanceRate !== undefined ? `${stats.attendanceRate}%` : "—"}

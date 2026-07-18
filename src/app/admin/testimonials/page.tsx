@@ -8,12 +8,17 @@ import {
   IconPlus,
   IconEdit,
   IconTrash,
+  IconPhoto,
+  IconVideo,
+  IconX,
+  IconUpload,
 } from "@tabler/icons-react";
 import {
   getAdminData,
   upsertTestimonial,
   deleteTestimonial as apiDeleteTestimonial,
   toggleTestimonialStatus as apiToggleTestimonialStatus,
+  uploadTestimonialMedia,
 } from "../../actions";
 
 interface Testimonial {
@@ -25,6 +30,8 @@ interface Testimonial {
   showOnSite: boolean;
   avatarBg: string;
   avatarText: string;
+  mediaUrl?: string;
+  mediaType?: "image" | "video" | "";
 }
 
 export default function TestimonialsPage() {
@@ -42,6 +49,7 @@ export default function TestimonialsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerEditId, setDrawerEditId] = useState<string | null>(null);
   const [drawerForm, setDrawerForm] = useState<any>({});
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   const loadData = async () => {
     try {
@@ -70,6 +78,8 @@ export default function TestimonialsPage() {
         quote: "",
         rating: 5,
         showOnSite: true,
+        mediaUrl: "",
+        mediaType: "",
       });
     }
     setDrawerOpen(true);
@@ -78,6 +88,23 @@ export default function TestimonialsPage() {
   const closeDrawer = () => {
     setDrawerOpen(false);
     setDrawerEditId(null);
+  };
+
+  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingMedia(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { publicUrl, mediaType } = await uploadTestimonialMedia(fd);
+      setDrawerForm((prev: any) => ({ ...prev, mediaUrl: publicUrl, mediaType }));
+    } catch (err: any) {
+      alert("Error uploading media: " + err.message);
+    } finally {
+      setUploadingMedia(false);
+      e.target.value = "";
+    }
   };
 
   const saveDrawerData = async () => {
@@ -193,6 +220,22 @@ export default function TestimonialsPage() {
               className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition-shadow flex flex-col justify-between"
             >
               <div className="space-y-3">
+                {t.mediaUrl && (
+                  <div className="relative rounded-lg overflow-hidden aspect-[4/3] bg-slate-100">
+                    {t.mediaType === "video" ? (
+                      <video src={t.mediaUrl} className="w-full h-full object-cover" muted />
+                    ) : (
+                      <img src={t.mediaUrl} alt={t.studentName} className="w-full h-full object-cover" />
+                    )}
+                    <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center">
+                      {t.mediaType === "video" ? (
+                        <IconVideo className="w-3.5 h-3.5" />
+                      ) : (
+                        <IconPhoto className="w-3.5 h-3.5" />
+                      )}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-3">
                   <div
                     style={{ backgroundColor: t.avatarBg }}
@@ -205,7 +248,7 @@ export default function TestimonialsPage() {
                     <div className="text-[9px] text-[#9BA8C0] font-semibold mt-0.5">{t.role}</div>
                   </div>
                 </div>
-                <p className="text-xs text-text-muted italic leading-relaxed font-semibold">
+                <p className="text-xs text-text-muted italic leading-relaxed font-semibold line-clamp-3">
                   &ldquo;{t.quote}&rdquo;
                 </p>
               </div>
@@ -370,6 +413,45 @@ export default function TestimonialsPage() {
                   onChange={(e) => setDrawerForm({ ...drawerForm, quote: e.target.value })}
                 />
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Photo or video (optional)</label>
+                {drawerForm.mediaUrl ? (
+                  <div className="relative rounded-lg overflow-hidden border border-[#E6EBF8] aspect-[4/3] bg-slate-100">
+                    {drawerForm.mediaType === "video" ? (
+                      <video src={drawerForm.mediaUrl} className="w-full h-full object-cover" controls />
+                    ) : (
+                      <img src={drawerForm.mediaUrl} alt="Testimonial media" className="w-full h-full object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDrawerForm({ ...drawerForm, mediaUrl: "", mediaType: "" })}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer"
+                    >
+                      <IconX className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-1.5 aspect-[4/3] rounded-lg border border-dashed border-[#E6EBF8] bg-surface text-[#9BA8C0] cursor-pointer hover:border-secondary hover:text-secondary transition-colors">
+                    {uploadingMedia ? (
+                      <span className="text-[10px] font-semibold">Uploading...</span>
+                    ) : (
+                      <>
+                        <IconUpload className="w-5 h-5" />
+                        <span className="text-[10px] font-semibold">Upload image or video</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      className="hidden"
+                      disabled={uploadingMedia}
+                      onChange={handleMediaSelect}
+                    />
+                  </label>
+                )}
+                <p className="text-[9px] text-[#9BA8C0]">Leave empty for a text-only review. Max 25MB.</p>
+              </div>
+
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Rating</label>
                 <div className="flex gap-1.5 select-none pt-1">

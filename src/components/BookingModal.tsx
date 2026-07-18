@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { IconX, IconCheck, IconCalendar, IconClock, IconUsers, IconCreditCard, IconChevronRight, IconAlertCircle } from "@tabler/icons-react";
+import { IconX, IconCheck, IconCalendar, IconClock, IconUsers, IconChevronRight, IconAlertCircle } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
-import { getParentChildren, bookCourseOrSessionAction } from "@/app/actions";
+import { getParentChildren, bookCourseOrSessionAction, uploadBookingAttachment } from "@/app/actions";
 
 interface SupabaseUser {
   id: string;
@@ -101,6 +101,12 @@ export default function BookingModal({
   const [sessionDetails, setSessionDetails] = useState<any>(null);
   const [courseDetails, setCourseDetails] = useState<any>(null);
   const [mentorActiveBatches, setMentorActiveBatches] = useState<any[]>([]);
+  const [mentorExpertise, setMentorExpertise] = useState<string[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<string>("General");
+  const [topicDetails, setTopicDetails] = useState<string>("");
+  const [selectedDuration, setSelectedDuration] = useState<number>(60);
+  const [attachmentUrl, setAttachmentUrl] = useState<string>("");
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const supabase = createClient();
 
@@ -193,9 +199,15 @@ export default function BookingModal({
           try {
             const { data: ment } = await supabase
               .from("mentors")
-              .select("availability")
+              .select("availability, expertise")
               .eq("id", targetMentorId)
               .single();
+
+            const expertiseArr = ment?.expertise || [];
+            setMentorExpertise(expertiseArr);
+            if (expertiseArr.length > 0) {
+              setSelectedSubject(expertiseArr[0]);
+            }
             const DEFAULT_MENTOR_AVAILABILITY = {
               Monday: [{ start: "09:00 AM", end: "09:00 PM" }],
               Tuesday: [{ start: "09:00 AM", end: "09:00 PM" }],
@@ -420,11 +432,14 @@ export default function BookingModal({
         targetId,
         targetType,
         studentId: role === "student" ? currentUserId : selectedStudentId,
-        durationMinutes: isCustomScheduled ? 60 : durationMinutes,
+        durationMinutes: isCustomScheduled ? (targetType === "mentor" ? selectedDuration : 60) : durationMinutes,
         selectedSlot: isCustomScheduled
           ? { day: getDayOfWeekName(selectedDateStr), time: selectedSlotTime }
           : selectedSlot,
         selectedDate: isCustomScheduled ? selectedDateStr : undefined,
+        subject: targetType === "mentor" ? selectedSubject : undefined,
+        topicDetails: targetType === "mentor" ? topicDetails : undefined,
+        attachmentUrl: attachmentUrl || undefined,
       });
 
       if (res.success) {
@@ -439,7 +454,9 @@ export default function BookingModal({
     }
   };
 
-  const currentPrice = price;
+  const currentPrice = targetType === "mentor"
+    ? (selectedDuration === 90 ? Math.round(price * 1.5) : price)
+    : price;
 
   const displayBookingDetailsStr = () => {
     if ((targetType === "mentor" || (targetType === "session" && isLiveIndividual)) && selectedDateStr) {
@@ -454,12 +471,12 @@ export default function BookingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 font-sans">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal Content */}
-      <div className="relative bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col z-10 animate-fade-in max-h-[90vh]">
+      {/* Modal Content: Full-screen sheet on mobile (<768px), centered floating dialog on md: */}
+      <div className="relative bg-white w-full h-full md:h-auto max-w-none md:max-w-md rounded-none md:rounded-2xl overflow-hidden shadow-2xl border-0 md:border md:border-slate-100 flex flex-col z-10 animate-fade-in max-h-full md:max-h-[90vh]">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
@@ -511,14 +528,14 @@ export default function BookingModal({
               <IconCheck className="w-8 h-8 text-emerald-600 stroke-[3]" />
             </div>
             <div>
-              <h4 className="font-heading font-bold text-primary text-lg">Booking Successful!</h4>
+              <h4 className="font-heading font-bold text-primary text-lg">Booking Received!</h4>
               <p className="text-xs text-text-muted mt-1 px-4 leading-relaxed">
-                Your booking for <strong>{title}</strong> with <strong>{mentorName}</strong> has been confirmed.
+                Your request for <strong>{title}</strong> with <strong>{mentorName}</strong> has been received. Our operations team will contact you shortly to confirm payment and finalize your session details.
               </p>
               {isLiveIndividual && (selectedSlot || targetType === "mentor") && (
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F8FF] border border-blue-100 rounded-lg text-[11px] font-semibold text-secondary">
                   <IconCalendar className="w-3.5 h-3.5" />
-                  <span>Scheduled on {displayBookingDetailsStr()}</span>
+                  <span>Requested for {displayBookingDetailsStr()}</span>
                 </div>
               )}
             </div>
@@ -726,35 +743,35 @@ export default function BookingModal({
                         maxDate.setHours(23, 59, 59, 999);
 
                         return (
-                          <div className="absolute top-full left-0 mt-1.5 z-[110] bg-white border border-slate-200 rounded-xl shadow-xl p-4 w-72 animate-fade-in select-none">
+                          <div className="absolute top-full left-0 mt-1.5 z-[110] bg-white border border-slate-200 rounded-xl shadow-xl p-2.5 w-[230px] animate-fade-in select-none">
                             {/* Calendar Header */}
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between mb-2">
                               <button 
                                 type="button"
                                 onClick={prevMonth}
-                                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors cursor-pointer"
+                                className="p-0.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors cursor-pointer"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                               </button>
-                              <span className="text-xs font-bold text-primary">{monthLabel}</span>
+                              <span className="text-[11px] font-bold text-primary">{monthLabel}</span>
                               <button 
                                 type="button"
                                 onClick={nextMonth}
-                                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors cursor-pointer"
+                                className="p-0.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors cursor-pointer"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                               </button>
                             </div>
 
                             {/* Weekdays Header */}
-                            <div className="grid grid-cols-7 gap-1 text-center mb-1">
+                            <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
                               {weekdays.map((wd) => (
-                                <span key={wd} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{wd}</span>
+                                <span key={wd} className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{wd}</span>
                               ))}
                             </div>
 
                             {/* Days Grid */}
-                            <div className="grid grid-cols-7 gap-1 text-center">
+                            <div className="grid grid-cols-7 gap-0.5 text-center">
                               {gridCells.map((cell, index) => {
                                 if (cell === null) {
                                   return <div key={`blank-${index}`} />;
@@ -782,7 +799,7 @@ export default function BookingModal({
                                       setSelectedDateStr(dateStr);
                                       setIsDateDropdownOpen(false);
                                     }}
-                                    className={`aspect-square w-full rounded-full flex items-center justify-center text-[11px] font-semibold transition-all relative ${
+                                    className={`aspect-square w-full rounded-full flex items-center justify-center text-[10px] font-semibold transition-all relative ${
                                       isSelected
                                         ? "bg-secondary text-white font-bold shadow-md shadow-secondary/20"
                                         : isSelectable
@@ -1043,26 +1060,162 @@ export default function BookingModal({
               </div>
             )}
 
+            {/* Subject, Duration & Topic Details for Mentor Direct Booking */}
+            {targetType === "mentor" && (
+              <div className="space-y-4 border-t border-slate-100 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Select Subject
+                    </label>
+                    {mentorExpertise.length === 0 ? (
+                      <select
+                        value={selectedSubject}
+                        onChange={(e) => setSelectedSubject(e.target.value)}
+                        className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg outline-none bg-white text-primary focus:border-secondary cursor-pointer"
+                      >
+                        <option value="General">General</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Science">Science</option>
+                        <option value="Programming">Programming</option>
+                        <option value="English">English</option>
+                      </select>
+                    ) : (
+                      <select
+                        value={selectedSubject}
+                        onChange={(e) => setSelectedSubject(e.target.value)}
+                        className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg outline-none bg-white text-primary focus:border-secondary cursor-pointer"
+                      >
+                        {mentorExpertise.map((sub) => (
+                          <option key={sub} value={sub}>
+                            {sub}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Duration
+                    </label>
+                    <select
+                      value={selectedDuration}
+                      onChange={(e) => setSelectedDuration(Number(e.target.value))}
+                      className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg outline-none bg-white text-primary focus:border-secondary cursor-pointer"
+                    >
+                      <option value={60}>60 minutes</option>
+                      <option value={90}>90 minutes</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    What topic or unit do you want to learn?
+                  </label>
+                  <textarea
+                    rows={2.5}
+                    placeholder="e.g. Chapter 4 Chemistry - Redox Reactions doubts."
+                    value={topicDetails}
+                    onChange={(e) => setTopicDetails(e.target.value)}
+                    className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg outline-none bg-white text-primary focus:border-secondary resize-none"
+                  />
+                </div>
+
+                {/* Document Upload Input */}
+                <div className="space-y-1.5 text-left">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Attach reference document (Optional)
+                  </label>
+                  {attachmentUrl ? (
+                    <div className="flex items-center justify-between p-3 border border-green-200 bg-green-50/30 rounded-xl">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-green-800 truncate">
+                          ✓ Reference Uploaded
+                        </p>
+                        <a
+                          href={attachmentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[9px] text-green-700 underline font-medium break-all block truncate mt-0.5"
+                        >
+                          {attachmentUrl}
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentUrl("")}
+                        className="text-[10px] font-bold px-2.5 py-1 bg-white hover:bg-red-50 text-red-600 border border-slate-200 rounded-lg cursor-pointer shrink-0 ml-3"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative border border-dashed border-slate-200 hover:border-secondary rounded-xl p-4 text-center bg-slate-50/50 flex flex-col items-center justify-center min-h-[90px] cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.docx"
+                        disabled={uploadingFile}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          // Validate file type
+                          const allowedExtensions = ["pdf", "png", "jpg", "jpeg", "docx"];
+                          const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
+                          if (!allowedExtensions.includes(fileExt)) {
+                            alert("Invalid file format. Please upload PDF, PNG, JPG, or DOCX.");
+                            return;
+                          }
+
+                          // Validate file size (max 5MB)
+                          if (file.size > 5 * 1024 * 1024) {
+                            alert("File size exceeds 5MB limit.");
+                            return;
+                          }
+
+                          setUploadingFile(true);
+                          try {
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            const res = await uploadBookingAttachment(formData);
+                            setAttachmentUrl(res.publicUrl);
+                          } catch (err: any) {
+                            alert("File upload failed: " + err.message);
+                          } finally {
+                            setUploadingFile(false);
+                          }
+                        }}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                      />
+                      <span className="text-[11px] text-text-muted font-bold block">
+                        {uploadingFile ? "Uploading File..." : "Click to Upload PDF or Image"}
+                      </span>
+                      <span className="text-[9px] text-slate-400 mt-1 font-semibold block">
+                        Allowed: PDF, PNG, JPG, DOCX (Max 5MB)
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Price Summary */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                Payment summary
+                Fee summary
               </label>
               <div className="border border-slate-100 rounded-xl p-3.5 space-y-2.5">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-muted">Base Price</span>
-                  <span className="text-primary font-medium">₹{currentPrice.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-muted">GST / Processing Fees</span>
-                  <span className="text-emerald-600 font-semibold">FREE</span>
-                </div>
-                <div className="border-t border-slate-100 pt-2.5 flex justify-between items-center">
-                  <span className="text-xs font-bold text-primary">Amount to Pay</span>
+                  <span className="text-text-muted">Estimated Amount</span>
                   <span className="font-heading text-lg font-extrabold text-primary">
                     ₹{currentPrice.toLocaleString("en-IN")}
                   </span>
                 </div>
+                <p className="text-[10px] text-text-muted leading-relaxed pt-1 border-t border-dashed border-slate-100">
+                  No payment is collected now. Our operations team will reach out to confirm your session and arrange payment.
+                </p>
               </div>
             </div>
 
@@ -1094,8 +1247,8 @@ export default function BookingModal({
                   </>
                 ) : (
                   <>
-                    <IconCreditCard className="w-4.5 h-4.5" />
-                    <span>Pay & Confirm</span>
+                    <IconCheck className="w-4.5 h-4.5" />
+                    <span>Confirm Booking</span>
                   </>
                 )}
               </button>

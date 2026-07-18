@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { IconX, IconEye, IconEyeOff, IconMail, IconLock } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 import { validateEmail, validatePassword, sanitizeText } from "@/lib/validate";
+import { createSelfStudentInvite } from "@/app/actions";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [signupRole, setSignupRole] = useState<"parent" | "student">("parent");
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -35,6 +37,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
       setEmail("");
       setPassword("");
       setConfirmPassword("");
+      setSignupRole("parent");
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -108,19 +111,28 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
           onClose();
         }, 1500);
       } else if (mode === "signup") {
+        const cleanEmail = sanitizeText(email).trim();
+
+        if (signupRole === "student") {
+          // Reuses the same invite mechanism a parent uses to add a child —
+          // the signup trigger assigns the "student" role once it finds this
+          // pending invite, so we never need to trust a client-supplied role.
+          await createSelfStudentInvite(cleanEmail, cleanEmail.split("@")[0]);
+        }
+
         const { error: err } = await supabase.auth.signUp({
-          email: sanitizeText(email).trim(),
+          email: cleanEmail,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/${signupRole === "student" ? "lms/overview" : ""}`,
           },
         });
         if (err) throw err;
 
-        setSuccess("Account created! Redirecting you to the home page...");
+        setSuccess("Account created! Redirecting you...");
         setTimeout(() => {
           onClose();
-          window.location.href = "/";
+          window.location.href = signupRole === "student" ? "/lms/overview" : "/";
         }, 1500);
       } else if (mode === "forgot") {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
@@ -138,15 +150,15 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 font-sans">
       {/* Blurred Backdrop */}
       <div 
         onClick={onClose}
         className="absolute inset-0 bg-[#0f2347]/65 backdrop-blur-md transition-opacity duration-300 animate-fade-in"
       />
       
-      {/* Modal Card */}
-      <div className="relative bg-white w-full max-w-sm rounded-2xl p-6 md:p-8 shadow-2xl border border-slate-100 z-10 animate-scale-up overflow-hidden max-h-[90vh] flex flex-col">
+      {/* Modal Card: Full-screen sheet on mobile (<768px), centered dialog on md: */}
+      <div className="relative bg-white w-full h-full md:h-auto max-w-none md:max-w-sm rounded-none md:rounded-2xl p-6 md:p-8 shadow-2xl border-0 md:border md:border-slate-100 z-10 animate-scale-up overflow-hidden max-h-full md:max-h-[90vh] flex flex-col justify-between">
         {/* Absolute Close Button at top-right corner of card */}
         <button 
           onClick={onClose}
@@ -200,6 +212,39 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
         {/* Scrollable Form Container */}
         <div className="overflow-y-auto pr-1 flex-1 premium-scrollbar">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Role Toggle (Sign Up Mode) */}
+            {mode === "signup" && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">I am a...</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSignupRole("parent")}
+                    disabled={loading}
+                    className={`py-2.5 text-xs font-bold rounded-lg border transition-all cursor-pointer disabled:opacity-50 ${
+                      signupRole === "parent"
+                        ? "bg-primary text-white border-primary"
+                        : "bg-white text-text-muted border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    Parent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSignupRole("student")}
+                    disabled={loading}
+                    className={`py-2.5 text-xs font-bold rounded-lg border transition-all cursor-pointer disabled:opacity-50 ${
+                      signupRole === "student"
+                        ? "bg-primary text-white border-primary"
+                        : "bg-white text-text-muted border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    Student
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Email Field */}
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Email Address</label>

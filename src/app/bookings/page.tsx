@@ -107,7 +107,7 @@ export default function BookingsPage() {
     if (activeStatus === "all") return childMatch;
     
     if (activeStatus === "upcoming") {
-      return childMatch && b.status === "confirmed";
+      return childMatch && (b.status === "confirmed" || b.status === "pending");
     }
     if (activeStatus === "active") {
       return childMatch && b.type === "Course" && b.status === "confirmed";
@@ -141,6 +141,9 @@ export default function BookingsPage() {
   };
 
   const getStatusBadge = (status: string, type: string) => {
+    if (status === "pending") {
+      return <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-700">Pending Confirmation</span>;
+    }
     if (status === "confirmed" && type === "Course") {
       return <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-[#dcfce7] text-[#085041]">Active</span>;
     }
@@ -167,6 +170,7 @@ export default function BookingsPage() {
   };
 
   // Group Bookings by Category for Display
+  const pendingBookings = filteredBookings.filter(b => b.status === "pending");
   const upcomingBookings = filteredBookings.filter(b => b.status === "confirmed" && b.type !== "Course");
   const activeCourseBookings = filteredBookings.filter(b => b.status === "confirmed" && b.type === "Course");
   const completedBookings = filteredBookings.filter(b => b.status === "completed");
@@ -394,6 +398,59 @@ export default function BookingsPage() {
             </div>
           ) : (
             <div className="space-y-6">
+              {/* PENDING CONFIRMATION */}
+              {pendingBookings.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Pending confirmation</h4>
+                  <div className="flex flex-col gap-2.5">
+                    {pendingBookings.map((b) => {
+                      const kidDetails = getChildDetails(b.studentId || "all");
+                      return (
+                        <div
+                          key={b.id}
+                          className="bg-white border border-amber-200 rounded-2xl p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex gap-4.5 items-start md:items-center">
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${getSubjectBgColor(b.subject)}`}>
+                              {getSubjectIcon(b.iconName)}
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h5 className="text-xs font-bold text-[#1B3A6B]">{b.title}</h5>
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${getFormatBadgeColor(b.format)}`}>
+                                  {b.format}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 font-medium">
+                                <span className="flex items-center gap-1">
+                                  <IconUser className="w-3.5 h-3.5 text-slate-400" />
+                                  {b.mentorName}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <IconCalendar className="w-3.5 h-3.5 text-slate-400" />
+                                  {b.dateTime}
+                                </span>
+                                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-[10px] font-semibold text-slate-600">
+                                  <div className={`w-3.5 h-3.5 rounded-full text-white flex items-center justify-center text-[7px] font-bold ${kidDetails.bg}`}>
+                                    {kidDetails.initials}
+                                  </div>
+                                  {b.childName}
+                                </div>
+                              </div>
+                              <p className="text-[10px] text-amber-700 font-medium">Our operations team will contact you to confirm payment and finalize details.</p>
+                            </div>
+                          </div>
+                          <div className="flex md:flex-col items-baseline md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                            {getStatusBadge(b.status, b.type)}
+                            <strong className="font-heading text-base font-bold text-[#1B3A6B]">₹{b.price}</strong>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* UPCOMING SESSIONS */}
               {upcomingBookings.length > 0 && (
                 <div className="space-y-3">

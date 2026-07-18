@@ -101,9 +101,16 @@ export default function StudentCoursesListPage() {
                       <IconVideo className="w-5.5 h-5.5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-[13.5px] font-bold text-[#1B3A6B] truncate group-hover:text-[#2F7FE8] transition-colors">
-                        {b.itemTitle}
-                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-[13.5px] font-bold text-[#1B3A6B] truncate group-hover:text-[#2F7FE8] transition-colors">
+                          {b.itemTitle}
+                        </h3>
+                        {b.status === "pending" && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 shrink-0">
+                            Pending Confirmation
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-[#9BA8C0] mt-1 font-semibold">
                         Format: {b.courseFormat || b.bookingType} · Mentor: {b.mentorName}
                       </p>

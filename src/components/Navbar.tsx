@@ -6,6 +6,7 @@ import Link from "next/link";
 import { IconMenu2, IconX, IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 import AuthModal from "./AuthModal";
+import { UserNotificationBell } from "./UserNotificationBell";
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
@@ -54,7 +55,7 @@ export default function Navbar() {
   };
 
   const getMobileDropdownItemClass = (path: string) => {
-    const base = "text-sm font-semibold py-2 border-b border-slate-50 transition-colors";
+    const base = "text-sm font-semibold py-2 px-1 border-b border-slate-50 transition-colors min-h-[44px] flex items-center";
     if (pathname === path) {
       return `${base} text-[#2F7FE8] hover:text-[#2F7FE8]/80`;
     }
@@ -72,13 +73,13 @@ export default function Navbar() {
   };
 
   const getMobileHeaderLinkClass = (path: string) => {
-    const base = "text-sm font-semibold py-2 border-b border-slate-50 transition-colors";
+    const base = "text-sm font-semibold py-2 px-1 border-b border-slate-50 transition-colors min-h-[44px] flex items-center";
     const isActive = path === "/" 
       ? pathname === "/" 
       : pathname?.startsWith(path);
     return isActive 
-      ? `${base} text-secondary` 
-      : `${base} text-primary hover:text-secondary`;
+      ? `${base} text-[#2F7FE8]` 
+      : `${base} text-primary hover:text-[#2F7FE8]`;
   };
 
   useEffect(() => {
@@ -225,7 +226,9 @@ export default function Navbar() {
             {loading ? (
               <div className="h-9 w-28 bg-slate-100/60 animate-pulse rounded-full" />
             ) : user ? (
-              <div className="relative" ref={dropdownRef}>
+              <div className="flex items-center gap-5 sm:gap-6">
+                {(role === "parent" || role === "student" || !role) && <UserNotificationBell />}
+                <div className="relative" ref={dropdownRef}>
                 {/* Pill trigger */}
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -266,23 +269,23 @@ export default function Navbar() {
                         Manage Availability
                       </Link>
                     )}
+                    {(!role || role === "parent" || role === "student") && (
+                      <Link
+                        href={role === "student" ? "/lms/courses" : "/bookings"}
+                        onClick={() => setDropdownOpen(false)}
+                        className={getDropdownItemClass(role === "student" ? "/lms/courses" : "/bookings")}
+                      >
+                        Bookings
+                      </Link>
+                    )}
                     {(!role || role === "parent") && (
-                      <>
-                        <Link
-                          href="/bookings"
-                          onClick={() => setDropdownOpen(false)}
-                          className={getDropdownItemClass("/bookings")}
-                        >
-                          Bookings
-                        </Link>
-                        <Link
-                          href="/my-children"
-                          onClick={() => setDropdownOpen(false)}
-                          className={getDropdownItemClass("/my-children")}
-                        >
-                          My children
-                        </Link>
-                      </>
+                      <Link
+                        href="/my-children"
+                        onClick={() => setDropdownOpen(false)}
+                        className={getDropdownItemClass("/my-children")}
+                      >
+                        My children
+                      </Link>
                     )}
                     <Link
                       href={getDashboardLink()}
@@ -303,6 +306,7 @@ export default function Navbar() {
                     </button>
                   </div>
                 )}
+                </div>
               </div>
             ) : (
               <div className="hidden md:flex items-center gap-3">
@@ -394,23 +398,23 @@ export default function Navbar() {
                     Manage Availability
                   </Link>
                 )}
+                {(!role || role === "parent" || role === "student") && (
+                  <Link
+                    href={role === "student" ? "/lms/courses" : "/bookings"}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={getMobileDropdownItemClass(role === "student" ? "/lms/courses" : "/bookings")}
+                  >
+                    Bookings
+                  </Link>
+                )}
                 {(!role || role === "parent") && (
-                  <>
-                    <Link
-                      href="/bookings"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={getMobileDropdownItemClass("/bookings")}
-                    >
-                      Bookings
-                    </Link>
-                    <Link
-                      href="/my-children"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={getMobileDropdownItemClass("/my-children")}
-                    >
-                      My children
-                    </Link>
-                  </>
+                  <Link
+                    href="/my-children"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={getMobileDropdownItemClass("/my-children")}
+                  >
+                    My children
+                  </Link>
                 )}
                 <Link
                   href={getDashboardLink()}

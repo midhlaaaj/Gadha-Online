@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "custom" | "all">("all");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [customRangeDropdownOpen, setCustomRangeDropdownOpen] = useState(false);
 
   // Student list modal state
   const [studentsModalOpen, setStudentsModalOpen] = useState(false);
@@ -265,21 +266,86 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 font-sans animate-pulse">
+        {/* Header Skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="h-6 bg-slate-200 rounded w-48 mb-2"></div>
+            <div className="h-3 bg-slate-200 rounded w-64"></div>
+          </div>
+          <div className="h-8 bg-slate-200 rounded w-36"></div>
+        </div>
+
+        {/* Stat Cards Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <SkeletonMetric />
           <SkeletonMetric />
           <SkeletonMetric />
           <SkeletonMetric />
         </div>
+
+        {/* Charts Row Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm lg:col-span-2 space-y-4 animate-pulse h-48">
-            <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-            <div className="h-full bg-slate-200 rounded text-slate-200/50"></div>
-          </div>
-          <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm space-y-4 animate-pulse h-48">
+          {/* Revenue trends chart skeleton */}
+          <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm h-56 flex flex-col justify-between">
             <div className="h-4 bg-slate-200 rounded w-1/3"></div>
-            <div className="h-full bg-slate-200 rounded"></div>
+            <div className="flex items-end gap-3 h-28 pt-2">
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                  <div className="w-full bg-slate-200 rounded-t-sm" style={{ height: `${20 + i * 10}%` }}></div>
+                  <div className="h-2 bg-slate-200 rounded w-8"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Courses format chart skeleton */}
+          <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm h-56 flex flex-col items-center justify-between">
+            <div className="h-4 bg-slate-200 rounded w-1/2 self-start"></div>
+            <div className="w-20 h-20 rounded-full border-[10px] border-slate-200 flex items-center justify-center"></div>
+            <div className="w-full space-y-1.5">
+              <div className="h-3 bg-slate-200 rounded w-full"></div>
+              <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+            </div>
+          </div>
+
+          {/* Sessions type chart skeleton */}
+          <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm h-56 flex flex-col items-center justify-between">
+            <div className="h-4 bg-slate-200 rounded w-1/2 self-start"></div>
+            <div className="w-20 h-20 rounded-full border-[10px] border-slate-200 flex items-center justify-center"></div>
+            <div className="w-full space-y-1.5">
+              <div className="h-3 bg-slate-200 rounded w-full"></div>
+              <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Tables Row Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm space-y-3">
+            <div className="h-4 bg-slate-200 rounded w-1/3 mb-2"></div>
+            <div className="space-y-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-2 border-b border-[#E6EBF8]/50 last:border-0">
+                  <div className="w-6 h-6 rounded-full bg-slate-200 shrink-0"></div>
+                  <div className="h-3.5 bg-slate-200 rounded w-28"></div>
+                  <div className="h-3 bg-slate-200 rounded w-36 ml-auto"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm space-y-3">
+            <div className="h-4 bg-slate-200 rounded w-1/3 mb-2"></div>
+            <div className="space-y-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-2 border-b border-[#E6EBF8]/50 last:border-0">
+                  <div className="w-6 h-6 rounded-full bg-slate-200 shrink-0"></div>
+                  <div className="h-3.5 bg-slate-200 rounded w-24"></div>
+                  <div className="h-3 bg-slate-200 rounded w-40 ml-auto"></div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -291,14 +357,21 @@ export default function DashboardPage() {
       {/* Universal Time Header Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-heading text-lg font-extrabold text-[#1B3A6B]">Dashboard Overview</h2>
+          <h2 className="font-heading text-lg font-extrabold text-[#1B3A6B]">Dashboard</h2>
           <p className="text-xs text-text-muted mt-0.5 font-semibold">Real-time statistics & business tracker logs</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 bg-white border border-[#E6EBF8] p-1.5 rounded-2xl shadow-xs self-end shrink-0">
+        <div className="relative flex flex-wrap items-center gap-2 bg-white border border-[#E6EBF8] p-1.5 rounded-2xl shadow-xs self-end shrink-0 z-30">
           {(["today", "week", "month", "custom", "all"] as const).map((mode) => (
             <button
               key={mode}
-              onClick={() => setTimeFilter(mode)}
+              onClick={() => {
+                setTimeFilter(mode);
+                if (mode === "custom") {
+                  setCustomRangeDropdownOpen(prev => !prev);
+                } else {
+                  setCustomRangeDropdownOpen(false);
+                }
+              }}
               className={`text-[10px] font-bold px-3.5 py-1.5 rounded-xl cursor-pointer transition-all ${
                 timeFilter === mode
                   ? "bg-[#2F7FE8] text-white shadow-xs"
@@ -308,36 +381,55 @@ export default function DashboardPage() {
               {mode === "today" && "Today"}
               {mode === "week" && "This Week"}
               {mode === "month" && "This Month"}
-              {mode === "custom" && "Custom Range"}
+              {mode === "custom" && (customStartDate && customEndDate ? `Custom (${new Date(customStartDate).toLocaleDateString('en-IN', {day:'numeric',month:'short'})} - ${new Date(customEndDate).toLocaleDateString('en-IN', {day:'numeric',month:'short'})})` : "Custom Range")}
               {mode === "all" && "All Time"}
             </button>
           ))}
+
+          {/* Custom Range Popover Dropdown */}
+          {customRangeDropdownOpen && (
+            <div className="absolute right-0 top-full mt-2 z-50 bg-white border border-[#E6EBF8] p-4 rounded-2xl shadow-lg w-72 space-y-3 animate-in slide-in-from-top-2 duration-150">
+              <div className="flex items-center justify-between border-b border-[#E6EBF8] pb-2">
+                <span className="text-xs font-extrabold text-[#1B3A6B]">Select Custom Range</span>
+                <button
+                  type="button"
+                  onClick={() => setCustomRangeDropdownOpen(false)}
+                  className="text-xs font-bold text-text-muted hover:text-[#1B3A6B] cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Start Date</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-full text-xs font-bold p-2 border border-slate-200 rounded-lg outline-none bg-white text-[#1B3A6B]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">End Date</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-full text-xs font-bold p-2 border border-slate-200 rounded-lg outline-none bg-white text-[#1B3A6B]"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomRangeDropdownOpen(false)}
+                className="w-full py-2 bg-[#2F7FE8] hover:bg-[#1B3A6B] text-white text-xs font-bold rounded-xl cursor-pointer transition-colors text-center"
+              >
+                Apply Range
+              </button>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Custom range input picker panel */}
-      {timeFilter === "custom" && (
-        <div className="flex items-center gap-3 bg-white border border-[#E6EBF8] p-4 rounded-2xl max-w-md shadow-xs animate-in slide-in-from-top-2 duration-150">
-          <div className="space-y-1 flex-1">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">Start Date</span>
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
-              className="w-full text-xs font-bold p-2 border border-slate-200 rounded-lg outline-none bg-white text-[#1B3A6B]"
-            />
-          </div>
-          <div className="space-y-1 flex-1">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">End Date</span>
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
-              className="w-full text-xs font-bold p-2 border border-slate-200 rounded-lg outline-none bg-white text-[#1B3A6B]"
-            />
-          </div>
-        </div>
-      )}
 
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -380,24 +472,30 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Card 3: Courses */}
-        <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 flex flex-col justify-between shadow-sm">
+        {/* Card 3: Courses & Sessions */}
+        <Link
+          href="/admin/courses"
+          className="bg-white border border-[#E6EBF8] rounded-2xl p-5 flex flex-col justify-between shadow-sm text-left hover:border-yellow-500 hover:shadow-md cursor-pointer transition-all duration-150 hover:scale-[1.01]"
+        >
           <div className="w-[38px] h-[38px] rounded-xl bg-yellow-50 flex items-center justify-center text-yellow-700 mb-3">
             <IconBook className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] text-text-muted mb-0.5 uppercase font-bold tracking-wider">Total Courses</div>
+            <div className="text-[10px] text-text-muted mb-0.5 uppercase font-bold tracking-wider">Total Courses & Sessions</div>
             <div className="font-heading text-2xl font-extrabold text-[#1B3A6B]">
-              {courseStats.total}
+              {(courseStats.total + sessionStats.total).toLocaleString()}
             </div>
           </div>
           <div className="text-[10px] text-emerald-700 mt-2 font-semibold">
-            Active courses inventory
+            Active catalog inventory
           </div>
-        </div>
+        </Link>
 
         {/* Card 4: Revenue */}
-        <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 flex flex-col justify-between shadow-sm">
+        <Link
+          href="/admin/payments"
+          className="bg-white border border-[#E6EBF8] rounded-2xl p-5 flex flex-col justify-between shadow-sm text-left hover:border-pink-500 hover:shadow-md cursor-pointer transition-all duration-150 hover:scale-[1.01]"
+        >
           <div className="w-[38px] h-[38px] rounded-xl bg-pink-50 flex items-center justify-center text-pink-700 mb-3">
             <IconCurrencyRupee className="w-5 h-5" />
           </div>
@@ -410,15 +508,18 @@ export default function DashboardPage() {
           <div className="text-[10px] text-emerald-700 mt-2 font-semibold">
             Sum of paid bookings
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Chart 1: Revenue tracker */}
-        <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm">
+        <Link
+          href="/admin/payments"
+          className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm block hover:border-[#2F7FE8] hover:shadow-md cursor-pointer transition-all duration-150 hover:scale-[1.01]"
+        >
           <h3 className="font-heading text-xs font-bold text-[#1B3A6B] mb-6 uppercase tracking-wider">
-            Daily Revenue (₹) &mdash; Last 7 Days
+            Revenue Trends
           </h3>
           <div className="flex items-end gap-3 h-28 pt-2">
             {revenueLast7Days.map((bar, i) => (
@@ -435,10 +536,13 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </div>
+        </Link>
 
-        {/* Chart 2: Courses breakdown */}
-        <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm flex flex-col items-center justify-between">
+        {/* Chart 2: Courses breakdown (Redirects to /admin/courses) */}
+        <Link
+          href="/admin/courses"
+          className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm flex flex-col items-center justify-between hover:border-[#2F7FE8] hover:shadow-md cursor-pointer transition-all duration-150 hover:scale-[1.01]"
+        >
           <h3 className="font-heading text-xs font-bold text-[#1B3A6B] w-full text-left mb-4 uppercase tracking-wider">
             Courses by Format
           </h3>
@@ -506,10 +610,13 @@ export default function DashboardPage() {
               <span className="ml-auto font-bold text-[#1B3A6B]">{courseStats.liveIndividualPct}%</span>
             </div>
           </div>
-        </div>
+        </Link>
 
-        {/* Chart 3: Sessions breakdown */}
-        <div className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm flex flex-col items-center justify-between">
+        {/* Chart 3: Sessions breakdown (Redirects to /admin/sessions) */}
+        <Link
+          href="/admin/sessions"
+          className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm flex flex-col items-center justify-between hover:border-[#2F7FE8] hover:shadow-md cursor-pointer transition-all duration-150 hover:scale-[1.01]"
+        >
           <h3 className="font-heading text-xs font-bold text-[#1B3A6B] w-full text-left mb-4 uppercase tracking-wider">
             Sessions by Type
           </h3>
@@ -559,7 +666,7 @@ export default function DashboardPage() {
               <span className="ml-auto font-bold text-[#1B3A6B]">{sessionStats.groupPct}%</span>
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Recent Tables Row */}

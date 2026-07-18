@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  IconSparkles,
   IconCode,
   IconFlask,
   IconMap,
@@ -16,6 +15,8 @@ import {
   IconPencil,
   IconStar,
   IconBook,
+  IconPlayerPlayFilled,
+  IconX,
 } from "@tabler/icons-react";
 import { getHomepageData, submitContactMessage } from "./actions";
 import BookingModal from "@/components/BookingModal";
@@ -155,6 +156,36 @@ export default function Home() {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: "image" | "video" } | null>(null);
+  const [testimonialCardWidth, setTestimonialCardWidth] = useState<number | null>(null);
+  const testimonialObserverRef = useRef<ResizeObserver | null>(null);
+
+  // Callback ref (not useRef+useEffect): the marquee div only mounts once
+  // `loading` flips false, so a mount-time effect would miss it entirely.
+  const marqueeViewportRef = React.useCallback((node: HTMLDivElement | null) => {
+    testimonialObserverRef.current?.disconnect();
+    testimonialObserverRef.current = null;
+    if (!node) return;
+
+    const TESTIMONIAL_GAP = 16; // px, matches gap-4
+    const recalc = (width: number) => {
+      const visibleCount = width < 640 ? 1 : width < 1024 ? 2 : 4;
+      setTestimonialCardWidth((width - TESTIMONIAL_GAP * (visibleCount - 1)) / visibleCount);
+    };
+
+    recalc(node.getBoundingClientRect().width);
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        recalc(entry.contentRect.width);
+      }
+    });
+    observer.observe(node);
+    testimonialObserverRef.current = observer;
+  }, []);
+
+  const testimonialTrackRef = useRef<HTMLDivElement>(null);
+  const testimonialHoveredRef = useRef(false);
 
   useEffect(() => {
     async function loadData() {
@@ -240,23 +271,36 @@ export default function Home() {
   const mentors = data?.mentors || [];
   const testimonials = data?.testimonials || [];
 
-  // Determine dynamic hero card class session details
-  const firstSession = sessions.length > 0 ? sessions[0] : null;
-  const heroWidgetTitle = firstSession 
-    ? `${firstSession.subject}: ${firstSession.title}` 
-    : "Mathematics: Master Calculus";
-  const heroWidgetDesc = firstSession 
-    ? firstSession.description || `1-on-1 private lesson with ${firstSession.mentor}.`
-    : "Learn derivatives, integration, and limits with Arjun Kapoor.";
-  const heroWidgetMentorName = firstSession ? firstSession.mentor : "Arjun Kapoor";
-  const heroWidgetAvatar = firstSession ? firstSession.mentorAvatar : "AK";
-  const heroWidgetColor = firstSession ? firstSession.mentorColor : "#1B3A6B";
-  const heroWidgetMentor = firstSession 
-    ? mentors.find((m: any) => m.name === firstSession.mentor) 
-    : null;
-  const heroWidgetQualification = heroWidgetMentor 
-    ? heroWidgetMentor.qualification 
-    : "IIT Delhi Graduate";
+  // JS-driven (not CSS @keyframes) so hovering eases the speed down to 0
+  // and back up smoothly, instead of an instantaneous animation-play-state pause.
+  useEffect(() => {
+    const track = testimonialTrackRef.current;
+    if (!track || testimonialCardWidth === null || testimonials.length === 0) return;
+
+    const GAP = 16;
+    const singleSetWidth = (testimonialCardWidth + GAP) * testimonials.length;
+    const targetSpeed = singleSetWidth / Math.max(testimonials.length * 6, 20); // px/sec at full speed
+
+    let raf: number;
+    let last = performance.now();
+    let currentSpeed = 0;
+    let offset = 0;
+
+    const tick = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      const wantedSpeed = testimonialHoveredRef.current ? 0 : targetSpeed;
+      currentSpeed += (wantedSpeed - currentSpeed) * Math.min(1, 3 * dt);
+      offset -= currentSpeed * dt;
+      if (offset <= -singleSetWidth) offset += singleSetWidth;
+      track.style.transform = `translateX(${offset}px)`;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [testimonialCardWidth, testimonials.length]);
+
+
 
   const renderHeadline = () => {
     const text = settings.headline;
@@ -277,19 +321,15 @@ export default function Home() {
   return (
     <div className="w-full bg-white text-primary flex-1">
       {/* HERO SECTION */}
-      <section className="bg-surface pl-6 pr-6 md:pl-20 md:pr-16 lg:pl-32 lg:pr-24 xl:pl-40 xl:pr-28 py-16 lg:py-0 flex flex-col lg:flex-row items-center gap-12 border-b border-border-subtle min-h-[calc(100vh-70px)]">
-        <div className="flex-1 flex flex-col items-start gap-6">
-          <div className="inline-flex items-center gap-2 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-badge-bg text-badge-text border border-badge-border animate-pulse">
-            <IconSparkles className="w-3.5 h-3.5" />
-            {settings.badge_text}
-          </div>
-          <h1 className="font-heading text-4xl md:text-5xl font-extrabold text-primary leading-tight max-w-[600px]">
+      <section className="bg-surface px-6 md:px-12 py-16 lg:py-0 flex items-center justify-center border-b border-border-subtle min-h-[calc(100vh-70px)]">
+        <div className="max-w-3xl flex flex-col items-center text-center gap-6">
+          <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-extrabold text-primary leading-tight">
             {renderHeadline()}
           </h1>
-          <p className="text-sm md:text-base text-text-muted leading-relaxed max-w-[500px]">
+          <p className="text-sm md:text-base text-text-muted leading-relaxed max-w-[580px]">
             {settings.subheading}
           </p>
-          <div className="flex flex-wrap gap-4 pt-2">
+          <div className="flex flex-wrap justify-center gap-4 pt-2">
             <a
               href={settings.primary_link}
               className="text-sm font-semibold px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary/95 hover:shadow-md transition-all cursor-pointer"
@@ -302,40 +342,6 @@ export default function Home() {
             >
               {settings.secondary_cta}
             </a>
-          </div>
-        </div>
-        <div className="flex-1 hidden lg:flex justify-center">
-          {/* Decorative graphical widget representation */}
-          <div className="relative w-[400px] h-[300px] bg-white rounded-2xl shadow-xl border border-border-subtle p-6 flex flex-col justify-between">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
-                Live Class
-              </span>
-              <span className="text-xs text-text-muted">Starting in 5 mins</span>
-            </div>
-            <div>
-              <h3 className="font-heading text-xl font-bold text-primary mb-2">
-                {heroWidgetTitle}
-              </h3>
-              <p className="text-xs text-text-muted">
-                {heroWidgetDesc}
-              </p>
-            </div>
-            <div className="flex items-center gap-3 border-t border-border-subtle pt-4">
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center font-heading font-bold text-accent"
-                style={{ backgroundColor: heroWidgetColor }}
-              >
-                {heroWidgetAvatar}
-              </div>
-              <div>
-                <p className="text-xs font-bold text-primary">{heroWidgetMentorName}</p>
-                <p className="text-[10px] text-text-muted">{heroWidgetQualification}</p>
-              </div>
-              <button className="ml-auto text-xs font-semibold px-4 py-2 rounded-lg bg-secondary text-white">
-                Join
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -661,10 +667,11 @@ export default function Home() {
                     <div className="h-3.5 bg-slate-100 rounded w-24" />
                     <div className="h-3 bg-slate-100 rounded w-full" />
                     <div className="h-3 bg-slate-100 rounded w-4/5" />
-                    <div className="flex items-center gap-4 border-t border-border-subtle pt-3 mt-auto">
-                      <div className="h-3.5 bg-slate-100 rounded w-20" />
-                      <div className="h-3.5 bg-slate-100 rounded w-20" />
-                      <div className="ml-auto h-3.5 bg-slate-200 rounded w-16" />
+                    <div className="flex items-center gap-3 sm:gap-4 border-t border-border-subtle pt-3 mt-auto">
+                      <div className="h-3.5 bg-slate-100 rounded w-16" />
+                      <div className="h-3.5 bg-slate-100 rounded w-16" />
+                      <div className="h-3.5 bg-slate-200 rounded w-14" />
+                      <div className="ml-auto h-9 bg-slate-200 rounded-lg w-20" />
                     </div>
                   </div>
                 </div>
@@ -698,16 +705,22 @@ export default function Home() {
                         {m.bio || `${m.qualification} with ${m.experience} years of teaching expertise.`}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4 text-xs border-t border-border-subtle pt-3 text-text-muted">
+                    <div className="flex items-center gap-3 sm:gap-4 text-xs border-t border-border-subtle pt-3 text-text-muted">
                       <div>
                         <strong className="text-primary font-bold">{m.students}</strong> students
                       </div>
                       <div>
                         <strong className="text-primary font-bold">★ {m.rating}</strong> rating
                       </div>
-                      <div className="ml-auto font-semibold text-primary">
+                      <div className="font-extrabold text-primary">
                         ₹{m.rate}/hr
                       </div>
+                      <a 
+                        href={`/mentors/${m.id}`}
+                        className="ml-auto text-xs font-semibold px-4 py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center shrink-0"
+                      >
+                        Details
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -732,21 +745,21 @@ export default function Home() {
             </p>
           </div>
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white border border-border-subtle rounded-2xl p-6 flex flex-col justify-between animate-pulse">
-                  <div className="space-y-3 mb-6">
-                    <div className="h-8 bg-slate-100 rounded w-8" />
-                    <div className="h-3.5 bg-slate-100 rounded w-full" />
-                    <div className="h-3.5 bg-slate-100 rounded w-full" />
-                    <div className="h-3.5 bg-slate-100 rounded w-4/5" />
-                    <div className="h-3.5 bg-slate-100 rounded w-3/5" />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0" />
-                    <div className="space-y-1.5">
-                      <div className="h-3.5 bg-slate-200 rounded w-24" />
-                      <div className="h-3 bg-slate-100 rounded w-16" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white border border-border-subtle rounded-xl overflow-hidden flex flex-col animate-pulse">
+                  <div className="w-full aspect-[4/3] bg-slate-100" />
+                  <div className="p-4 flex flex-col flex-1 justify-between">
+                    <div className="space-y-2 mb-4">
+                      <div className="h-3 bg-slate-100 rounded w-full" />
+                      <div className="h-3 bg-slate-100 rounded w-4/5" />
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-slate-200 flex-shrink-0" />
+                      <div className="space-y-1.5">
+                        <div className="h-3 bg-slate-200 rounded w-20" />
+                        <div className="h-2.5 bg-slate-100 rounded w-14" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -757,35 +770,100 @@ export default function Home() {
               <p className="text-sm text-text-muted">No testimonials to show.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {testimonials.map((t: any) => (
-                <div key={t.id} className="bg-white border border-border-subtle rounded-2xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-                  <div>
-                    <div className="font-heading text-4xl text-accent font-extrabold leading-none mb-2">
-                      &ldquo;
+            <div
+              ref={marqueeViewportRef}
+              className="overflow-hidden"
+              style={{ visibility: testimonialCardWidth === null ? "hidden" : "visible" }}
+              onMouseEnter={() => { testimonialHoveredRef.current = true; }}
+              onMouseLeave={() => { testimonialHoveredRef.current = false; }}
+            >
+              <div
+                ref={testimonialTrackRef}
+                className="flex w-max gap-4"
+              >
+                {[...testimonials, ...testimonials].map((t: any, idx: number) => (
+                  <div
+                    key={`${t.id}-${idx}`}
+                    className="bg-white border border-border-subtle rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow shrink-0"
+                    style={{ width: testimonialCardWidth ?? 260 }}
+                  >
+                    {/* Media slot: always rendered so every card shares the same silhouette */}
+                    {t.media_url ? (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxMedia({ url: t.media_url, type: t.media_type === "video" ? "video" : "image" })}
+                        className="relative w-full aspect-[4/3] bg-slate-100 cursor-pointer group/media"
+                      >
+                        {t.media_type === "video" ? (
+                          <video src={t.media_url} className="w-full h-full object-cover" muted preload="metadata" />
+                        ) : (
+                          <img src={t.media_url} alt={t.student_name} className="w-full h-full object-cover" />
+                        )}
+                        {t.media_type === "video" && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/media:bg-black/30 transition-colors">
+                            <span className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-md">
+                              <IconPlayerPlayFilled className="w-3.5 h-3.5 text-primary ml-0.5" />
+                            </span>
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <div
+                        className="w-full aspect-[4/3] flex items-center justify-center"
+                        style={{ backgroundColor: `${t.avatar_bg || "#1B3A6B"}14` }}
+                      >
+                        <span className="font-heading text-5xl font-extrabold leading-none" style={{ color: t.avatar_bg || "#1B3A6B" }}>
+                          &ldquo;
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="p-4 flex flex-col flex-1 justify-between">
+                      <p className="text-xs text-text-muted leading-relaxed mb-4 line-clamp-3">
+                        {t.quote}
+                      </p>
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white font-heading shrink-0"
+                          style={{ backgroundColor: t.avatar_bg || "#1B3A6B" }}
+                        >
+                          {t.avatar_text}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-primary truncate">{t.student_name}</p>
+                          <p className="text-[9px] text-text-muted truncate">{t.role}</p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs md:text-sm text-text-muted leading-relaxed mb-6">
-                      {t.quote}
-                    </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white font-heading"
-                      style={{ backgroundColor: t.avatar_bg || "#1B3A6B" }}
-                    >
-                      {t.avatar_text}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-primary">{t.student_name}</p>
-                      <p className="text-[10px] text-text-muted">{t.role}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
       </section>
+
+      {/* TESTIMONIAL MEDIA LIGHTBOX */}
+      {lightboxMedia && (
+        <div
+          onClick={() => setLightboxMedia(null)}
+          className="fixed inset-0 bg-primary/70 backdrop-blur-xs z-[999] flex items-center justify-center p-4"
+        >
+          <div className="relative max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setLightboxMedia(null)}
+              className="absolute -top-10 right-0 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
+            >
+              <IconX className="w-5 h-5" />
+            </button>
+            {lightboxMedia.type === "video" ? (
+              <video src={lightboxMedia.url} className="w-full rounded-2xl shadow-2xl" controls autoPlay />
+            ) : (
+              <img src={lightboxMedia.url} alt="Review media" className="w-full rounded-2xl shadow-2xl" />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* CONTACT FORM */}
       <section id="about" className="bg-primary text-white py-16">

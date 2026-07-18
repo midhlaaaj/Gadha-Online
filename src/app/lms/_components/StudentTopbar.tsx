@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconSearch, IconBell } from "@tabler/icons-react";
+import { IconSearch } from "@tabler/icons-react";
 import { getStudentProfile } from "@/app/actions";
+import { UserNotificationBell } from "@/components/UserNotificationBell";
 
 type Profile = Awaited<ReturnType<typeof getStudentProfile>>;
 
@@ -25,11 +26,9 @@ export function StudentTopbar() {
         />
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-5 sm:gap-6">
         {/* Notifications */}
-        <button className="relative w-9 h-9 rounded-xl bg-[#F5F7FF] flex items-center justify-center hover:bg-[#EBF2FF] transition-colors cursor-pointer">
-          <IconBell className="w-4.5 h-4.5 text-[#6B7A99]" />
-        </button>
+        <UserNotificationBell />
 
         {/* Avatar */}
         <div className="flex items-center gap-2.5">

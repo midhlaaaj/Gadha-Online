@@ -336,7 +336,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
           "Summary notes after session",
           "Free reschedule up to 4 hrs before",
           "Pre-session topic form",
-          "Secure payment via Razorpay"
+          "Payment coordinated after booking confirmation"
         ];
         const inclusionsList = [0, 1, 2, 3, 4].map((idx) => {
           return (session.inclusions && session.inclusions[idx]) || defaults[idx];

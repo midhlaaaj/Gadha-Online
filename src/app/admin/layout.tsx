@@ -11,7 +11,6 @@ import {
   IconUsers,
   IconQuote,
   IconList,
-  IconSettings,
   IconBell,
   IconNotebook,
   IconCalendar,
@@ -34,11 +33,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return isActive ? "text-[#2F7FE8]" : "text-[#9BA8C0]";
   };
 
-  // Helper to set Page Header Title based on path
+  // Helper to set Page Header Title based on path — must match the sidebar
+  // label exactly, one canonical name per page.
   const getHeaderTitle = () => {
-    if (pathname.startsWith("/admin/dashboard")) return "Dashboard Overview";
-    if (pathname.startsWith("/admin/hero")) return "Hero Section";
-    if (pathname.startsWith("/admin/catalog")) return "Courses & Sessions Catalog";
+    if (pathname.startsWith("/admin/dashboard")) return "Dashboard";
     if (pathname.startsWith("/admin/courses")) return "Courses";
     if (pathname.startsWith("/admin/sessions")) return "Sessions";
     if (pathname.startsWith("/admin/mentors")) return "Mentors";
@@ -47,6 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (pathname.startsWith("/admin/students")) return "Students & Parents";
     if (pathname.startsWith("/admin/schedules")) return "Schedules & Attendance";
     if (pathname.startsWith("/admin/payments")) return "Payments Ledger";
+    if (pathname.startsWith("/admin/hero")) return "Hero Section";
     if (pathname.startsWith("/admin/settings")) return "Settings";
     return "Admin Panel";
   };
@@ -61,120 +60,103 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="text-[10px] ml-1.5 font-sans font-extrabold uppercase px-2 py-0.5 bg-[#EBF2FF] text-[#2F7FE8] rounded-md tracking-wider">Admin</span>
           </Link>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
-          {/* Main Segment */}
-          <div>
-            <p className="text-[9px] font-extrabold text-[#9BA8C0] uppercase tracking-widest px-3 mb-2">Main</p>
-            <Link
-              href="/admin/dashboard"
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/dashboard")}`}
-            >
-              <IconLayoutDashboard className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/dashboard")}`} />
-              Dashboard
-              {(pathname === "/admin/dashboard" || pathname.startsWith("/admin/dashboard/")) && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />
-              )}
-            </Link>
-          </div>
-
-          {/* Catalog Segment */}
-          <div>
-            <p className="text-[9px] font-extrabold text-[#9BA8C0] uppercase tracking-widest px-3 mb-2">Catalog</p>
-            <div className="space-y-0.5">
-              <Link
-                href="/admin/catalog"
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/catalog")}`}
-              >
-                <IconBook className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/catalog")}`} />
-                Courses & Sessions
-                {pathname.startsWith("/admin/catalog") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
-              </Link>
-              <Link
-                href="/admin/mentors"
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/mentors")}`}
-              >
-                <IconUsers className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/mentors")}`} />
-                Mentors
-                {pathname.startsWith("/admin/mentors") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
-              </Link>
-            </div>
-          </div>
-
-          {/* Relations & Activity Segment */}
-          <div>
-            <p className="text-[9px] font-extrabold text-[#9BA8C0] uppercase tracking-widest px-3 mb-2">Relations & Activity</p>
-            <div className="space-y-0.5">
-              <Link
-                href="/admin/students"
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/students")}`}
-              >
-                <IconNotebook className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/students")}`} />
-                Students & Parents
-                {pathname.startsWith("/admin/students") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
-              </Link>
-              <Link
-                href="/admin/bookings"
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/bookings")}`}
-              >
-                <IconList className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/bookings")}`} />
-                Bookings
-                {pathname.startsWith("/admin/bookings") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
-              </Link>
-              <Link
-                href="/admin/schedules"
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/schedules")}`}
-              >
-                <IconCalendar className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/schedules")}`} />
-                Schedules & Attendance
-                {pathname.startsWith("/admin/schedules") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
-              </Link>
-            </div>
-          </div>
-
-          {/* Finance & Marketing Segment */}
-          <div>
-            <p className="text-[9px] font-extrabold text-[#9BA8C0] uppercase tracking-widest px-3 mb-2">Finance & Content</p>
-            <div className="space-y-0.5">
-              <Link
-                href="/admin/payments"
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/payments")}`}
-              >
-                <IconCreditCard className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/payments")}`} />
-                Payments Ledger
-                {pathname.startsWith("/admin/payments") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
-              </Link>
-              <Link
-                href="/admin/testimonials"
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/testimonials")}`}
-              >
-                <IconQuote className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/testimonials")}`} />
-                Testimonials
-                {pathname.startsWith("/admin/testimonials") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
-              </Link>
-              <Link
-                href="/admin/hero"
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/hero")}`}
-              >
-                <IconHome className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/hero")}`} />
-                Hero Editor
-                {pathname.startsWith("/admin/hero") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
-              </Link>
-            </div>
-          </div>
-        </nav>
-
-        {/* System Settings & Profile */}
-        <div className="px-3 pb-5 border-t border-[#E6EBF8] pt-3 shrink-0 space-y-2">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <Link
-            href="/admin/settings"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/settings")}`}
+            href="/admin/dashboard"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/dashboard")}`}
           >
-            <IconSettings className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/settings")}`} />
-            Settings
-            {pathname.startsWith("/admin/settings") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+            <IconLayoutDashboard className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/dashboard")}`} />
+            Dashboard
+            {(pathname === "/admin/dashboard" || pathname.startsWith("/admin/dashboard/")) && (
+              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />
+            )}
           </Link>
 
-          <div className="flex items-center gap-3 px-3 pt-2">
+          <Link
+            href="/admin/courses"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/courses")}`}
+          >
+            <IconBook className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/courses")}`} />
+            Courses
+            {pathname.startsWith("/admin/courses") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/sessions"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/sessions")}`}
+          >
+            <IconClock className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/sessions")}`} />
+            Sessions
+            {pathname.startsWith("/admin/sessions") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/mentors"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/mentors")}`}
+          >
+            <IconUsers className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/mentors")}`} />
+            Mentors
+            {pathname.startsWith("/admin/mentors") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/students"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/students")}`}
+          >
+            <IconNotebook className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/students")}`} />
+            Students & Parents
+            {pathname.startsWith("/admin/students") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/bookings"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/bookings")}`}
+          >
+            <IconList className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/bookings")}`} />
+            Bookings
+            {pathname.startsWith("/admin/bookings") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/schedules"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/schedules")}`}
+          >
+            <IconCalendar className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/schedules")}`} />
+            Schedules & Attendance
+            {pathname.startsWith("/admin/schedules") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/payments"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/payments")}`}
+          >
+            <IconCreditCard className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/payments")}`} />
+            Payments Ledger
+            {pathname.startsWith("/admin/payments") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/testimonials"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/testimonials")}`}
+          >
+            <IconQuote className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/testimonials")}`} />
+            Testimonials
+            {pathname.startsWith("/admin/testimonials") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/hero"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/hero")}`}
+          >
+            <IconHome className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/hero")}`} />
+            Hero Section
+            {pathname.startsWith("/admin/hero") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+        </nav>
+
+        {/* Profile Footer */}
+        <div className="px-3 pb-5 border-t border-[#E6EBF8] pt-3 shrink-0">
+          <div className="flex items-center gap-3 px-3 pt-1">
             <div className="w-9 h-9 rounded-full bg-[#EBF2FF] text-[#2F7FE8] flex items-center justify-center font-heading text-xs font-bold shrink-0">
               AD
             </div>

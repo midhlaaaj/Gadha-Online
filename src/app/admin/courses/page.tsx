@@ -59,6 +59,7 @@ export default function CoursesPage() {
   const [courseSearch, setCourseSearch] = useState("");
   const [courseFormatFilter, setCourseFormatFilter] = useState("All formats");
   const [courseSubjectFilter, setCourseSubjectFilter] = useState("All subjects");
+  const [courseClassFilter, setCourseClassFilter] = useState("All classes");
 
   // Drawer modal state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -276,6 +277,23 @@ export default function CoursesPage() {
     }
   };
 
+  // Extract unique subjects and classes dynamically
+  const uniqueSubjects = React.useMemo(() => {
+    const subs = new Set<string>();
+    courses.forEach((c) => {
+      if (c.subject) subs.add(c.subject);
+    });
+    return Array.from(subs).sort();
+  }, [courses]);
+
+  const uniqueClasses = React.useMemo(() => {
+    const cls = new Set<string>();
+    courses.forEach((c) => {
+      if (c.classLevel) cls.add(c.classLevel);
+    });
+    return Array.from(cls).sort();
+  }, [courses]);
+
   // Filters application
   const filteredCourses = courses.filter((x) => {
     const matchSearch = x.title.toLowerCase().includes(courseSearch.toLowerCase());
@@ -283,7 +301,9 @@ export default function CoursesPage() {
       courseFormatFilter === "All formats" || x.format === courseFormatFilter;
     const matchSubject =
       courseSubjectFilter === "All subjects" || x.subject === courseSubjectFilter;
-    return matchSearch && matchFormat && matchSubject;
+    const matchClass =
+      courseClassFilter === "All classes" || x.classLevel === courseClassFilter;
+    return matchSearch && matchFormat && matchSubject && matchClass;
   });
 
   if (loading) {
@@ -339,10 +359,19 @@ export default function CoursesPage() {
             className="text-xs p-2 border border-border-subtle rounded-lg bg-white cursor-pointer font-semibold text-[#1B3A6B]"
           >
             <option>All subjects</option>
-            <option>Mathematics</option>
-            <option>Science</option>
-            <option>Programming</option>
-            <option>English</option>
+            {uniqueSubjects.map((sub) => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
+          </select>
+          <select
+            value={courseClassFilter}
+            onChange={(e) => setCourseClassFilter(e.target.value)}
+            className="text-xs p-2 border border-border-subtle rounded-lg bg-white cursor-pointer font-semibold text-[#1B3A6B]"
+          >
+            <option>All classes</option>
+            {uniqueClasses.map((cls) => (
+              <option key={cls} value={cls}>{cls}</option>
+            ))}
           </select>
         </div>
         <div className="flex gap-2 items-center">

@@ -22,7 +22,7 @@ function OverviewSkeleton() {
   return (
     <div className="space-y-6">
       <div><Skel className="h-7 w-56 mb-2" /><Skel className="h-4 w-72" /></div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="bg-white rounded-2xl border border-[#E6EBF8] p-5 space-y-3">
             <Skel className="h-9 w-9" /><Skel className="h-8 w-16" /><Skel className="h-3 w-24" />
@@ -92,7 +92,26 @@ function ClassCard({ cls }: { cls: MentorClass }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-bold text-[#1B3A6B] truncate">{cls.title}</p>
-        <p className="text-[11px] text-[#9BA8C0] mt-0.5">{cls.studentName} · {cls.subject} · {timeLabel}</p>
+        {(cls.topic_details || cls.attachment_url) && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+            {cls.topic_details && (
+              <div className="text-[10px] text-secondary font-semibold bg-white border border-blue-100/50 px-2 py-0.5 rounded-md text-left" title={cls.topic_details}>
+                Topic Focus: {cls.topic_details}
+              </div>
+            )}
+            {cls.attachment_url && (
+              <a
+                href={cls.attachment_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-secondary bg-white hover:bg-secondary hover:text-white border border-blue-100/60 px-2 py-0.5 rounded-md transition-all cursor-pointer"
+              >
+                📎 View Attachment
+              </a>
+            )}
+          </div>
+        )}
+        <p className="text-[11px] text-[#9BA8C0] mt-1">{cls.studentName} · {cls.subject} · {timeLabel}</p>
       </div>
       {isLive ? (
         <div className="flex items-center gap-2">
@@ -190,7 +209,7 @@ export default function MentorOverviewPage() {
       </div>
 
       {/* Stat grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={IconCoin} label="Earnings"
           value={stats?.earningsThisMonth !== undefined ? `₹${stats.earningsThisMonth.toLocaleString("en-IN")}` : "₹0"}

@@ -54,6 +54,7 @@ export default function SessionsPage() {
   const [sessionSearch, setSessionSearch] = useState("");
   const [sessionSubjectFilter, setSessionSubjectFilter] = useState("All subjects");
   const [sessionTypeFilter, setSessionTypeFilter] = useState("All types");
+  const [sessionClassFilter, setSessionClassFilter] = useState("All classes");
 
   // Drawer modal state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -146,6 +147,23 @@ export default function SessionsPage() {
     }
   };
 
+  // Extract unique subjects and classes dynamically
+  const uniqueSubjects = React.useMemo(() => {
+    const subs = new Set<string>();
+    sessions.forEach((s) => {
+      if (s.subject) subs.add(s.subject);
+    });
+    return Array.from(subs).sort();
+  }, [sessions]);
+
+  const uniqueClasses = React.useMemo(() => {
+    const cls = new Set<string>();
+    sessions.forEach((s) => {
+      if (s.classLevel) cls.add(s.classLevel);
+    });
+    return Array.from(cls).sort();
+  }, [sessions]);
+
   // Filters application
   const filteredSessions = sessions.filter((x) => {
     const matchSearch = x.title.toLowerCase().includes(sessionSearch.toLowerCase());
@@ -153,7 +171,9 @@ export default function SessionsPage() {
       sessionSubjectFilter === "All subjects" || x.subject === sessionSubjectFilter;
     const matchType =
       sessionTypeFilter === "All types" || x.type === sessionTypeFilter;
-    return matchSearch && matchSubject && matchType;
+    const matchClass =
+      sessionClassFilter === "All classes" || x.classLevel === sessionClassFilter;
+    return matchSearch && matchSubject && matchType && matchClass;
   });
 
   if (loading) {
@@ -199,10 +219,19 @@ export default function SessionsPage() {
             className="text-xs p-2 border border-border-subtle rounded-lg bg-white cursor-pointer font-semibold text-[#1B3A6B]"
           >
             <option>All subjects</option>
-            <option>Mathematics</option>
-            <option>Science</option>
-            <option>English</option>
-            <option>Programming</option>
+            {uniqueSubjects.map((sub) => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
+          </select>
+          <select
+            value={sessionClassFilter}
+            onChange={(e) => setSessionClassFilter(e.target.value)}
+            className="text-xs p-2 border border-border-subtle rounded-lg bg-white cursor-pointer font-semibold text-[#1B3A6B]"
+          >
+            <option>All classes</option>
+            {uniqueClasses.map((cls) => (
+              <option key={cls} value={cls}>{cls}</option>
+            ))}
           </select>
           <select
             value={sessionTypeFilter}

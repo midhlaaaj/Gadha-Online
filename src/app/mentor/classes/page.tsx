@@ -311,7 +311,26 @@ export default function MentorClassesPage() {
                       <StatusBadge status={c.status} />
                     </div>
                     <p className="text-[11px] text-[#4A5A7A] mt-1 font-semibold">Student: {c.studentName}</p>
-                    <p className="text-[11px] text-[#9BA8C0] mt-0.5">{c.subject} · {dateStr} · {timeStr}</p>
+                    {(c.topic_details || c.attachment_url) && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {c.topic_details && (
+                          <div className="text-[10px] text-secondary font-semibold bg-[#F5F8FF] border border-blue-100/50 px-2.5 py-1 rounded-lg text-left" title={c.topic_details}>
+                            Topic Focus: {c.topic_details}
+                          </div>
+                        )}
+                        {c.attachment_url && (
+                          <a
+                            href={c.attachment_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-secondary bg-white hover:bg-secondary hover:text-white border border-blue-100/60 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                          >
+                            📎 View Attachment
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-[11px] text-[#9BA8C0] mt-1">{c.subject} · {dateStr} · {timeStr}</p>
                   </div>
                 </div>
 

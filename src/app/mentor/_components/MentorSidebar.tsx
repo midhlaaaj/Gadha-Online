@@ -34,7 +34,7 @@ export function MentorAppSidebar() {
   };
 
   return (
-    <aside className="flex flex-col w-[220px] shrink-0 bg-white border-r border-[#E6EBF8] h-screen sticky top-0 z-30">
+    <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-white border-r border-[#E6EBF8] h-screen sticky top-0 z-30">
       {/* Logo + Bell */}
       <div className="h-[80px] flex items-center justify-between px-6 border-b border-[#E6EBF8] shrink-0">
         <Link href="/mentor/overview" className="font-heading text-2xl font-extrabold tracking-tight text-[#1B3A6B] hover:opacity-90 transition-opacity">

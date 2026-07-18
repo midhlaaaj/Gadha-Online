@@ -18,10 +18,12 @@ import {
   IconBook,
 } from "@tabler/icons-react";
 import { getMentorsPageData } from "../actions";
+import BookingModal from "@/components/BookingModal";
 
 export default function MentorsPage() {
   const [mentors, setMentors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMentorForBooking, setSelectedMentorForBooking] = useState<any | null>(null);
 
   // Filter & Search States
   const [searchQuery, setSearchQuery] = useState("");
@@ -611,7 +613,7 @@ export default function MentorsPage() {
 
                     <div className="flex gap-2">
                       <button 
-                        onClick={() => triggerToast("Booking function coming soon!")}
+                        onClick={() => setSelectedMentorForBooking(m)}
                         className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
                       >
                         Book 1-on-1
@@ -711,7 +713,18 @@ export default function MentorsPage() {
           </div>
         </div>
       </footer>
-
+      {selectedMentorForBooking && (
+        <BookingModal
+          isOpen={true}
+          onClose={() => setSelectedMentorForBooking(null)}
+          targetId={selectedMentorForBooking.id}
+          targetType="mentor"
+          title={`1-on-1 Session with ${selectedMentorForBooking.name}`}
+          mentorName={selectedMentorForBooking.name}
+          isLiveIndividual={true}
+          price={selectedMentorForBooking.rate}
+        />
+      )}
     </div>
   );
 }
