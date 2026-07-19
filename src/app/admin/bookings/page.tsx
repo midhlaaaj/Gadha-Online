@@ -24,6 +24,8 @@ interface Booking {
   itemTitle: string;
   mentorName: string;
   amountPaid: number;
+  totalAmount?: number;
+  remainingBalance?: number;
   status: string;
   paymentStatus: string;
   paymentMethod: string;
@@ -367,7 +369,7 @@ export default function BookingsPage() {
                             : "bg-red-50 text-red-700 border border-red-200"
                         }`}>
                           {b.paymentStatus === "partially_paid"
-                            ? `PARTIAL (Due: ₹${b.remainingBalance.toLocaleString()})`
+                            ? `PARTIAL (Due: ₹${(b.remainingBalance ?? 0).toLocaleString()})`
                             : b.paymentStatus === "paid"
                             ? "FULL PAID"
                             : "UNPAID"}

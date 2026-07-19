@@ -172,6 +172,8 @@ export function DashboardMobileTopBar({ role, title, contextControl }: Dashboard
           )}
         </div>
       </div>
-    </header>
-  );
+    </div>
+  </header>
+);
 }
+

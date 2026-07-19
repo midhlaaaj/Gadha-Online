@@ -5683,7 +5683,11 @@ export async function createManualBooking(params: {
       message: `Your booking is confirmed with an initial deposit of ₹${collected.toLocaleString()}.${dueText}`,
       link_url: "/bookings",
     }));
-    await adminClient.from("user_notifications").insert(notifRows).catch(console.error);
+    try {
+      await adminClient.from("user_notifications").insert(notifRows);
+    } catch (err) {
+      console.error(err);
+    }
 
   } else if (params.adminNotes) {
     await adminClient.from("bookings").update({ admin_notes: params.adminNotes, total_amount: calculatedTotal }).eq("id", bookingId);
@@ -5770,7 +5774,11 @@ export async function recordBookingInstallment(params: {
   }));
 
   if (notifRows.length > 0) {
-    await adminClient.from("user_notifications").insert(notifRows).catch(console.error);
+    try {
+      await adminClient.from("user_notifications").insert(notifRows);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   revalidatePath("/admin/payments");
