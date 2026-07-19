@@ -256,6 +256,80 @@ const TESTIMONIALS = [
   }
 ];
 
+const TEAM_MEMBERS = [
+  {
+    name: "Dr. Vikram Sethi",
+    role: "Founder & CEO",
+    bio: "Ex-IIT Delhi & Stanford Alum with 12+ years in education tech. Passionate about personalized learning for every student.",
+    photo_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+    avatar_bg: "#1B3A6B",
+    avatar_text: "VS",
+    display_order: 1,
+    show_on_site: true,
+  },
+  {
+    name: "Ananya Roy",
+    role: "Head of Academics",
+    bio: "M.Ed. Harvard University with 10+ years designing high-impact curricula for competitive exams and STEM education.",
+    photo_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+    avatar_bg: "#2F7FE8",
+    avatar_text: "AR",
+    display_order: 2,
+    show_on_site: true,
+  },
+  {
+    name: "Kavita Rao",
+    role: "VP of Product",
+    bio: "Former Lead Product Manager at top edtech platforms. Dedicated to building engaging learning experiences.",
+    photo_url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
+    avatar_bg: "#0F6E56",
+    avatar_text: "KR",
+    display_order: 3,
+    show_on_site: true,
+  },
+  {
+    name: "Rohan Deshmukh",
+    role: "Head of Student Success",
+    bio: "Experienced academic counselor committed to mentor matching, student growth, and career guidance.",
+    photo_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+    avatar_bg: "#993556",
+    avatar_text: "RD",
+    display_order: 4,
+    show_on_site: true,
+  },
+];
+
+const ACHIEVEMENTS = [
+  {
+    stat_value: "15,000+",
+    stat_label: "Active Learners Guided Across India",
+    image_url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&q=80",
+    display_order: 1,
+    show_on_site: true,
+  },
+  {
+    stat_value: "98.4%",
+    stat_label: "Exam Qualification & Grade Improvement Rate",
+    image_url: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80",
+    display_order: 2,
+    show_on_site: true,
+  },
+  {
+    stat_value: "500,000+",
+    stat_label: "Hours of 1-on-1 Mentorship Delivered",
+    image_url: "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80",
+    display_order: 3,
+    show_on_site: true,
+  },
+  {
+    stat_value: "50+",
+    stat_label: "Top Universities & Dream Companies Placements",
+    image_url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80",
+    display_order: 4,
+    show_on_site: true,
+  },
+];
+
 // 3. Execution Function
 async function seed() {
   console.log("🚀 Starting programatic Supabase backend seed...");
@@ -408,6 +482,38 @@ async function seed() {
     }
   }
   console.log("✅ Seeded student testimonials.");
+
+  // F. Seed Team Members
+  for (const tm of TEAM_MEMBERS) {
+    const { data: existingTm } = await supabase
+      .from("team_members")
+      .select("id")
+      .eq("name", tm.name)
+      .maybeSingle();
+
+    if (existingTm) {
+      await supabase.from("team_members").update(tm).eq("id", existingTm.id);
+    } else {
+      await supabase.from("team_members").insert([tm]);
+    }
+  }
+  console.log("✅ Seeded team members.");
+
+  // G. Seed Achievements
+  for (const ach of ACHIEVEMENTS) {
+    const { data: existingAch } = await supabase
+      .from("achievements")
+      .select("id")
+      .eq("stat_value", ach.stat_value)
+      .maybeSingle();
+
+    if (existingAch) {
+      await supabase.from("achievements").update(ach).eq("id", existingAch.id);
+    } else {
+      await supabase.from("achievements").insert([ach]);
+    }
+  }
+  console.log("✅ Seeded achievements.");
 
   console.log("\n🎉 Database seed complete! All mock systems are fully hydrated.");
 }

@@ -22,6 +22,17 @@ export default function Navbar() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
     if (!user) {
       setRole(null);
       localStorage.removeItem("tutoboard_user_role_cache");
@@ -76,6 +87,8 @@ export default function Navbar() {
     const base = "text-sm font-semibold py-2 px-1 border-b border-slate-50 transition-colors min-h-[44px] flex items-center";
     const isActive = path === "/" 
       ? pathname === "/" 
+      : path.startsWith("/#")
+      ? (pathname === "/" && typeof window !== "undefined" && window.location.hash === path.substring(1))
       : pathname?.startsWith(path);
     return isActive 
       ? `${base} text-[#2F7FE8]` 
@@ -179,14 +192,22 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="flex items-center justify-between px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-40 shadow-sm">
-        {/* LOGO */}
-        <Link href="/" className="font-heading text-2xl font-extrabold tracking-tight text-primary hover:opacity-95 transition-opacity">
-          Tuto<span className="text-secondary">board</span>
-        </Link>
+      <nav className="flex items-center justify-between px-4 sm:px-6 md:px-12 h-[70px] bg-white border-b border-border-subtle sticky top-0 z-40 shadow-sm">
+        {/* LOGO & MOBILE HAMBURGER TOGGLE */}
+        <div className="flex items-center gap-2.5">
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center border border-border-subtle bg-slate-50 text-primary cursor-pointer hover:bg-slate-100 transition-colors focus:outline-none shrink-0"
+          >
+            {mobileMenuOpen ? <IconX className="w-5 h-5" /> : <IconMenu2 className="w-5 h-5" />}
+          </button>
+          <Link href="/" className="font-heading text-xl sm:text-2xl font-extrabold tracking-tight text-primary hover:opacity-95 transition-opacity shrink-0">
+            Tuto<span className="text-secondary">board</span>
+          </Link>
+        </div>
 
         {/* RIGHT SIDE CONTAINER */}
-        <div className="flex items-center gap-4 md:gap-8">
+        <div className="flex items-center gap-3 sm:gap-8">
           {/* DESKTOP MENU LINKS */}
           <div className="hidden md:flex items-center gap-8">
             <Link
@@ -214,8 +235,8 @@ export default function Navbar() {
               Mentors
             </Link>
             <Link
-              href="/#about"
-              className="text-sm font-medium text-text-muted hover:text-secondary transition-colors"
+              href="/about"
+              className={getHeaderLinkClass("/about")}
             >
               About
             </Link>
@@ -226,28 +247,24 @@ export default function Navbar() {
             {loading ? (
               <div className="h-9 w-28 bg-slate-100/60 animate-pulse rounded-full" />
             ) : user ? (
-              <div className="flex items-center gap-5 sm:gap-6">
+              <div className="flex items-center gap-2.5 sm:gap-4">
                 {(role === "parent" || role === "student" || !role) && <UserNotificationBell />}
                 <div className="relative" ref={dropdownRef}>
                 {/* Pill trigger */}
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 border border-[#d0e0f8] bg-white hover:bg-slate-50 hover:border-slate-300 rounded-full cursor-pointer transition-all duration-200 select-none shadow-sm focus:outline-none"
+                  className="flex items-center gap-2 p-0 sm:pl-1.5 sm:pr-3.5 sm:py-1.5 border-0 sm:border border-[#d0e0f8] bg-transparent sm:bg-white hover:bg-slate-50 hover:border-slate-300 rounded-full cursor-pointer transition-all duration-200 select-none shadow-none sm:shadow-sm focus:outline-none"
                 >
                   <div 
-                    className="w-9 h-9 rounded-full bg-[#0f2347] flex items-center justify-center font-heading text-xs font-extrabold text-[#ffc107] shadow-inner" 
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0f2347] flex items-center justify-center font-heading text-xs font-extrabold text-[#ffc107] shadow-inner shrink-0" 
                     title={user.email}
                   >
                     {getUserInitials(user)}
                   </div>
-                  <span className="text-sm font-semibold text-[#0f2347] tracking-tight max-w-[80px] sm:max-w-[120px] truncate">
+                  <span className="hidden sm:inline-block text-sm font-semibold text-[#0f2347] tracking-tight max-w-[120px] truncate">
                     {getUserDisplayName(user)}
                   </span>
-                  {dropdownOpen ? (
-                    <IconChevronUp className="w-4 h-4 text-[#3b82f6]" />
-                  ) : (
-                    <IconChevronDown className="w-4 h-4 text-[#3b82f6]" />
-                  )}
+                  <IconChevronDown className="hidden sm:inline-block w-4 h-4 text-[#3b82f6]" />
                 </button>
 
                 {/* Dropdown Menu */}
@@ -271,9 +288,9 @@ export default function Navbar() {
                     )}
                     {(!role || role === "parent" || role === "student") && (
                       <Link
-                        href={role === "student" ? "/lms/courses" : "/bookings"}
+                        href={role === "student" ? "/lms/bookings" : "/bookings"}
                         onClick={() => setDropdownOpen(false)}
-                        className={getDropdownItemClass(role === "student" ? "/lms/courses" : "/bookings")}
+                        className={getDropdownItemClass(role === "student" ? "/lms/bookings" : "/bookings")}
                       >
                         Bookings
                       </Link>
@@ -309,147 +326,82 @@ export default function Navbar() {
                 </div>
               </div>
             ) : (
-              <div className="hidden md:flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   onClick={() => openAuth("signin")}
-                  className="text-xs font-semibold px-5 py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer focus:outline-none"
+                  className="text-xs font-semibold px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer focus:outline-none"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={() => openAuth("signup")}
-                  className="text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer focus:outline-none"
+                  className="hidden sm:inline-block text-xs font-semibold px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 hover:shadow-md transition-all cursor-pointer focus:outline-none"
                 >
                   Sign Up
                 </button>
               </div>
             )}
-
-            {/* MOBILE MENU TOGGLE */}
-            <button 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden w-10 h-10 rounded-lg flex items-center justify-center border border-border-subtle bg-slate-50 text-primary cursor-pointer hover:bg-slate-100 transition-colors focus:outline-none"
-            >
-              {mobileMenuOpen ? <IconX className="w-5 h-5" /> : <IconMenu2 className="w-5 h-5" />}
-            </button>
           </div>
         </div>
       </nav>
 
       {/* MOBILE DRAWER MENU */}
       {mobileMenuOpen && (
-        <div className="absolute top-[70px] left-0 right-0 bg-white border-b border-border-subtle shadow-lg p-5 flex flex-col gap-4 md:hidden z-50 animate-fade-in">
-          <Link
-            href="/"
-            onClick={() => setMobileMenuOpen(false)}
-            className={getMobileHeaderLinkClass("/")}
-          >
-            Home
-          </Link>
-          <Link
-            href="/courses"
-            onClick={() => setMobileMenuOpen(false)}
-            className={getMobileHeaderLinkClass("/courses")}
-          >
-            Courses
-          </Link>
-          <Link
-            href="/sessions"
-            onClick={() => setMobileMenuOpen(false)}
-            className={getMobileHeaderLinkClass("/sessions")}
-          >
-            Sessions
-          </Link>
-          <Link
-            href="/mentors"
-            onClick={() => setMobileMenuOpen(false)}
-            className={getMobileHeaderLinkClass("/mentors")}
-          >
-            Mentors
-          </Link>
-          <Link
-            href="/#about"
-            onClick={() => setMobileMenuOpen(false)}
-            className="text-sm font-semibold text-primary py-2 border-b border-slate-50 hover:text-secondary transition-colors"
-          >
-            About
-          </Link>
-
-          {/* MOBILE AUTH */}
-          <div className="pt-2">
-            {loading ? (
-              <div className="h-10 w-full bg-slate-100/50 animate-pulse rounded-lg" />
-            ) : user ? (
-              <div className="flex flex-col gap-3">
-                <div className="border-t border-slate-100 my-1"></div>
-                <Link
-                  href={role === "mentor" ? "/mentor/profile" : "/profile"}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={getMobileDropdownItemClass(role === "mentor" ? "/mentor/profile" : "/profile")}
-                >
-                  Profile
-                </Link>
-                {role === "mentor" && (
-                  <Link
-                    href="/mentor/availability"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={getMobileDropdownItemClass("/mentor/availability")}
-                  >
-                    Manage Availability
-                  </Link>
-                )}
-                {(!role || role === "parent" || role === "student") && (
-                  <Link
-                    href={role === "student" ? "/lms/courses" : "/bookings"}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={getMobileDropdownItemClass(role === "student" ? "/lms/courses" : "/bookings")}
-                  >
-                    Bookings
-                  </Link>
-                )}
-                {(!role || role === "parent") && (
-                  <Link
-                    href="/my-children"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={getMobileDropdownItemClass("/my-children")}
-                  >
-                    My children
-                  </Link>
-                )}
-                <Link
-                  href={getDashboardLink()}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={getMobileDropdownItemClass(getDashboardLink())}
-                >
-                  {role === "student" ? "LMS Portal" : role === "mentor" ? "Mentor Portal" : role === "admin" ? "Admin Portal" : "Dashboard"}
-                </Link>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    handleSignOut();
-                  }}
-                  className="w-full text-left text-sm font-semibold text-red-600 py-2 hover:text-red-700 transition-colors cursor-pointer"
-                >
-                  Sign out
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => openAuth("signin")}
-                  className="text-center text-xs font-semibold py-2.5 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer focus:outline-none"
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => openAuth("signup")}
-                  className="text-center text-xs font-semibold py-2.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-all cursor-pointer focus:outline-none"
-                >
-                  Sign Up
-                </button>
-              </div>
-            )}
+        <div className="fixed top-[70px] left-0 right-0 bottom-0 bg-white z-50 p-6 flex flex-col justify-between md:hidden overflow-hidden touch-none animate-fade-in font-sans">
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className={getMobileHeaderLinkClass("/")}
+            >
+              Home
+            </Link>
+            <Link
+              href="/courses"
+              onClick={() => setMobileMenuOpen(false)}
+              className={getMobileHeaderLinkClass("/courses")}
+            >
+              Courses
+            </Link>
+            <Link
+              href="/sessions"
+              onClick={() => setMobileMenuOpen(false)}
+              className={getMobileHeaderLinkClass("/sessions")}
+            >
+              Sessions
+            </Link>
+            <Link
+              href="/mentors"
+              onClick={() => setMobileMenuOpen(false)}
+              className={getMobileHeaderLinkClass("/mentors")}
+            >
+              Mentors
+            </Link>
+            <Link
+              href="/about"
+              onClick={() => setMobileMenuOpen(false)}
+              className={getMobileHeaderLinkClass("/about")}
+            >
+              About
+            </Link>
           </div>
+
+          {!user && (
+            <div className="pt-4 border-t border-slate-100 flex gap-3 mb-6">
+              <button
+                onClick={() => { setMobileMenuOpen(false); openAuth("signin"); }}
+                className="flex-1 text-center text-xs font-semibold py-3 rounded-xl border border-primary text-primary hover:bg-primary/5 transition-all cursor-pointer focus:outline-none"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { setMobileMenuOpen(false); openAuth("signup"); }}
+                className="flex-1 text-center text-xs font-semibold py-3 rounded-xl bg-primary text-white hover:bg-primary/90 transition-all cursor-pointer focus:outline-none"
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
         </div>
       )}
 

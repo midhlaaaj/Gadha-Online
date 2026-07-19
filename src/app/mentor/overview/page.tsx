@@ -185,7 +185,7 @@ export default function MentorOverviewPage() {
       {/* ── Top row: welcome + profile pill ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-extrabold font-heading text-[#1B3A6B]">
+          <h1 className="text-[20px] md:text-[22px] font-extrabold font-heading text-[#1B3A6B]">
             {greeting}, {profile?.name?.split(" ")[0] ?? "Tutor"} 👋
           </h1>
           <p className="text-[13px] text-[#9BA8C0] mt-1">
@@ -241,7 +241,7 @@ export default function MentorOverviewPage() {
           {/* Today's Classes */}
           <div className="bg-white rounded-2xl border border-[#E6EBF8] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[15px] font-bold text-[#1B3A6B]">Today's Schedule</h2>
+              <h2 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Today's Schedule</h2>
               <Link href="/mentor/classes" className="text-[11px] font-semibold text-[#2F7FE8] hover:underline flex items-center gap-1">
                 View calendar <IconArrowRight className="w-3 h-3" />
               </Link>
@@ -263,7 +263,7 @@ export default function MentorOverviewPage() {
           {/* Upcoming Classes */}
           <div className="bg-white rounded-2xl border border-[#E6EBF8] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[15px] font-bold text-[#1B3A6B]">Upcoming Sessions</h2>
+              <h2 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Upcoming Sessions</h2>
               <Link href="/mentor/classes" className="text-[11px] font-semibold text-[#2F7FE8] hover:underline">
                 View all →
               </Link>

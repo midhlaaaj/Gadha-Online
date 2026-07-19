@@ -232,7 +232,7 @@ export default function StudentOverviewPage() {
       {/* ── Top row: welcome + profile pill ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-extrabold font-heading text-[#1B3A6B]">
+          <h1 className="text-[20px] md:text-[22px] font-extrabold font-heading text-[#1B3A6B]">
             {greeting}, {profile?.name?.split(" ")[0] ?? "Student"} 👋
           </h1>
           <p className="text-[13px] text-[#9BA8C0] mt-1">
@@ -287,7 +287,7 @@ export default function StudentOverviewPage() {
           {/* Today's Classes */}
           <div className="bg-white rounded-2xl border border-[#E6EBF8] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[15px] font-bold text-[#1B3A6B]">Today's Classes</h2>
+              <h2 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Today's Classes</h2>
               <Link href="/lms/classes" className="text-[11px] font-semibold text-[#2F7FE8] hover:underline flex items-center gap-1">
                 View all <IconArrowRight className="w-3 h-3" />
               </Link>
@@ -309,7 +309,7 @@ export default function StudentOverviewPage() {
           {/* Pending Assignments */}
           <div className="bg-white rounded-2xl border border-[#E6EBF8] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[15px] font-bold text-[#1B3A6B]">Pending Assignments</h2>
+              <h2 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Pending Assignments</h2>
               <Link href="/lms/assignments" className="text-[11px] font-semibold text-[#2F7FE8] hover:underline flex items-center gap-1">
                 View all <IconArrowRight className="w-3 h-3" />
               </Link>

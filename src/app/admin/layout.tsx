@@ -15,10 +15,18 @@ import {
   IconNotebook,
   IconCalendar,
   IconCreditCard,
+  IconInfoCircle,
+  IconInbox,
+  IconShieldLock,
 } from "@tabler/icons-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isLoginPage = pathname === "/admin/login";
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   // Helper to determine active class
   const getActiveClass = (route: string) => {
@@ -44,8 +52,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (pathname.startsWith("/admin/bookings")) return "Bookings";
     if (pathname.startsWith("/admin/students")) return "Students & Parents";
     if (pathname.startsWith("/admin/schedules")) return "Schedules & Attendance";
-    if (pathname.startsWith("/admin/payments")) return "Payments Ledger";
+    if (pathname.startsWith("/admin/payments")) return "Revenue Trends";
     if (pathname.startsWith("/admin/hero")) return "Hero Section";
+    if (pathname.startsWith("/admin/about")) return "About Page";
+    if (pathname.startsWith("/admin/leads")) return "Leads";
+    if (pathname.startsWith("/admin/admins")) return "Admin Management";
     if (pathname.startsWith("/admin/settings")) return "Settings";
     return "Admin Panel";
   };
@@ -131,7 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/payments")}`}
           >
             <IconCreditCard className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/payments")}`} />
-            Payments Ledger
+            Revenue Trends
             {pathname.startsWith("/admin/payments") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
           </Link>
 
@@ -151,6 +162,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <IconHome className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/hero")}`} />
             Hero Section
             {pathname.startsWith("/admin/hero") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/about"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/about")}`}
+          >
+            <IconInfoCircle className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/about")}`} />
+            About Page
+            {pathname.startsWith("/admin/about") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/leads"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/leads")}`}
+          >
+            <IconInbox className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/leads")}`} />
+            Leads
+            {pathname.startsWith("/admin/leads") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/admins"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/admins")}`}
+          >
+            <IconShieldLock className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/admins")}`} />
+            Admin Management
+            {pathname.startsWith("/admin/admins") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
           </Link>
         </nav>
 

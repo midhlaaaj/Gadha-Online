@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
-import { validateEmail } from "@/lib/validate";
+import { sanitizeText, validateEmail, validatePhone } from "@/lib/validate";
 
 // ----------------------------------------------------
 // HELPERS
@@ -177,6 +177,121 @@ export async function getHomepageData() {
   };
 }
 
+export async function getAboutPageData() {
+  noStore();
+  const supabase = await createClient();
+
+  const { data: settings } = await supabase
+    .from("about_page_settings")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  const { data: teamMembers } = await supabase
+    .from("team_members")
+    .select("*")
+    .eq("show_on_site", true)
+    .order("display_order", { ascending: true });
+
+  const { data: achievements } = await supabase
+    .from("achievements")
+    .select("*")
+    .eq("show_on_site", true)
+    .order("display_order", { ascending: true });
+
+  const effectiveTeam = teamMembers && teamMembers.length > 0 ? teamMembers : [
+    {
+      id: "tm-1",
+      name: "Dr. Vikram Sethi",
+      role: "Founder & CEO",
+      bio: "Ex-IIT Delhi & Stanford Alum with 12+ years in education tech. Passionate about personalized learning for every student.",
+      photo_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+      avatar_bg: "#1B3A6B",
+      avatar_text: "VS",
+    },
+    {
+      id: "tm-2",
+      name: "Ananya Roy",
+      role: "Head of Academics",
+      bio: "M.Ed. Harvard University with 10+ years designing high-impact curricula for competitive exams and STEM education.",
+      photo_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+      avatar_bg: "#2F7FE8",
+      avatar_text: "AR",
+    },
+    {
+      id: "tm-3",
+      name: "Kavita Rao",
+      role: "VP of Product",
+      bio: "Former Lead Product Manager at top edtech platforms. Dedicated to building engaging learning experiences.",
+      photo_url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
+      avatar_bg: "#0F6E56",
+      avatar_text: "KR",
+    },
+    {
+      id: "tm-4",
+      name: "Rohan Deshmukh",
+      role: "Head of Student Success",
+      bio: "Experienced academic counselor committed to mentor matching, student growth, and career guidance.",
+      photo_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
+      avatar_bg: "#993556",
+      avatar_text: "RD",
+    },
+  ];
+
+  const effectiveAchievements = achievements && achievements.length > 0 ? achievements : [
+    {
+      id: "ach-1",
+      stat_value: "15,000+",
+      stat_label: "Active Learners Guided Across India",
+      image_url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&q=80",
+    },
+    {
+      id: "ach-2",
+      stat_value: "98.4%",
+      stat_label: "Exam Qualification & Grade Improvement Rate",
+      image_url: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80",
+    },
+    {
+      id: "ach-3",
+      stat_value: "500,000+",
+      stat_label: "Hours of 1-on-1 Mentorship Delivered",
+      image_url: "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80",
+    },
+    {
+      id: "ach-4",
+      stat_value: "50+",
+      stat_label: "Top Universities & Dream Companies Placements",
+      image_url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80",
+    },
+  ];
+
+  return {
+    settings: settings || {
+      hero_title: "About Tutoboard",
+      hero_subtitle: "Connecting students with expert mentors since day one.",
+      vision_title: "Our Vision",
+      vision_text: "To make quality, personalized education accessible to every student, everywhere.",
+      mission_title: "Our Mission",
+      mission_text: "We connect students with verified, expert mentors for 1-on-1 sessions and structured courses tailored to their pace and goals.",
+    },
+    teamMembers: effectiveTeam.map((m: any) => ({
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      bio: m.bio,
+      photoUrl: m.photo_url || m.photoUrl || "",
+      avatarBg: m.avatar_bg || m.avatarBg,
+      avatarText: m.avatar_text || m.avatarText,
+    })),
+    achievements: effectiveAchievements.map((a: any) => ({
+      id: a.id,
+      statValue: a.stat_value || a.statValue,
+      statLabel: a.stat_label || a.statLabel,
+      imageUrl: a.image_url || a.imageUrl || "",
+    })),
+  };
+}
+
 export async function getAdminData() {
   noStore();
   const supabase = createAdminClient();
@@ -187,6 +302,43 @@ export async function getAdminData() {
     .select("*")
     .eq("id", 1)
     .single();
+
+  // 1b. Get About Page settings
+  const { data: aboutSettings } = await supabase
+    .from("about_page_settings")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  // 1c. Get Team Members (all, including hidden)
+  const { data: dbTeamMembers } = await supabase
+    .from("team_members")
+    .select("*")
+    .order("display_order", { ascending: true });
+
+  // 1d. Get Achievements (all, including hidden)
+  const { data: dbAchievements } = await supabase
+    .from("achievements")
+    .select("*")
+    .order("display_order", { ascending: true });
+
+  // 1e. Get Leads (contact form submissions)
+  const { data: dbLeads } = await supabase
+    .from("contact_messages")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  // 1f. Get Admins + pending admin invitations
+  const { data: dbAdmins } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("role", "admin")
+    .order("created_at", { ascending: false });
+
+  const { data: dbAdminInvites } = await supabase
+    .from("admin_invitations")
+    .select("*")
+    .order("created_at", { ascending: false });
 
   // 2. Get Testimonials
   const { data: testimonials } = await supabase
@@ -464,6 +616,56 @@ export async function getAdminData() {
       mediaUrl: t.media_url || "",
       mediaType: t.media_type || "",
     })),
+    aboutSettings: aboutSettings || {
+      hero_title: "About Tutoboard",
+      hero_subtitle: "Connecting students with expert mentors since day one.",
+      vision_title: "Our Vision",
+      vision_text: "To make quality, personalized education accessible to every student, everywhere.",
+      mission_title: "Our Mission",
+      mission_text: "We connect students with verified, expert mentors for 1-on-1 sessions and structured courses tailored to their pace and goals.",
+    },
+    teamMembers: (dbTeamMembers || []).map((m: any) => ({
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      bio: m.bio,
+      photoUrl: m.photo_url || "",
+      avatarBg: m.avatar_bg,
+      avatarText: m.avatar_text,
+      displayOrder: m.display_order,
+      showOnSite: m.show_on_site,
+    })),
+    achievements: (dbAchievements || []).map((a: any) => ({
+      id: a.id,
+      statValue: a.stat_value,
+      statLabel: a.stat_label,
+      imageUrl: a.image_url || "",
+      displayOrder: a.display_order,
+      showOnSite: a.show_on_site,
+    })),
+    leads: (dbLeads || []).map((l: any) => ({
+      id: l.id,
+      fullName: l.full_name,
+      email: l.email,
+      subject: l.subject,
+      phone: l.phone || "",
+      message: l.message,
+      isResolved: l.is_resolved,
+      createdAt: l.created_at,
+    })),
+    admins: (dbAdmins || []).map((p: any) => ({
+      id: p.id,
+      fullName: p.full_name,
+      email: p.email,
+      createdAt: p.created_at,
+    })),
+    adminInvitations: (dbAdminInvites || []).map((inv: any) => ({
+      id: inv.id,
+      email: inv.email,
+      fullName: inv.full_name || "",
+      status: inv.status,
+      createdAt: inv.created_at,
+    })),
     courses,
     sessions,
     mentors,
@@ -477,33 +679,79 @@ export async function getAdminData() {
 
 export async function updateHeroSettings(data: any) {
   const supabase = createAdminClient();
+  const updatePayload: any = {
+    headline: data.headline,
+    accented_text: data.accented_text || data.accentedText,
+    subheading: data.subheading,
+    primary_cta: data.primary_cta || data.primaryCta,
+    primary_link: data.primary_link || data.primaryLink,
+    secondary_cta: data.secondary_cta || data.secondaryCta,
+    secondary_link: data.secondary_link || data.secondaryLink,
+    c1: data.c1,
+    cl1: data.cl1,
+    c2: data.c2,
+    cl2: data.cl2,
+    c3: data.c3,
+    cl3: data.cl3,
+    c4: data.c4,
+    cl4: data.cl4,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (data.hero_image_url || data.heroImageUrl) {
+    updatePayload.hero_image_url = data.hero_image_url || data.heroImageUrl;
+  }
+
   const { error } = await supabase
     .from("homepage_settings")
-    .update({
-      badge_text: data.badge_text || data.badgeText,
-      headline: data.headline,
-      accented_text: data.accented_text || data.accentedText,
-      subheading: data.subheading,
-      primary_cta: data.primary_cta || data.primaryCta,
-      primary_link: data.primary_link || data.primaryLink,
-      secondary_cta: data.secondary_cta || data.secondaryCta,
-      secondary_link: data.secondary_link || data.secondaryLink,
-      c1: data.c1,
-      cl1: data.cl1,
-      c2: data.c2,
-      cl2: data.cl2,
-      c3: data.c3,
-      cl3: data.cl3,
-      c4: data.c4,
-      cl4: data.cl4,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", 1);
 
   if (error) throw new Error(error.message);
   revalidatePath("/");
   revalidatePath("/admin");
   return { success: true };
+}
+
+export async function uploadHeroImage(formData: FormData) {
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("No file provided");
+
+  const supabase = createAdminClient();
+  const bucketName = "hero-images";
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.error("Storage list error:", listError);
+  }
+  const bucketExists = buckets?.some((b) => b.name === bucketName);
+
+  if (!bucketExists) {
+    const { error: createError } = await supabase.storage.createBucket(bucketName, {
+      public: true,
+      fileSizeLimit: 10485760, // 10MB
+    });
+    if (createError) {
+      console.warn("Storage bucket creation notice:", createError);
+    }
+  }
+
+  const fileExt = file.name.split(".").pop();
+  const fileName = `hero-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, buffer, {
+      contentType: file.type,
+      duplex: "half",
+    } as any);
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  return { publicUrl };
 }
 
 // ----------------------------------------------------
@@ -913,22 +1161,329 @@ export async function toggleTestimonialStatus(id: string, currentShow: boolean) 
 }
 
 // ----------------------------------------------------
+// ABOUT PAGE
+// ----------------------------------------------------
+
+export async function updateAboutSettings(data: any) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("about_page_settings")
+    .update({
+      hero_title: data.heroTitle,
+      hero_subtitle: data.heroSubtitle,
+      vision_title: data.visionTitle,
+      vision_text: data.visionText,
+      mission_title: data.missionTitle,
+      mission_text: data.missionText,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", 1);
+  if (error) throw new Error(error.message);
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function uploadTeamMemberPhoto(formData: FormData) {
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("No file provided");
+
+  const supabase = createAdminClient();
+  const bucketName = "team-photos";
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.error("Storage list error:", listError);
+  }
+  const bucketExists = buckets?.some((b) => b.name === bucketName);
+
+  if (!bucketExists) {
+    const { error: createError } = await supabase.storage.createBucket(bucketName, {
+      public: true,
+      fileSizeLimit: 10485760, // 10MB
+    });
+    if (createError) {
+      console.warn("Storage bucket creation notice:", createError);
+    }
+  }
+
+  const fileExt = file.name.split(".").pop();
+  const fileName = `team-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, buffer, {
+      contentType: file.type,
+      duplex: "half",
+    } as any);
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  return { publicUrl };
+}
+
+export async function upsertTeamMember(member: any) {
+  const supabase = createAdminClient();
+
+  const init = (member.name || "T")
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
+
+  const memberData = {
+    name: member.name,
+    role: member.role,
+    bio: member.bio || "",
+    photo_url: member.photoUrl || "",
+    avatar_bg: member.avatarBg || "#1B3A6B",
+    avatar_text: init,
+    display_order: Number(member.displayOrder) || 0,
+    show_on_site: member.showOnSite,
+  };
+
+  const isNew = !member.id;
+
+  if (isNew) {
+    const { error } = await supabase.from("team_members").insert([memberData]);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("team_members")
+      .update(memberData)
+      .eq("id", member.id);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function deleteTeamMember(id: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("team_members").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function toggleTeamMemberStatus(id: string, currentShow: boolean) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("team_members")
+    .update({ show_on_site: !currentShow })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function reorderTeamMembers(items: { id: string; displayOrder: number }[]) {
+  const supabase = createAdminClient();
+  for (const item of items) {
+    await supabase
+      .from("team_members")
+      .update({ display_order: item.displayOrder })
+      .eq("id", item.id);
+  }
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function uploadAchievementImage(formData: FormData) {
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("No file provided");
+
+  const supabase = createAdminClient();
+  const bucketName = "achievement-images";
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.error("Storage list error:", listError);
+  }
+  const bucketExists = buckets?.some((b) => b.name === bucketName);
+
+  if (!bucketExists) {
+    const { error: createError } = await supabase.storage.createBucket(bucketName, {
+      public: true,
+      fileSizeLimit: 10485760, // 10MB
+    });
+    if (createError) {
+      console.warn("Storage bucket creation notice:", createError);
+    }
+  }
+
+  const fileExt = file.name.split(".").pop();
+  const fileName = `achievement-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, buffer, {
+      contentType: file.type,
+      duplex: "half",
+    } as any);
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  return { publicUrl };
+}
+
+export async function upsertAchievement(achievement: any) {
+  const supabase = createAdminClient();
+
+  const achievementData = {
+    stat_value: achievement.statValue,
+    stat_label: achievement.statLabel,
+    image_url: achievement.imageUrl || "",
+    display_order: Number(achievement.displayOrder) || 0,
+    show_on_site: achievement.showOnSite,
+  };
+
+  const isNew = !achievement.id;
+
+  if (isNew) {
+    const { error } = await supabase.from("achievements").insert([achievementData]);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("achievements")
+      .update(achievementData)
+      .eq("id", achievement.id);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function deleteAchievement(id: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("achievements").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function toggleAchievementStatus(id: string, currentShow: boolean) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("achievements")
+    .update({ show_on_site: !currentShow })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function reorderAchievements(items: { id: string; displayOrder: number }[]) {
+  const supabase = createAdminClient();
+  for (const item of items) {
+    await supabase
+      .from("achievements")
+      .update({ display_order: item.displayOrder })
+      .eq("id", item.id);
+  }
+  revalidatePath("/about");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+// ----------------------------------------------------
 // CONTACT MESSAGES
 // ----------------------------------------------------
 
 export async function submitContactMessage(data: any) {
+  const fullName = sanitizeText(data.fullName, 100);
+  const email = (data.email || "").trim();
+  const subject = sanitizeText(data.subject, 150);
+  const phone = data.phone ? sanitizeText(data.phone, 20) : null;
+  const message = sanitizeText(data.message, 2000);
+
+  if (!fullName) {
+    throw new Error("Please enter your full name.");
+  }
+  if (!validateEmail(email)) {
+    throw new Error("Please enter a valid email address.");
+  }
+  if (phone && !validatePhone(phone)) {
+    throw new Error("Please enter a valid phone number.");
+  }
+  if (!message) {
+    throw new Error("Please enter your message.");
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("contact_messages").insert([
     {
-      full_name: data.fullName,
-      email: data.email,
-      subject: data.subject,
-      phone: data.phone || null,
-      message: data.message,
+      full_name: fullName,
+      email: email,
+      subject: subject || "General Inquiry",
+      phone: phone,
+      message: message,
     },
   ]);
 
   if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+// ----------------------------------------------------
+// LEADS (contact form submissions)
+// ----------------------------------------------------
+
+export async function toggleLeadResolved(id: string, currentResolved: boolean) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ is_resolved: !currentResolved })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+// ----------------------------------------------------
+// ADMIN MANAGEMENT
+// ----------------------------------------------------
+
+export async function inviteAdmin(data: { email: string; fullName?: string }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient.from("admin_invitations").insert([
+    {
+      email: data.email.trim().toLowerCase(),
+      full_name: data.fullName || null,
+      invited_by: user?.id || null,
+      status: "pending",
+    },
+  ]);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function revokeAdminInvite(id: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("admin_invitations").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin");
   return { success: true };
 }
 
@@ -3752,6 +4307,36 @@ export async function checkMentorInvitation(email: string) {
     return { success: true };
   } catch (err) {
     console.error("checkMentorInvitation error:", err);
+    return { success: false, error: "An unexpected error occurred. Please try again." };
+  }
+}
+
+export async function checkAdminInvitation(email: string) {
+  const emailCheck = validateEmail(email);
+  if (!emailCheck.valid) {
+    return { success: false, error: emailCheck.error };
+  }
+
+  try {
+    const adminClient = createAdminClient();
+    const { data: invite, error: inviteErr } = await adminClient
+      .from("admin_invitations")
+      .select("id, status")
+      .eq("email", email.trim().toLowerCase())
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (inviteErr) {
+      return { success: false, error: "Failed to verify invitation status" };
+    }
+
+    if (!invite) {
+      return { success: false, error: "No pending invitation found for this email address. Admin accounts can only be created by invitation." };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("checkAdminInvitation error:", err);
     return { success: false, error: "An unexpected error occurred. Please try again." };
   }
 }

@@ -91,7 +91,7 @@ export function UserNotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl border border-[#D0DCF5] shadow-2xl shadow-[#1B3A6B]/10 z-50 overflow-hidden">
+        <div className="fixed right-3 top-16 max-w-[calc(100vw-24px)] w-80 sm:absolute sm:right-0 sm:top-11 sm:w-80 sm:max-w-none bg-white rounded-2xl border border-[#D0DCF5] shadow-2xl shadow-[#1B3A6B]/10 z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0F3FB]">
             <p className="text-[12px] font-extrabold text-[#1B3A6B]">Notifications</p>
             <button onClick={() => setOpen(false)} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-slate-100 cursor-pointer">

@@ -17,7 +17,6 @@ import {
   IconCode,
   IconMap,
   IconCalculator,
-  IconHeart,
   IconDeviceLaptop,
   IconMessageCircle,
   IconCertificate,
@@ -32,6 +31,7 @@ import {
 } from "@tabler/icons-react";
 import { getCourseDetails, getItemReviews, addReview } from "../../actions";
 import BookingModal from "@/components/BookingModal";
+import { MobileStickyBookingBar } from "@/components/MobileStickyBookingBar";
 
 // Dynamic Icon Picker Helper
 const getDetailsIcon = (name: string) => {
@@ -388,7 +388,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* Shimmering Layout Grid */}
-          <div className="max-w-7xl mx-auto w-full px-6 md:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="max-w-7xl mx-auto w-full px-6 md:px-12 pt-8 pb-20 lg:pb-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             {/* Left Column Skeletons */}
             <div className="lg:col-span-2 space-y-6">
               {/* Hero Banner Banner Skeleton */}
@@ -521,7 +521,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* MAIN LAYOUT */}
-      <div className="max-w-7xl mx-auto w-full px-6 md:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <div className="max-w-7xl mx-auto w-full px-6 md:px-12 pt-8 pb-20 lg:pb-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
         {/* LEFT COLUMN (2/3 width on desktop) */}
         <div className="lg:col-span-2 space-y-6">
@@ -564,14 +564,10 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                   {course.class_level}
                 </span>
               )}
-              {isLive ? (
+              {isLive && (
                 <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-red-50 text-red-600 border border-red-150 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                   LIVE CLASSES
-                </span>
-              ) : (
-                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-150">
-                  BESTSELLER
                 </span>
               )}
             </div>
@@ -627,53 +623,6 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                     : "English"} {isLive && "· IST"}
                 </span>
               </div>
-            </div>
-          </div>
-
-          {/* MENTOR CARD */}
-          <div className="bg-white border border-border-subtle rounded-2xl p-[22px] shadow-sm">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center font-heading text-base font-bold text-accent shrink-0">
-                  {course.mentor.avatarText}
-                </div>
-                <div>
-                  <p className="text-[10px] text-secondary font-bold uppercase tracking-wider">Your mentor</p>
-                  <h4 className="font-heading text-base font-bold text-primary">{course.mentor.name}</h4>
-                  <p className="text-xs text-text-muted">{course.mentor.expertise} · {course.mentor.qualification} · {course.mentor.experience} yrs exp</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-xs font-semibold sm:border-l sm:border-border-subtle sm:pl-6 py-1">
-                <div>
-                  <strong className="text-primary text-base font-heading font-bold block">{course.mentor.students || 420}</strong>
-                  <span className="text-[10px] text-text-muted font-normal">Students</span>
-                </div>
-                <div>
-                  <strong className="text-primary text-base font-heading font-bold block">★ {course.mentor.rating}</strong>
-                  <span className="text-[10px] text-text-muted font-normal">Rating</span>
-                </div>
-              </div>
-              <Link 
-                href={`/mentors/${course.mentor.id}`}
-                className="text-xs font-semibold px-4 py-2 rounded-lg border border-border-subtle hover:border-primary text-primary transition-colors whitespace-nowrap self-stretch sm:self-auto text-center cursor-pointer"
-              >
-                View profile
-              </Link>
-            </div>
-          </div>
-
-          {/* WHAT YOU'LL LEARN */}
-          <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm">
-            <h3 className="font-heading text-lg font-bold text-primary mb-4">What you&apos;ll learn</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {outcomes.map((item: string, index: number) => (
-                <div key={index} className="flex items-start gap-2.5 text-xs text-slate-700 leading-normal">
-                  <div className="w-5 h-5 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5 border border-green-150">
-                    <IconCheck className="w-3.5 h-3.5 text-green-700 stroke-[3]" />
-                  </div>
-                  <span>{item}</span>
-                </div>
-              ))}
             </div>
           </div>
 
@@ -805,10 +754,54 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             </div>
           )}
 
+          {/* WHAT YOU'LL LEARN */}
+          <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm">
+            <h3 className="font-heading text-lg font-bold text-primary mb-4">What you&apos;ll learn</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {outcomes.map((item: string, index: number) => (
+                <div key={index} className="flex items-start gap-2.5 text-xs text-slate-700 leading-normal">
+                  <div className="w-5 h-5 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5 border border-green-150">
+                    <IconCheck className="w-3.5 h-3.5 text-green-700 stroke-[3]" />
+                  </div>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* MENTOR CARD */}
+          <div className="bg-white border border-border-subtle rounded-2xl p-5 sm:p-[22px] shadow-sm space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center font-heading text-base font-bold text-accent shrink-0">
+                  {course.mentor.avatarText}
+                </div>
+                <div>
+                  <p className="text-[10px] text-secondary font-bold uppercase tracking-wider">Your mentor</p>
+                  <h4 className="font-heading text-base font-bold text-primary">{course.mentor.name}</h4>
+                  <p className="text-xs text-text-muted">{course.mentor.expertise} · {course.mentor.qualification} · {course.mentor.experience} yrs exp</p>
+                </div>
+              </div>
+
+              {/* Top Right Rating Badge */}
+              <div className="flex items-center gap-1 font-bold text-xs text-[#1B3A6B] bg-[#FFFBEB] border border-[#FDE68A] px-2.5 py-1 rounded-full shrink-0">
+                <IconStar className="w-3.5 h-3.5 fill-[#D97706] text-[#D97706]" />
+                <span>{course.mentor.rating}</span>
+              </div>
+            </div>
+
+            <Link 
+              href={`/mentors/${course.mentor.id}`}
+              className="w-full block text-xs font-semibold py-2.5 rounded-xl border border-border-subtle hover:border-primary text-primary transition-colors text-center cursor-pointer"
+            >
+              View profile
+            </Link>
+          </div>
+
           {/* STUDENT REVIEWS */}
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-hidden">
             <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-              <h3 className="font-heading text-lg font-bold text-primary">Student reviews</h3>
+              <h3 className="font-heading text-lg font-extrabold text-primary">Student reviews</h3>
               <button
                 onClick={() => setReviewModalOpen(true)}
                 className="text-xs font-bold text-secondary hover:text-secondary/80 border border-secondary px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
@@ -817,42 +810,44 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
               </button>
             </div>
             
-            <div className="space-y-3">
-              {loadingReviews ? (
-                <p className="text-xs text-text-muted">Loading reviews...</p>
-              ) : reviews.length === 0 ? (
-                <div className="border border-dashed border-border-subtle rounded-2xl p-6 text-center space-y-1">
-                  <p className="text-xs font-bold text-primary">No reviews yet</p>
-                  <p className="text-[10.5px] text-text-muted">Be the first to share your learning experience!</p>
-                </div>
-              ) : (
-                reviews.map((r: any) => (
-                  <div key={r.id} className="border border-border-subtle rounded-2xl p-5 shadow-sm space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-secondary/10 flex items-center justify-center font-heading text-xs font-bold text-secondary">
-                        {r.avatarText}
+            {loadingReviews ? (
+              <p className="text-xs text-text-muted">Loading reviews...</p>
+            ) : reviews.length === 0 ? (
+              <div className="w-full border border-dashed border-border-subtle rounded-2xl p-6 text-center space-y-1">
+                <p className="text-xs font-bold text-primary">No reviews yet</p>
+                <p className="text-[10.5px] text-text-muted">Be the first to share your learning experience!</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden relative w-full pb-2 [mask-image:linear-gradient(to_right,transparent,black_3%,black_97%,transparent)]">
+                <div className="animate-marquee gap-4">
+                  {[...reviews, ...reviews, ...reviews, ...reviews].map((r: any, idx: number) => (
+                    <div key={`${r.id}-${idx}`} className="w-[280px] sm:w-[320px] shrink-0 border border-border-subtle rounded-2xl p-5 shadow-sm space-y-3 bg-white">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-secondary/10 flex items-center justify-center font-heading text-xs font-bold text-secondary">
+                          {r.avatarText}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-primary">{r.studentName}</p>
+                          <p className="text-[10px] text-text-muted">
+                            {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric"
+                            })}
+                          </p>
+                        </div>
+                        <div className="ml-auto text-xs text-accent font-bold flex items-center">
+                          {"★".repeat(r.rating) + "☆".repeat(5 - r.rating)}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-primary">{r.studentName}</p>
-                        <p className="text-[10px] text-text-muted">
-                          {new Date(r.createdAt).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric"
-                          })}
-                        </p>
-                      </div>
-                      <div className="ml-auto text-xs text-accent font-bold flex items-center">
-                        {"★".repeat(r.rating) + "☆".repeat(5 - r.rating)}
-                      </div>
+                      <p className="text-xs leading-relaxed text-text-muted">
+                        {r.comment}
+                      </p>
                     </div>
-                    <p className="text-xs leading-relaxed text-text-muted">
-                      {r.comment}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
@@ -976,11 +971,6 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             >
               {course.format === "Live individual" ? "Book 1-on-1 Course" : isLive ? "Reserve your seat" : "Book now"}
             </button>
-            
-            <button className="w-full font-semibold text-xs py-3 border border-primary rounded-xl text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2 cursor-pointer">
-              <IconHeart className="w-4 h-4" />
-              <span>Add to wishlist</span>
-            </button>
 
             <hr className="border-t border-slate-100" />
 
@@ -1030,23 +1020,23 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           <div className="max-w-7xl mx-auto px-6 md:px-12">
             <h3 className="font-heading text-lg font-bold text-primary mb-6">Related courses</h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="flex lg:grid lg:grid-cols-3 gap-3 md:gap-6 overflow-x-auto lg:overflow-visible pb-4 lg:pb-0 snap-x snap-mandatory lg:snap-none premium-scrollbar">
               {related.map((rc: RelatedCourse) => (
                 <Link 
                   href={`/courses/${rc.id}`}
                   key={rc.id}
-                  className="bg-white border border-border-subtle rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+                  className="w-[calc(50%_-_6px)] md:w-[calc(50%_-_12px)] lg:w-auto min-w-[calc(50%_-_6px)] md:min-w-[calc(50%_-_12px)] lg:min-w-0 snap-start shrink-0 bg-white border border-border-subtle rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
                 >
-                  <div className={`w-full h-28 flex items-center justify-center ${getSubjectBgColor(rc.subject)}`}>
+                  <div className={`w-full h-24 sm:h-28 flex items-center justify-center ${getSubjectBgColor(rc.subject)}`}>
                     {getDetailsIcon(rc.iconName)}
                   </div>
-                  <div className="p-4 flex-1 flex flex-col justify-between">
-                    <h4 className="font-heading text-sm font-bold text-primary mb-2 line-clamp-1 group-hover:text-secondary transition-colors">
+                  <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+                    <h4 className="font-heading text-xs sm:text-sm font-bold text-primary mb-2 line-clamp-1 group-hover:text-secondary transition-colors">
                       {rc.title}
                     </h4>
-                    <div className="flex items-center justify-between text-xs text-text-muted pt-2 border-t border-slate-100 font-medium">
-                      <span>★ {rc.rating} ({rc.students})</span>
-                      <strong className="text-primary font-extrabold text-sm">₹{rc.price.toLocaleString("en-IN")}</strong>
+                    <div className="flex items-center justify-between text-[11px] sm:text-xs text-text-muted pt-2 border-t border-slate-100 font-medium">
+                      <span>★ {rc.rating}</span>
+                      <strong className="text-primary font-extrabold text-xs sm:text-sm">₹{rc.price.toLocaleString("en-IN")}</strong>
                     </div>
                   </div>
                 </Link>
@@ -1074,7 +1064,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
               </div>
               <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <Link href="/#about" className="hover:text-white transition-colors">About us</Link>
+                  <Link href="/about" className="hover:text-white transition-colors">About us</Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">Careers</a>
@@ -1111,6 +1101,12 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
         selectedSlot={course.format === "Live individual" ? selectedSlot : undefined}
         mentorName={course.mentor.name}
         isLiveIndividual={course.format === "Live individual"}
+      />
+      <MobileStickyBookingBar
+        price={course.price}
+        priceSuffix={isLive ? "/ batch" : "/ course"}
+        ctaLabel={course.format === "Live individual" ? "Book 1-on-1 Course" : isLive ? "Reserve your seat" : "Book now"}
+        onCtaClick={() => setBookingModalOpen(true)}
       />
 
       {/* REVIEW SUBMISSION MODAL */}

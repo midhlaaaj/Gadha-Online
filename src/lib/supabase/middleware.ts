@@ -95,6 +95,36 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/admin")) {
+    if (pathname === "/admin/login") {
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        if (profile?.role === "admin") {
+          return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+        }
+      }
+      return supabaseResponse;
+    }
+
+    if (!user) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    } else {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "admin") {
+        return NextResponse.redirect(new URL("/admin/login", request.url));
+      }
+    }
+  }
+
   if (pathname.startsWith("/dashboard")) {
     if (!user) {
       return NextResponse.redirect(new URL("/", request.url));

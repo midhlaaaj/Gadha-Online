@@ -440,14 +440,10 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
               ))}
             </div>
 
-            <div className="w-full grid grid-cols-3 gap-2 py-4 border-t border-b border-border-subtle my-5">
+            <div className="w-full grid grid-cols-2 gap-2 py-4 border-t border-b border-border-subtle my-5 text-center">
               <div>
                 <span className="text-[10px] text-text-muted font-medium uppercase tracking-wider block">Rating</span>
                 <span className="text-xs font-extrabold text-primary block mt-0.5">★ {mentor.rating}</span>
-              </div>
-              <div className="border-l border-border-subtle">
-                <span className="text-[10px] text-text-muted font-medium uppercase tracking-wider block">Students</span>
-                <span className="text-xs font-extrabold text-primary block mt-0.5">{mentor.students}+</span>
               </div>
               <div className="border-l border-border-subtle">
                 <span className="text-[10px] text-text-muted font-medium uppercase tracking-wider block">Experience</span>
@@ -507,7 +503,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
               </div>
               <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <Link href="/#about" className="hover:text-white transition-colors">About us</Link>
+                  <Link href="/about" className="hover:text-white transition-colors">About us</Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">Careers</a>

@@ -8,7 +8,6 @@ import {
   IconUsers,
   IconCalendar,
   IconWorld,
-  IconHeart,
   IconDeviceLaptop,
   IconMessageCircle,
   IconRotate,
@@ -28,6 +27,7 @@ import {
 } from "@tabler/icons-react";
 import { getSessionDetails, getItemReviews, addReview } from "../../actions";
 import BookingModal from "@/components/BookingModal";
+import { MobileStickyBookingBar } from "@/components/MobileStickyBookingBar";
 
 // Dynamic Icon Picker Helper
 const getDetailsIcon = (name: string) => {
@@ -255,7 +255,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* Shimmering Layout Grid */}
-          <div className="max-w-7xl mx-auto w-full px-6 md:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="max-w-7xl mx-auto w-full px-6 md:px-12 pt-8 pb-20 lg:pb-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             {/* Left Column Skeletons */}
             <div className="lg:col-span-2 space-y-6">
               {/* Hero Banner Banner Skeleton */}
@@ -408,7 +408,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* MAIN LAYOUT */}
-      <div className="max-w-7xl mx-auto w-full px-6 md:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <div className="max-w-7xl mx-auto w-full px-6 md:px-12 pt-8 pb-20 lg:pb-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
         {/* LEFT COLUMN (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
@@ -453,7 +453,6 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-text-muted font-medium pt-2">
               <div className="flex items-center gap-1">
                 <span className="text-accent font-bold">★ 4.9</span>
-                <span>({session.bookings} reviews)</span>
               </div>
               <span className="h-4 w-px bg-border-subtle hidden sm:block"></span>
               <div className="flex items-center gap-1.5">
@@ -474,10 +473,10 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* MENTOR CARD */}
-          <div className="bg-white border border-border-subtle rounded-2xl p-[22px] shadow-sm">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-white border border-border-subtle rounded-2xl p-5 sm:p-[22px] shadow-sm space-y-4">
+            <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center font-heading text-base font-bold text-accent">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center font-heading text-base font-bold text-accent shrink-0">
                   {session.mentor.avatarText}
                 </div>
                 <div>
@@ -486,23 +485,20 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
                   <p className="text-xs text-text-muted">{session.mentor.expertise} · {session.mentor.qualification} · {session.mentor.experience} yrs exp</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-xs font-semibold sm:border-l sm:border-border-subtle sm:pl-6 py-1">
-                <div>
-                  <strong className="text-primary text-base font-heading font-bold block">420</strong>
-                  <span className="text-[10px] text-text-muted font-normal">Students</span>
-                </div>
-                <div>
-                  <strong className="text-primary text-base font-heading font-bold block">★ {session.mentor.rating}</strong>
-                  <span className="text-[10px] text-text-muted font-normal">Rating</span>
-                </div>
+
+              {/* Top Right Rating Badge */}
+              <div className="flex items-center gap-1 font-bold text-xs text-[#1B3A6B] bg-[#FFFBEB] border border-[#FDE68A] px-2.5 py-1 rounded-full shrink-0">
+                <IconStar className="w-3.5 h-3.5 fill-[#D97706] text-[#D97706]" />
+                <span>{session.mentor.rating}</span>
               </div>
-              <Link 
-                href={`/mentors/${session.mentor.id}`}
-                className="text-xs font-semibold px-4 py-2 rounded-lg border border-border-subtle hover:border-primary text-primary transition-colors whitespace-nowrap self-stretch sm:self-auto text-center"
-              >
-                View profile
-              </Link>
             </div>
+
+            <Link 
+              href={`/mentors/${session.mentor.id}`}
+              className="w-full block text-xs font-semibold py-2.5 rounded-xl border border-border-subtle hover:border-primary text-primary transition-colors text-center cursor-pointer"
+            >
+              View profile
+            </Link>
           </div>
 
           {/* SESSION DETAILS GRID */}
@@ -589,9 +585,9 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* STUDENT REVIEWS */}
-          <div className="bg-white border border-border-subtle rounded-2xl p-[22px] shadow-sm space-y-4">
+          <div className="bg-white border border-border-subtle rounded-2xl p-[22px] shadow-sm space-y-4 overflow-hidden">
             <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-              <h3 className="font-heading text-base font-bold text-primary">Student reviews</h3>
+              <h3 className="font-heading text-base font-extrabold text-primary">Student reviews</h3>
               <button
                 onClick={() => setReviewModalOpen(true)}
                 className="text-[11px] font-bold text-secondary hover:text-secondary/80 border border-secondary px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
@@ -600,42 +596,44 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
               </button>
             </div>
             
-            <div className="divide-y divide-slate-100">
-              {loadingReviews ? (
-                <p className="text-xs text-text-muted py-2">Loading reviews...</p>
-              ) : reviews.length === 0 ? (
-                <div className="py-6 text-center space-y-1">
-                  <p className="text-xs font-bold text-primary">No reviews yet</p>
-                  <p className="text-[10.5px] text-text-muted">Be the first to share your learning experience!</p>
-                </div>
-              ) : (
-                reviews.map((r: any) => (
-                  <div key={r.id} className="py-3.5 space-y-2 first:pt-0 last:pb-0">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7.5 h-7.5 rounded-full bg-secondary/10 flex items-center justify-center text-[10px] font-bold text-secondary">
-                        {r.avatarText}
+            {loadingReviews ? (
+              <p className="text-xs text-text-muted py-2">Loading reviews...</p>
+            ) : reviews.length === 0 ? (
+              <div className="w-full py-6 text-center space-y-1">
+                <p className="text-xs font-bold text-primary">No reviews yet</p>
+                <p className="text-[10.5px] text-text-muted">Be the first to share your learning experience!</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden relative w-full pb-2 [mask-image:linear-gradient(to_right,transparent,black_3%,black_97%,transparent)]">
+                <div className="animate-marquee gap-4">
+                  {[...reviews, ...reviews, ...reviews, ...reviews].map((r: any, idx: number) => (
+                    <div key={`${r.id}-${idx}`} className="w-[260px] sm:w-[280px] shrink-0 border border-border-subtle rounded-2xl p-4 shadow-sm space-y-2 bg-white">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7.5 h-7.5 rounded-full bg-secondary/10 flex items-center justify-center text-[10px] font-bold text-secondary">
+                          {r.avatarText}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-primary">{r.studentName}</p>
+                          <p className="text-[9px] text-text-muted">
+                            {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric"
+                            })}
+                          </p>
+                        </div>
+                        <div className="ml-auto text-[11px] text-accent font-bold">
+                          {"★".repeat(r.rating) + "☆".repeat(5 - r.rating)}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-primary">{r.studentName}</p>
-                        <p className="text-[9px] text-text-muted">
-                          {new Date(r.createdAt).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric"
-                          })}
-                        </p>
-                      </div>
-                      <div className="ml-auto text-[11px] text-accent font-bold">
-                        {"★".repeat(r.rating) + "☆".repeat(5 - r.rating)}
-                      </div>
+                      <p className="text-xs leading-relaxed text-text-muted">
+                        {r.comment}
+                      </p>
                     </div>
-                    <p className="text-xs leading-relaxed text-text-muted">
-                      {r.comment}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
@@ -689,17 +687,6 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
                 className="w-full font-semibold text-xs py-3.5 bg-secondary text-white rounded-xl hover:bg-secondary/90 transition-colors shadow-md cursor-pointer text-center"
               >
                 Book session
-              </button>
-              <button
-                onClick={() => setIsSaved(!isSaved)}
-                className={`w-full font-semibold text-xs py-2.5 border rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                  isSaved
-                    ? "border-red-500 bg-red-50 text-red-600"
-                    : "border-border-subtle hover:border-primary text-primary bg-white"
-                }`}
-              >
-                <IconHeart className={`w-4 h-4 ${isSaved ? "fill-red-500 text-red-500" : ""}`} />
-                <span>{isSaved ? "Saved for later" : "Save for later"}</span>
               </button>
             </div>
 
@@ -793,7 +780,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
               </div>
               <ul className="space-y-2 text-xs text-white/60">
                 <li>
-                  <Link href="/#about" className="hover:text-white transition-colors">About us</Link>
+                  <Link href="/about" className="hover:text-white transition-colors">About us</Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">Careers</a>
@@ -829,6 +816,12 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
         price={session.price}
         mentorName={session.mentor.name}
         isLiveIndividual={session.type !== "Group"}
+      />
+      <MobileStickyBookingBar
+        price={session.price}
+        priceSuffix="/hr"
+        ctaLabel="Book session"
+        onCtaClick={() => setBookingModalOpen(true)}
       />
 
       {/* REVIEW SUBMISSION MODAL */}

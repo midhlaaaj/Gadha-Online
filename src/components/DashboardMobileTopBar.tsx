@@ -15,6 +15,8 @@ import {
 } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 
+import { UserNotificationBell } from "@/components/UserNotificationBell";
+
 export type TopBarRole = "parent" | "student" | "mentor";
 
 interface DashboardMobileTopBarProps {
@@ -117,17 +119,17 @@ export function DashboardMobileTopBar({ role, title, contextControl }: Dashboard
         {/* Optional Context Control (e.g. ChildSwitcher) */}
         {contextControl && <div className="flex-1 max-w-[180px]">{contextControl}</div>}
 
-        {/* User Avatar + Dropdown */}
-        <div className="relative shrink-0" ref={dropdownRef}>
-          <button
-            onClick={() => setDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 p-1 rounded-full hover:bg-slate-50 cursor-pointer transition-colors"
-          >
-            <div className="w-8 h-8 rounded-full bg-[#1B3A6B] text-white flex items-center justify-center font-heading text-xs font-bold shadow-xs">
+        {/* User Notification Bell + Avatar Circle */}
+        <div className="flex items-center gap-2 shrink-0">
+          <UserNotificationBell />
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen((prev) => !prev)}
+              className="w-8 h-8 rounded-full bg-[#1B3A6B] text-white flex items-center justify-center font-heading text-xs font-extrabold shadow-xs hover:opacity-90 transition-opacity cursor-pointer focus:outline-none"
+              title={userName}
+            >
               {getInitials(userName)}
-            </div>
-            <IconChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
-          </button>
+            </button>
 
           {/* Avatar Dropdown */}
           {dropdownOpen && (

@@ -44,6 +44,14 @@ All modals (`AuthModal.tsx`, `BookingModal.tsx`, and any dashboard forms reused 
 - A clear, large close/back affordance (top-left X or back arrow) since there's no backdrop to tap-dismiss on a full-screen sheet.
 - Forms inside scroll internally with a sticky submit button/footer, so long forms (e.g. booking flow steps) don't hide the primary action below the fold.
 
+## Typography scale (mobile, `<768px`)
+The codebase uses arbitrary pixel sizes (e.g. `text-[22px]`, `text-[18px]`) rather than Tailwind's named scale — keep that convention, but standardize the values below across all three dashboards so hierarchy is consistent:
+- **Page title (h1)**: 20-22px, `font-extrabold font-heading` — unchanged from current usage (e.g. `dashboard/overview/page.tsx:308`).
+- **Section title (h2)** — e.g. "Upcoming Classes", "Recent Activity", "My Students": **16-18px, `font-extrabold font-heading`**. Audit existing instances that currently use 20-22px for what is functionally a section header (not a page header, e.g. `dashboard/overview/page.tsx:280`) and bring them down into this range so section titles read distinctly smaller than the page h1 at small widths.
+- **Card/list item title**: 14-16px, `font-semibold`.
+- **Body/meta text**: 13-14px, regular weight.
+This is a hard rule, not a per-page judgment call — apply it consistently across parent, student, and mentor dashboards.
+
 ## Visual language
 No external design reference — derive everything from the existing desktop Tailwind theme (colors, fonts, border radii, shadows already used in `Navbar.tsx` and the dashboard sidebars, e.g. `#0f2347` primary, `#ffc107` accent, `rounded-2xl`/`rounded-full`, existing shadow/animation utility classes). Mobile should feel like the same product at a smaller size, not a re-skin.
 

@@ -37,7 +37,7 @@ export default function PaymentsPage() {
       const res = await getAdminData();
       setBookings(res.bookings || []);
     } catch (err) {
-      console.error("Failed to load payments ledger:", err);
+      console.error("Failed to load revenue trends:", err);
     } finally {
       setLoading(false);
     }

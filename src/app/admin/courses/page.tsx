@@ -29,6 +29,7 @@ import {
   reorderCourseUnits,
 } from "../../actions";
 import { SkeletonCard } from "@/components/Skeleton";
+import ImageCropperModal from "@/components/ImageCropperModal";
 
 interface Course {
   id: string;
@@ -96,12 +97,27 @@ export default function CoursesPage() {
     loadData();
   }, []);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState("");
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCropperSrc(reader.result);
+        setCropperOpen(true);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
+  const handleCropComplete = async (croppedBlob: Blob) => {
     setUploadingImage(true);
     try {
+      const file = new File([croppedBlob], `course-${Date.now()}.jpg`, { type: "image/jpeg" });
       const formData = new FormData();
       formData.append("file", file);
       const res = await uploadCourseCover(formData);
@@ -954,6 +970,15 @@ export default function CoursesPage() {
           </div>
         </>
       )}
+      {/* Image Cropper Modal */}
+      <ImageCropperModal
+        isOpen={cropperOpen}
+        onClose={() => setCropperOpen(false)}
+        imageSrc={cropperSrc}
+        aspectRatio={16 / 9}
+        title="Crop Course Cover Image"
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

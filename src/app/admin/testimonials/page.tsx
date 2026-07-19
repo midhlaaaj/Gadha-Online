@@ -20,6 +20,7 @@ import {
   toggleTestimonialStatus as apiToggleTestimonialStatus,
   uploadTestimonialMedia,
 } from "../../actions";
+import ImageCropperModal from "@/components/ImageCropperModal";
 
 interface Testimonial {
   id: string;
@@ -32,6 +33,65 @@ interface Testimonial {
   avatarText: string;
   mediaUrl?: string;
   mediaType?: "image" | "video" | "";
+}
+
+function TestimonialsSkeleton() {
+  return (
+    <div className="space-y-4 font-sans animate-pulse">
+      {/* Toolbar Skeleton */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-1 max-w-xl">
+          <div className="h-9 flex-1 bg-slate-100 rounded-lg" />
+          <div className="h-9 w-24 bg-slate-100 rounded-lg" />
+        </div>
+        <div className="flex gap-2 items-center">
+          <div className="h-9 w-20 bg-slate-100 rounded-lg" />
+          <div className="h-9 w-28 bg-slate-100 rounded-xl" />
+        </div>
+      </div>
+
+      {/* Grid Cards Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div
+            key={i}
+            className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between"
+          >
+            <div className="space-y-3">
+              {/* Media Skeleton */}
+              <div className="w-full aspect-[4/3] bg-slate-100 rounded-xl" />
+              
+              {/* Avatar + Name Skeleton */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-3.5 bg-slate-200 rounded w-2/3" />
+                  <div className="h-2.5 bg-slate-100 rounded w-1/3" />
+                </div>
+                <div className="h-3 bg-slate-100 rounded w-12" />
+              </div>
+
+              {/* Quote Skeleton */}
+              <div className="space-y-1.5 pt-1">
+                <div className="h-3 bg-slate-100 rounded w-full" />
+                <div className="h-3 bg-slate-100 rounded w-4/5" />
+                <div className="h-3 bg-slate-100 rounded w-2/3" />
+              </div>
+            </div>
+
+            {/* Footer Buttons Skeleton */}
+            <div className="flex items-center justify-between pt-3 border-t border-[#E6EBF8]">
+              <div className="h-6 w-20 bg-slate-100 rounded-full" />
+              <div className="flex gap-2">
+                <div className="w-7 h-7 bg-slate-100 rounded-lg" />
+                <div className="w-7 h-7 bg-slate-100 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function TestimonialsPage() {
@@ -90,9 +150,10 @@ export default function TestimonialsPage() {
     setDrawerEditId(null);
   };
 
-  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState("");
+
+  const uploadFileDirect = async (file: File) => {
     setUploadingMedia(true);
     try {
       const fd = new FormData();
@@ -103,8 +164,30 @@ export default function TestimonialsPage() {
       alert("Error uploading media: " + err.message);
     } finally {
       setUploadingMedia(false);
-      e.target.value = "";
     }
+  };
+
+  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          setCropperSrc(reader.result);
+          setCropperOpen(true);
+        }
+      };
+      reader.readAsDataURL(file);
+    } else {
+      uploadFileDirect(file);
+    }
+    e.target.value = "";
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    const file = new File([croppedBlob], `testimonial-${Date.now()}.jpg`, { type: "image/jpeg" });
+    uploadFileDirect(file);
   };
 
   const saveDrawerData = async () => {
@@ -149,12 +232,7 @@ export default function TestimonialsPage() {
   });
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[300px]">
-        <div className="w-8 h-8 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-3 text-xs font-semibold text-slate-500 font-sans">Loading Testimonials...</p>
-      </div>
-    );
+    return <TestimonialsSkeleton />;
   }
 
   return (
@@ -220,23 +298,32 @@ export default function TestimonialsPage() {
               className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition-shadow flex flex-col justify-between"
             >
               <div className="space-y-3">
-                {t.mediaUrl && (
-                  <div className="relative rounded-lg overflow-hidden aspect-[4/3] bg-slate-100">
-                    {t.mediaType === "video" ? (
-                      <video src={t.mediaUrl} className="w-full h-full object-cover" muted />
-                    ) : (
-                      <img src={t.mediaUrl} alt={t.studentName} className="w-full h-full object-cover" />
-                    )}
-                    <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center">
+                {/* Fixed Media Box for all cards */}
+                <div className="relative rounded-xl overflow-hidden aspect-[4/3] h-44 bg-slate-50 border border-slate-100 flex items-center justify-center">
+                  {t.mediaUrl ? (
+                    <>
                       {t.mediaType === "video" ? (
-                        <IconVideo className="w-3.5 h-3.5" />
+                        <video src={t.mediaUrl} className="w-full h-full object-cover" muted />
                       ) : (
-                        <IconPhoto className="w-3.5 h-3.5" />
+                        <img src={t.mediaUrl} alt={t.studentName} className="w-full h-full object-cover" />
                       )}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center gap-3">
+                      <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center">
+                        {t.mediaType === "video" ? (
+                          <IconVideo className="w-3.5 h-3.5" />
+                        ) : (
+                          <IconPhoto className="w-3.5 h-3.5" />
+                        )}
+                      </span>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-300 space-y-1">
+                      <IconPhoto className="w-7 h-7 stroke-[1.5]" />
+                      <span className="text-[10px] font-semibold text-slate-400">No media attached</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
                   <div
                     style={{ backgroundColor: t.avatarBg }}
                     className="w-10 h-10 rounded-full flex items-center justify-center font-heading text-xs font-extrabold text-accent shrink-0"
@@ -248,7 +335,8 @@ export default function TestimonialsPage() {
                     <div className="text-[9px] text-[#9BA8C0] font-semibold mt-0.5">{t.role}</div>
                   </div>
                 </div>
-                <p className="text-xs text-text-muted italic leading-relaxed font-semibold line-clamp-3">
+
+                <p className="text-xs text-text-muted italic leading-relaxed font-semibold line-clamp-3 min-h-[54px]">
                   &ldquo;{t.quote}&rdquo;
                 </p>
               </div>
@@ -498,6 +586,15 @@ export default function TestimonialsPage() {
           </div>
         </>
       )}
+      {/* Image Cropper Modal */}
+      <ImageCropperModal
+        isOpen={cropperOpen}
+        onClose={() => setCropperOpen(false)}
+        imageSrc={cropperSrc}
+        aspectRatio={4 / 3}
+        title="Crop Testimonial Media Image"
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

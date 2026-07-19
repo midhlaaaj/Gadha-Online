@@ -590,12 +590,12 @@ export default function MentorsPage() {
                     {/* Stats block */}
                     <div className="grid grid-cols-2 gap-2 py-3 border-t border-b border-border-subtle mb-4 text-center">
                       <div>
-                        <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Students</div>
-                        <div className="text-xs font-bold text-primary">{m.students}+</div>
-                      </div>
-                      <div className="border-l border-border-subtle">
                         <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Courses</div>
                         <div className="text-xs font-bold text-primary">{m.courses}+</div>
+                      </div>
+                      <div className="border-l border-border-subtle">
+                        <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Experience</div>
+                        <div className="text-xs font-bold text-primary">{m.experience} yrs</div>
                       </div>
                     </div>
 
@@ -686,7 +686,7 @@ export default function MentorsPage() {
               </div>
               <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="/#about" className="hover:text-white transition-colors">About us</a>
+                  <a href="/about" className="hover:text-white transition-colors">About us</a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">Careers</a>

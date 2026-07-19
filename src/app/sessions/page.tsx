@@ -539,7 +539,7 @@ function SessionsPageContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10 w-full">
             {[1, 2, 3].map((i) => (
               <div key={i} className="bg-white border border-border-subtle rounded-2xl overflow-hidden p-5 space-y-4">
-                <div className="w-full h-32 bg-slate-100 rounded-xl animate-shimmer"></div>
+                <div className="w-full h-36 bg-slate-100 rounded-xl animate-shimmer"></div>
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-16 bg-slate-100 rounded animate-shimmer"></div>
                   <div className="h-4 w-16 bg-slate-100 rounded animate-shimmer"></div>
@@ -574,24 +574,28 @@ function SessionsPageContent() {
                 key={s.id}
                 className="bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between"
               >
-                <div className={`w-full h-32 flex items-center justify-center ${getSubjectBgColor(s.subject)}`}>
+                <div className={`w-full h-36 flex items-center justify-center relative ${getSubjectBgColor(s.subject)}`}>
                   {getIconComponent(s.iconName)}
                 </div>
 
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-badge-bg text-badge-text border border-badge-border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-badge-bg text-badge-text">
                         {s.subject}
-                      </span>
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                        {s.type} Session
                       </span>
                       {s.class_level && (
                         <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
                           {s.class_level}
                         </span>
                       )}
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        s.type === "Group"
+                          ? "bg-purple-50 text-purple-700 border border-purple-150"
+                          : "bg-blue-50 text-blue-700 border border-blue-150"
+                      }`}>
+                        {s.type}
+                      </span>
                     </div>
                     <h3 className="font-heading text-base font-bold text-primary mb-1 leading-tight">
                       {s.title}
@@ -609,7 +613,6 @@ function SessionsPageContent() {
                       <span className="text-xs font-bold text-accent flex items-center gap-0.5">
                         <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> 5.0
                       </span>
-                      <span className="text-[10px] text-text-muted font-medium">({s.bookings} reviews)</span>
                       <span className="ml-auto font-heading font-extrabold text-primary text-lg">
                         ₹{s.price.toLocaleString("en-IN")}/hr
                       </span>
@@ -697,7 +700,7 @@ function SessionsPageContent() {
               </div>
               <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="/#about" className="hover:text-white transition-colors">About us</a>
+                  <a href="/about" className="hover:text-white transition-colors">About us</a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">Careers</a>

@@ -305,7 +305,7 @@ export default function OverviewPage() {
     <div className="space-y-6">
       {/* Greeting */}
       <div>
-        <h1 className="text-[22px] font-extrabold font-heading text-[#1B3A6B]">
+        <h1 className="text-[20px] md:text-[22px] font-extrabold font-heading text-[#1B3A6B]">
           {childName}&apos;s Overview
         </h1>
         <p className="text-[13px] text-[#4A5A7A] mt-0.5">
@@ -367,7 +367,7 @@ export default function OverviewPage() {
           {/* Recent activity */}
           {s.recentActivity.length > 0 && (
             <div className="bg-white rounded-2xl border border-[#D0DCF5] p-5 space-y-3">
-              <h3 className="text-[13px] font-bold text-[#1B3A6B]">Recent Activity</h3>
+              <h3 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Recent Activity</h3>
               {s.recentActivity.map((a, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <span
@@ -392,7 +392,7 @@ export default function OverviewPage() {
           {/* Subject breakdown */}
           {s.subjectAttendance.length > 0 && (
             <div className="bg-white rounded-2xl border border-[#D0DCF5] p-5 space-y-3">
-              <h3 className="text-[13px] font-bold text-[#1B3A6B]">By Subject</h3>
+              <h3 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">By Subject</h3>
               {s.subjectAttendance.map((sub) => (
                 <div key={sub.name} className="space-y-1">
                   <div className="flex items-center justify-between">

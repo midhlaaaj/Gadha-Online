@@ -713,7 +713,6 @@ function CoursesPageContent() {
                       <span className="text-xs font-bold text-accent flex items-center gap-0.5">
                         <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> {c.rating}
                       </span>
-                      <span className="text-[10px] text-text-muted font-medium">({c.students} students)</span>
                       <span className="ml-auto font-heading font-extrabold text-primary text-lg">
                         ₹{c.price.toLocaleString("en-IN")}
                       </span>
@@ -800,7 +799,7 @@ function CoursesPageContent() {
               </div>
               <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="/#about" className="hover:text-white transition-colors">About us</a>
+                  <a href="/about" className="hover:text-white transition-colors">About us</a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-white transition-colors">Careers</a>
