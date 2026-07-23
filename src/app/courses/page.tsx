@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
 import {
   IconSearch,
   IconAdjustmentsHorizontal,
@@ -14,7 +16,6 @@ import {
   IconFlask,
   IconPencil,
   IconMap,
-  IconCalculator,
   IconBook,
   IconBrandInstagram,
   IconBrandTwitter,
@@ -76,7 +77,7 @@ function getCourseLevel(title: string) {
 }
 
 function CoursesPageContent() {
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<Awaited<ReturnType<typeof getCoursesPageData>>>([]);
   const [loading, setLoading] = useState(true);
   const [activeBooking, setActiveBooking] = useState<{
     id: string;
@@ -88,6 +89,8 @@ function CoursesPageContent() {
   } | null>(null);
 
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const mentorParam = searchParams.get("mentor") || "";
 
   // Filter & Search States
@@ -112,8 +115,19 @@ function CoursesPageContent() {
 
   
   const [sortOption, setSortOption] = useState("Most popular");
-  const [currentPage, setCurrentPage] = useState(1);
+  const initialPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+  const [currentPage, setCurrentPageState] = useState(initialPage);
   const itemsPerPage = 6;
+
+  const setCurrentPage = (value: number | ((prev: number) => number)) => {
+    const next = typeof value === "function" ? value(currentPage) : value;
+    setCurrentPageState(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next <= 1) params.delete("page");
+    else params.set("page", String(next));
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -265,11 +279,11 @@ function CoursesPageContent() {
         <div className="max-w-7xl mx-auto">
           {/* Breadcrumb */}
           <nav className="text-xs text-text-muted mb-3 flex items-center gap-1.5 font-medium">
-            <a href="/" className="hover:text-secondary transition-colors">Home</a>
+            <Link href="/" className="hover:text-secondary transition-colors">Home</Link>
             <span className="text-slate-300">/</span>
             {mentorParam ? (
               <>
-                <a href="/courses" className="hover:text-secondary transition-colors">Courses</a>
+                <Link href="/courses" className="hover:text-secondary transition-colors">Courses</Link>
                 <span className="text-slate-300">/</span>
                 <span className="text-primary font-semibold">{mentorParam}</span>
               </>
@@ -661,7 +675,7 @@ function CoursesPageContent() {
                         LIVE
                       </div>
                     )}
-                    <img src={c.coverImageUrl} alt={c.title} className="w-full h-full object-cover" />
+                    <Image src={c.coverImageUrl} alt={c.title} fill className="object-cover" />
                   </div>
                 ) : (
                   <div className={`w-full h-36 flex items-center justify-center relative ${getSubjectBgColor(c.subject)}`}>
@@ -786,11 +800,12 @@ function CoursesPageContent() {
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
             <div className="lg:col-span-2">
-              <div className="font-heading text-xl font-extrabold text-white mb-3">
-                Tuto<span className="text-accent">board</span>
+              <div className="flex items-center gap-2 mb-3">
+                <Image src="/logo.png" alt="Gadha Online" width={40} height={40} className="w-10 h-10 object-contain" />
+                <span className="font-heading text-xl font-extrabold text-white">Gadha Online</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
-                India's most trusted online tutoring platform. Learn at your pace, with the best mentors.
+                India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
               </p>
             </div>
             <div>
@@ -801,14 +816,37 @@ function CoursesPageContent() {
                 <li>
                   <a href="/about" className="hover:text-white transition-colors">About us</a>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Explore
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">Careers</a>
+                  <Link href="/courses" className="hover:text-white transition-colors">Courses</Link>
+                </li>
+                <li>
+                  <Link href="/sessions" className="hover:text-white transition-colors">Sessions</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Legal
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
+                <li>
+                  <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+                </li>
+                <li>
+                  <a href="/terms" className="hover:text-white transition-colors">Terms &amp; Conditions</a>
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2026 Tutoboard. All rights reserved.</p>
+            <p>&copy; 2026 Gadha Online. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">
                 <IconBrandInstagram className="w-5 h-5" />

@@ -1,5 +1,5 @@
 /**
- * Shared input validation and sanitization utility for Tutoboard.
+ * Shared input validation and sanitization utility for Gadha Online.
  */
 
 export interface ValidationResult {
@@ -14,7 +14,7 @@ const PHONE_REGEX = /^[0-9\s\+\(\)\-\.]{7,20}$/;
 /**
  * Strips HTML/script tags from a string to prevent stored XSS.
  */
-export function sanitizeText(value: any, maxLength = 1000): string {
+export function sanitizeText(value: unknown, maxLength = 1000): string {
   if (value === null || value === undefined) return "";
   const str = String(value);
   return str
@@ -26,24 +26,25 @@ export function sanitizeText(value: any, maxLength = 1000): string {
     .substring(0, maxLength);
 }
 
-/** RFC-5321-like email validation. Supports boolean check or detailed ValidationResult */
-export function validateEmail(value: string): boolean & ValidationResult {
+/** RFC-5321-like email validation. */
+export function validateEmail(value: string): ValidationResult {
   const trimmed = (value || "").trim();
   const isString = typeof value === "string";
   const noBadChars = !/[<>"'\\]/.test(trimmed);
   const isValidPattern = EMAIL_REGEX.test(trimmed) && trimmed.length <= 254;
 
   const valid = Boolean(isString && trimmed && noBadChars && isValidPattern);
-  const result: any = Boolean(valid);
-  result.valid = valid;
   if (!valid) {
-    result.error = !trimmed
-      ? "Email address is required."
-      : !noBadChars
-      ? "Email contains invalid characters."
-      : "Please enter a valid email address.";
+    return {
+      valid,
+      error: !trimmed
+        ? "Email address is required."
+        : !noBadChars
+        ? "Email contains invalid characters."
+        : "Please enter a valid email address.",
+    };
   }
-  return result;
+  return { valid };
 }
 
 /** Name validation */
@@ -57,15 +58,13 @@ export function validateName(value: string): ValidationResult {
 }
 
 /** Phone validation */
-export function validatePhone(value: string): boolean & ValidationResult {
+export function validatePhone(value: string): ValidationResult {
   const trimmed = (value || "").trim();
   const valid = !trimmed || (PHONE_REGEX.test(trimmed) && trimmed.length >= 7 && trimmed.length <= 20);
-  const result: any = Boolean(valid);
-  result.valid = valid;
   if (!valid) {
-    result.error = "Phone number must contain only digits, spaces, +, (, ), or -.";
+    return { valid, error: "Phone number must contain only digits, spaces, +, (, ), or -." };
   }
-  return result;
+  return { valid };
 }
 
 /** Password validation */
@@ -112,18 +111,19 @@ export function validateSubject(value: string): ValidationResult {
 }
 
 /** Validates number within min/max bounds */
-export function validateNumber(val: any, min = 0, max = 100000000, defaultVal = 0): number {
-  const parsed = Number(val);
+export function validateNumber(val: unknown, min = 0, max = 100000000, defaultVal = 0): number {
+  const parsed = Number(val as string | number);
   if (isNaN(parsed)) return defaultVal;
   return Math.max(min, Math.min(max, parsed));
 }
 
 /** Sanitizes all string fields in an object */
-export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
-  const result: any = { ...obj };
+export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
+  const result = { ...obj };
   for (const key in result) {
-    if (typeof result[key] === "string") {
-      result[key] = sanitizeText(result[key]);
+    const value = result[key];
+    if (typeof value === "string") {
+      result[key] = sanitizeText(value) as T[Extract<keyof T, string>];
     }
   }
   return result;

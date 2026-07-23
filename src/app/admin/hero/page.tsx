@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import {
   IconEye,
   IconPhotoUp,
@@ -73,6 +74,7 @@ export default function HeroPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -98,8 +100,9 @@ export default function HeroPage() {
       fd.append("file", file);
       const { publicUrl } = await uploadHeroImage(fd);
       setHeroImageUrl(publicUrl);
-    } catch (err: any) {
-      alert("Error uploading hero image: " + err.message);
+    } catch (err) {
+      console.error("Error uploading hero image:", err);
+      alert("Couldn't upload the image. Please try again.");
     } finally {
       setUploadingImage(false);
     }
@@ -128,8 +131,9 @@ export default function HeroPage() {
       });
       alert("Hero section updated and published to homepage!");
       await loadData();
-    } catch (err: any) {
-      alert("Error saving hero settings: " + err.message);
+    } catch (err) {
+      console.error("Error saving hero settings:", err);
+      alert("Couldn't save these settings. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -190,7 +194,7 @@ export default function HeroPage() {
           {/* Mock Navbar */}
           <div className="bg-white border-b border-border-subtle px-4 h-9 flex items-center justify-between">
             <div className="font-heading text-xs font-extrabold text-primary">
-              Tuto<span className="text-secondary">board</span>
+              Gadha Online
             </div>
             <div className="flex gap-2">
               <div className="w-12 h-2.5 rounded bg-slate-200" />
@@ -210,7 +214,7 @@ export default function HeroPage() {
               {/* Hero Image Preview */}
               {heroImageUrl && (
                 <div className="relative rounded-xl overflow-hidden border border-[#E6EBF8] h-36 bg-slate-100 my-3">
-                  <img src={heroImageUrl} alt="Hero visual" className="w-full h-full object-cover" />
+                  <Image src={heroImageUrl} alt="Hero visual" fill className="object-cover" />
                   <button
                     type="button"
                     onClick={() => setHeroImageUrl("")}

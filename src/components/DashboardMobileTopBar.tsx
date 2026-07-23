@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   IconUser,
@@ -11,7 +12,6 @@ import {
   IconFolder,
   IconChartBar,
   IconClock,
-  IconChevronDown,
 } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -50,13 +50,7 @@ const OVERFLOW_LINKS: Record<TopBarRole, OverflowLink[]> = {
   ],
 };
 
-const ROLE_LABELS: Record<TopBarRole, { logo: string; badge: string }> = {
-  parent: { logo: "Parent", badge: "Parent" },
-  student: { logo: "LMS", badge: "Student" },
-  mentor: { logo: "Mentor", badge: "Educator" },
-};
-
-export function DashboardMobileTopBar({ role, title, contextControl }: DashboardMobileTopBarProps) {
+export function DashboardMobileTopBar({ role, contextControl }: DashboardMobileTopBarProps) {
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
@@ -64,7 +58,6 @@ export function DashboardMobileTopBar({ role, title, contextControl }: Dashboard
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const supabase = createClient();
-  const roleMeta = ROLE_LABELS[role] || ROLE_LABELS.parent;
   const overflowLinks = OVERFLOW_LINKS[role] || [];
 
   useEffect(() => {
@@ -107,12 +100,10 @@ export function DashboardMobileTopBar({ role, title, contextControl }: Dashboard
     <header className="sticky top-0 z-30 bg-white border-b border-[#E6EBF8] px-4 py-2.5 md:hidden shadow-xs">
       <div className="flex items-center justify-between gap-2">
         {/* Brand / Logo */}
-        <Link href={role === "mentor" ? "/mentor/overview" : role === "student" ? "/lms/overview" : "/dashboard/overview"} className="flex items-center gap-1.5 shrink-0">
-          <span className="font-heading text-lg font-extrabold text-[#1B3A6B]">
-            Tuto<span className="text-[#2F7FE8]">board</span>
-          </span>
-          <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-[#EBF2FF] text-[#2F7FE8] rounded-md tracking-wider">
-            {roleMeta.badge}
+        <Link href={role === "mentor" ? "/mentor/overview" : role === "student" ? "/lms/overview" : "/dashboard/overview"} className="flex items-center gap-2 shrink-0 min-w-0">
+          <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" />
+          <span className="font-heading text-base font-extrabold text-[#1B3A6B] truncate">
+            Gadha Online
           </span>
         </Link>
 

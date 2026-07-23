@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   IconCode,
   IconFlask,
   IconMap,
-  IconCalculator,
   IconBrandInstagram,
   IconBrandTwitter,
   IconBrandLinkedin,
@@ -19,6 +19,8 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { getHomepageData, submitContactMessage } from "./actions";
+
+type HomepageData = Awaited<ReturnType<typeof getHomepageData>>;
 import BookingModal from "@/components/BookingModal";
 import { validateEmail, validateName, validatePhone, validateMessage, validateSubject, sanitizeText } from "@/lib/validate";
 
@@ -136,10 +138,10 @@ function AnimatedCounter({ value }: { value: string }) {
 }
 
 export default function Home() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<HomepageData | null>(null);
   const [activeBooking, setActiveBooking] = useState<{
     id: string;
-    type: "course" | "session" | "mentor";
+    type: "course" | "session";
     title: string;
     price: number;
     mentorName: string;
@@ -239,8 +241,8 @@ export default function Home() {
       });
       setFormSubmitted(true);
       setFormData({ fullName: "", email: "", subject: "", phone: "", message: "" });
-    } catch (err: any) {
-      setFormError(err.message || "Failed to send message. Please try again.");
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to send message. Please try again.");
     } finally {
       setIsSubmittingForm(false);
     }
@@ -264,6 +266,7 @@ export default function Home() {
     cl3: "Courses available",
     c4: "98%",
     cl4: "Satisfaction rate",
+    hero_image_url: null as string | null,
   };
 
   const courses = data?.courses || [];
@@ -348,10 +351,11 @@ export default function Home() {
 
           {settings.hero_image_url && (
             <div className="relative w-full aspect-[4/3] max-w-md mx-auto lg:max-w-none rounded-3xl overflow-hidden shadow-xl border border-border-subtle bg-slate-900">
-              <img
+              <Image
                 src={settings.hero_image_url}
                 alt="Hero visual"
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
               />
             </div>
           )}
@@ -409,13 +413,13 @@ export default function Home() {
                 Structured programs taught by verified educators
               </p>
             </div>
-            <a 
-              href="/courses" 
+            <Link
+              href="/courses"
               className="text-xs sm:text-sm font-semibold sm:font-bold text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors whitespace-nowrap self-start md:self-auto group"
             >
               <span>Explore all courses</span>
               <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
-            </a>
+            </Link>
           </div>
           {/* MOBILE: single-card peek carousel (md:+ unchanged, see below) */}
           <div className="md:hidden">
@@ -441,12 +445,12 @@ export default function Home() {
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
-                {courses.map((c: any) => (
+                {courses.map((c) => (
                   <div key={c.id} className="w-[85%] min-w-[85%] snap-center shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between">
                     {/* Image header with subject overlay */}
                     <div className="relative w-full h-32 overflow-hidden bg-slate-100">
                       {c.coverImageUrl ? (
-                        <img src={c.coverImageUrl} alt={c.title} className="w-full h-full object-cover" />
+                        <Image src={c.coverImageUrl} alt={c.title} fill className="object-cover" />
                       ) : (
                         <div className={`w-full h-full flex items-center justify-center ${getSubjectBgColor(c.subject)}`}>
                           {getIconComponent(c.iconName)}
@@ -544,12 +548,12 @@ export default function Home() {
               </div>
             ) : (
               <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
-                {courses.map((c: any) => (
+                {courses.map((c) => (
                   <div key={c.id} className="w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between">
                     {/* Clean Cover Image Header */}
                     <div className="relative w-full h-44 overflow-hidden bg-slate-900">
                       {c.coverImageUrl ? (
-                        <img src={c.coverImageUrl} alt={c.title} className="w-full h-full object-cover" />
+                        <Image src={c.coverImageUrl} alt={c.title} fill className="object-cover" />
                       ) : (
                         <div className={`w-full h-full flex items-center justify-center ${getSubjectBgColor(c.subject)}`}>
                           {getIconComponent(c.iconName)}
@@ -649,13 +653,13 @@ export default function Home() {
                 Pay per session — no long-term commitment required
               </p>
             </div>
-            <a 
-              href="/sessions" 
+            <Link
+              href="/sessions"
               className="text-xs sm:text-sm font-semibold sm:font-bold text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors whitespace-nowrap self-start md:self-auto group"
             >
               <span>Explore all sessions</span>
               <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
-            </a>
+            </Link>
           </div>
           {/* MOBILE: single-card peek carousel (md:+ unchanged, see below) */}
           <div className="md:hidden">
@@ -681,7 +685,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
-                {sessions.map((s: any) => (
+                {sessions.map((s) => (
                   <div key={s.id} className="w-[85%] min-w-[85%] snap-center shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between">
                     {/* Image header with subject overlay */}
                     <div className={`relative w-full h-32 overflow-hidden flex items-center justify-center ${getSubjectBgColor(s.subject)}`}>
@@ -777,7 +781,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
-                {sessions.map((s: any) => (
+                {sessions.map((s) => (
                   <div key={s.id} className="w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between">
                     {/* Cover Image Header */}
                     <div className={`relative w-full h-44 overflow-hidden flex items-center justify-center ${getSubjectBgColor(s.subject)}`}>
@@ -876,13 +880,13 @@ export default function Home() {
                 Verified experts with proven teaching track records
               </p>
             </div>
-            <a 
-              href="/mentors" 
+            <Link
+              href="/mentors"
               className="text-xs sm:text-sm font-semibold sm:font-bold text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors whitespace-nowrap self-start md:self-auto group"
             >
               <span>Explore all mentors</span>
               <span className="transition-transform group-hover:translate-x-1 duration-200">➔</span>
-            </a>
+            </Link>
           </div>
           {/* MOBILE: single-card peek carousel (md:+ unchanged, see below) */}
           <div className="md:hidden">
@@ -910,7 +914,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
-                {mentors.map((m: any) => (
+                {mentors.map((m) => (
                   <div key={m.id} className="w-[85%] min-w-[85%] snap-center shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between">
                     {/* Avatar panel */}
                     <a href={`/mentors/${m.id}`} className="relative w-full h-32 bg-blue-50 flex items-center justify-center hover:bg-blue-100/70 transition-colors">
@@ -930,9 +934,6 @@ export default function Home() {
                         </h3>
                         <div className="flex items-center justify-between text-[10px] text-text-muted mb-1">
                           <span className="truncate max-w-[110px] font-semibold text-secondary">{m.subject}</span>
-                          <span className="font-heading font-extrabold text-primary text-xs shrink-0">
-                            ₹{m.rate}/hr
-                          </span>
                         </div>
                         <div className="flex items-center gap-1 text-[9px] text-text-muted mb-2">
                           <span className="font-bold text-accent flex items-center gap-0.5">
@@ -940,24 +941,9 @@ export default function Home() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setActiveBooking({
-                            id: m.id,
-                            type: "mentor",
-                            title: `1-on-1 Session with ${m.name}`,
-                            price: m.rate,
-                            mentorName: m.name,
-                            isLiveIndividual: true
-                          })}
-                          className="flex-1 text-xs font-semibold py-3 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
-                        >
-                          Book
-                        </button>
-                        <a href={`/mentors/${m.id}`} className="flex-1 text-xs font-semibold py-3 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center">
-                          Details
-                        </a>
-                      </div>
+                      <a href={`/mentors/${m.id}`} className="block w-full text-xs font-semibold py-3 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer text-center">
+                        Details
+                      </a>
                     </div>
                   </div>
                 ))}
@@ -998,7 +984,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-flow-col grid-rows-2 gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar auto-cols-[calc(50%-12px)]">
-                {mentors.map((m: any) => (
+                {mentors.map((m) => (
                   <div key={m.id} className="bg-white border border-border-subtle rounded-2xl overflow-hidden flex flex-row hover:shadow-md transition-shadow snap-start shrink-0">
                     <a href={`/mentors/${m.id}`} className="w-[130px] bg-blue-50 flex items-center justify-center p-6 hover:bg-blue-100/70 transition-colors">
                       <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center font-heading text-2xl font-extrabold text-accent">
@@ -1023,9 +1009,6 @@ export default function Home() {
                       <div className="flex items-center gap-4 text-xs border-t border-border-subtle pt-3 text-text-muted">
                         <div>
                           <strong className="text-primary font-bold">★ {m.rating}</strong> rating
-                        </div>
-                        <div className="font-extrabold text-primary">
-                          ₹{m.rate}/hr
                         </div>
                         <a
                           href={`/mentors/${m.id}`}
@@ -1084,7 +1067,7 @@ export default function Home() {
             ) : (
               <div className="overflow-hidden">
                 <div className="animate-marquee flex gap-3">
-                  {[...testimonials, ...testimonials, ...testimonials].map((t: any, idx: number) => (
+                  {[...testimonials, ...testimonials, ...testimonials].map((t, idx: number) => (
                     <button
                       type="button"
                       key={`${t.id}-${idx}`}
@@ -1096,7 +1079,7 @@ export default function Home() {
                         t.media_type === "video" ? (
                           <video src={t.media_url} className="absolute inset-0 w-full h-full object-cover" muted preload="metadata" />
                         ) : (
-                          <img src={t.media_url} alt={t.student_name} className="absolute inset-0 w-full h-full object-cover" />
+                          <Image src={t.media_url} alt={t.student_name} fill className="object-cover" />
                         )
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -1175,7 +1158,7 @@ export default function Home() {
                   ref={testimonialTrackRef}
                   className="flex w-max gap-4"
                 >
-                  {[...testimonials, ...testimonials].map((t: any, idx: number) => (
+                  {[...testimonials, ...testimonials].map((t, idx: number) => (
                     <button
                       type="button"
                       key={`${t.id}-${idx}`}
@@ -1188,7 +1171,7 @@ export default function Home() {
                         t.media_type === "video" ? (
                           <video src={t.media_url} className="absolute inset-0 w-full h-full object-cover" muted preload="metadata" />
                         ) : (
-                          <img src={t.media_url} alt={t.student_name} className="absolute inset-0 w-full h-full object-cover" />
+                          <Image src={t.media_url} alt={t.student_name} fill className="object-cover" />
                         )
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -1259,7 +1242,7 @@ export default function Home() {
                   {t.media_type === "video" ? (
                     <video src={t.media_url} className="max-h-[60vh] w-full object-contain" controls autoPlay />
                   ) : (
-                    <img src={t.media_url} alt={t.student_name} className="max-h-[60vh] w-full object-contain" />
+                    <Image src={t.media_url} alt={t.student_name} fill className="object-contain" />
                   )}
                 </div>
               ) : (
@@ -1435,8 +1418,9 @@ export default function Home() {
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
             <div className="lg:col-span-2">
-              <div className="font-heading text-xl font-extrabold text-white mb-3">
-                Tuto<span className="text-accent">board</span>
+              <div className="flex items-center gap-2 mb-3">
+                <Image src="/logo.png" alt="Gadha Online" width={40} height={40} className="w-10 h-10 object-contain" />
+                <span className="font-heading text-xl font-extrabold text-white">Gadha Online</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
                 India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
@@ -1448,20 +1432,49 @@ export default function Home() {
               </div>
               <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="/about" className="hover:text-white transition-colors">
                     About us
                   </a>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Explore
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Careers
+                  <Link href="/courses" className="hover:text-white transition-colors">
+                    Courses
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/sessions" className="hover:text-white transition-colors">
+                    Sessions
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Legal
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
+                <li>
+                  <a href="/privacy" className="hover:text-white transition-colors">
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="/terms" className="hover:text-white transition-colors">
+                    Terms &amp; Conditions
                   </a>
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2026 Tutoboard. All rights reserved.</p>
+            <p>&copy; 2026 Gadha Online. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">
                 <IconBrandInstagram className="w-5 h-5" />

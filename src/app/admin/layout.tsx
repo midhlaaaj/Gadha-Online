@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   IconLayoutDashboard,
@@ -18,6 +19,7 @@ import {
   IconInfoCircle,
   IconInbox,
   IconShieldLock,
+  IconHeadset,
 } from "@tabler/icons-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -56,6 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (pathname.startsWith("/admin/hero")) return "Hero Section";
     if (pathname.startsWith("/admin/about")) return "About Page";
     if (pathname.startsWith("/admin/leads")) return "Leads";
+    if (pathname.startsWith("/admin/support")) return "Support Inbox";
     if (pathname.startsWith("/admin/admins")) return "Admin Management";
     if (pathname.startsWith("/admin/settings")) return "Settings";
     return "Admin Panel";
@@ -66,9 +69,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* SIDEBAR */}
       <aside className="w-[240px] shrink-0 bg-white border-r border-[#E6EBF8] flex flex-col overflow-hidden">
         <div className="h-[80px] flex items-center px-6 border-b border-[#E6EBF8] shrink-0">
-          <Link href="/admin/dashboard" className="font-heading text-2xl font-extrabold tracking-tight text-[#1B3A6B]">
-            Tuto<span className="text-[#2F7FE8]">board</span>
-            <span className="text-[10px] ml-1.5 font-sans font-extrabold uppercase px-2 py-0.5 bg-[#EBF2FF] text-[#2F7FE8] rounded-md tracking-wider">Admin</span>
+          <Link href="/admin/dashboard" className="flex items-center gap-2 font-heading text-base font-extrabold tracking-tight text-[#1B3A6B] whitespace-nowrap">
+            <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" />
+            <span>Gadha Online</span>
           </Link>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -180,6 +183,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <IconInbox className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/leads")}`} />
             Leads
             {pathname.startsWith("/admin/leads") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/support"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/support")}`}
+          >
+            <IconHeadset className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/support")}`} />
+            Support Inbox
+            {pathname.startsWith("/admin/support") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
           </Link>
 
           <Link

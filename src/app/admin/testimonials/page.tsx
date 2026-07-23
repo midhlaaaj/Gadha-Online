@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   IconSearch,
   IconLayoutGrid,
@@ -108,13 +109,13 @@ export default function TestimonialsPage() {
   // Drawer modal state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerEditId, setDrawerEditId] = useState<string | null>(null);
-  const [drawerForm, setDrawerForm] = useState<any>({});
+  const [drawerForm, setDrawerForm] = useState<Partial<Testimonial>>({});
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
   const loadData = async () => {
     try {
       const res = await getAdminData();
-      setTestimonials(res.testimonials);
+      setTestimonials(res.testimonials as Testimonial[]);
     } catch (err) {
       console.error("Failed to load testimonials:", err);
     } finally {
@@ -123,6 +124,7 @@ export default function TestimonialsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -159,9 +161,10 @@ export default function TestimonialsPage() {
       const fd = new FormData();
       fd.append("file", file);
       const { publicUrl, mediaType } = await uploadTestimonialMedia(fd);
-      setDrawerForm((prev: any) => ({ ...prev, mediaUrl: publicUrl, mediaType }));
-    } catch (err: any) {
-      alert("Error uploading media: " + err.message);
+      setDrawerForm((prev) => ({ ...prev, mediaUrl: publicUrl, mediaType }));
+    } catch (err) {
+      console.error("Error uploading media:", err);
+      alert("Couldn't upload the media. Please try again.");
     } finally {
       setUploadingMedia(false);
     }
@@ -192,11 +195,12 @@ export default function TestimonialsPage() {
 
   const saveDrawerData = async () => {
     try {
-      await upsertTestimonial(drawerForm);
+      await upsertTestimonial(drawerForm as Parameters<typeof upsertTestimonial>[0]);
       closeDrawer();
       await loadData();
-    } catch (err: any) {
-      alert("Error saving testimonial: " + err.message);
+    } catch (err) {
+      console.error("Error saving testimonial:", err);
+      alert("Couldn't save this testimonial. Please try again.");
     }
   };
 
@@ -205,8 +209,9 @@ export default function TestimonialsPage() {
       try {
         await apiDeleteTestimonial(id);
         await loadData();
-      } catch (err: any) {
-        alert("Error deleting testimonial: " + err.message);
+      } catch (err) {
+        console.error("Error deleting testimonial:", err);
+        alert("Couldn't delete this testimonial. Please try again.");
       }
     }
   };
@@ -217,8 +222,9 @@ export default function TestimonialsPage() {
     try {
       await apiToggleTestimonialStatus(id, item.showOnSite);
       await loadData();
-    } catch (err: any) {
-      alert("Error toggling testimonial visibility: " + err.message);
+    } catch (err) {
+      console.error("Error toggling testimonial visibility:", err);
+      alert("Couldn't update visibility. Please try again.");
     }
   };
 
@@ -305,7 +311,7 @@ export default function TestimonialsPage() {
                       {t.mediaType === "video" ? (
                         <video src={t.mediaUrl} className="w-full h-full object-cover" muted />
                       ) : (
-                        <img src={t.mediaUrl} alt={t.studentName} className="w-full h-full object-cover" />
+                        <Image src={t.mediaUrl} alt={t.studentName} fill className="object-cover" />
                       )}
                       <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center">
                         {t.mediaType === "video" ? (
@@ -508,7 +514,7 @@ export default function TestimonialsPage() {
                     {drawerForm.mediaType === "video" ? (
                       <video src={drawerForm.mediaUrl} className="w-full h-full object-cover" controls />
                     ) : (
-                      <img src={drawerForm.mediaUrl} alt="Testimonial media" className="w-full h-full object-cover" />
+                      <Image src={drawerForm.mediaUrl} alt="Testimonial media" fill className="object-cover" />
                     )}
                     <button
                       type="button"

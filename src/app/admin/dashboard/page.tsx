@@ -3,17 +3,17 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
-  IconSparkles,
   IconUsers,
   IconUserCheck,
   IconBook,
   IconCurrencyRupee,
-  IconCalendar,
   IconX,
   IconSearch,
 } from "@tabler/icons-react";
 import { getAdminData } from "../../actions";
 import { SkeletonMetric } from "@/components/Skeleton";
+
+type AdminData = Awaited<ReturnType<typeof getAdminData>>;
 
 interface Course {
   id: string;
@@ -36,19 +36,11 @@ interface Mentor {
   isInvitation?: boolean;
 }
 
-interface Testimonial {
-  id: string;
-  studentName: string;
-  avatarBg: string;
-  avatarText: string;
-}
-
 export default function DashboardPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mentors, setMentors] = useState<Mentor[]>([]);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<AdminData["bookings"]>([]);
   const [loading, setLoading] = useState(true);
 
   // Time filters
@@ -67,7 +59,6 @@ export default function DashboardPage() {
       setCourses(res.courses || []);
       setSessions(res.sessions || []);
       setMentors(res.mentors || []);
-      setTestimonials(res.testimonials || []);
       setBookings(res.bookings || []);
     } catch (err) {
       console.error("Failed to load dashboard stats:", err);
@@ -77,6 +68,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -84,7 +76,7 @@ export default function DashboardPage() {
   const filteredBookings = useMemo(() => {
     const now = new Date();
     
-    return bookings.filter((b: any) => {
+    return bookings.filter((b) => {
       const bDate = new Date(b.createdAt);
       
       if (timeFilter === "today") {
@@ -109,13 +101,14 @@ export default function DashboardPage() {
 
   // Aggregate active students list from filtered bookings
   const uniqueStudentsList = useMemo(() => {
-    const studentsMap = new Map<string, any>();
+    const studentsMap = new Map<string, { name: string; email: string; parentName: string; items: string[]; bookingDates: string[] }>();
     
-    filteredBookings.forEach((b: any) => {
-      const email = (b.parentEmail || b.studentEmail || "").toLowerCase();
+    filteredBookings.forEach((b) => {
+      const email = (b.parentEmail || "").toLowerCase();
       if (!email) return;
-      
-      if (!studentsMap.has(email)) {
+
+      const existing = studentsMap.get(email);
+      if (!existing) {
         studentsMap.set(email, {
           name: b.studentName || "Unknown Student",
           email: email,
@@ -124,9 +117,8 @@ export default function DashboardPage() {
           bookingDates: [new Date(b.createdAt).toLocaleDateString("en-IN")]
         });
       } else {
-        const s = studentsMap.get(email);
-        if (!s.items.includes(b.itemTitle)) s.items.push(b.itemTitle);
-        s.bookingDates.push(new Date(b.createdAt).toLocaleDateString("en-IN"));
+        if (!existing.items.includes(b.itemTitle)) existing.items.push(b.itemTitle);
+        existing.bookingDates.push(new Date(b.createdAt).toLocaleDateString("en-IN"));
       }
     });
     
@@ -136,20 +128,20 @@ export default function DashboardPage() {
   const totalStudentsCount = uniqueStudentsList.length;
 
   const activeTutorsCount = useMemo(() => {
-    return mentors.filter((m: any) => !m.isInvitation).length;
+    return mentors.filter((m) => !m.isInvitation).length;
   }, [mentors]);
 
   // Filter paid revenue within dynamic range
   const filteredRevenue = useMemo(() => {
     return filteredBookings
-      .filter((b: any) => b.paymentStatus === "paid")
+      .filter((b) => b.paymentStatus === "paid")
       .reduce((acc, curr) => acc + (curr.amountPaid || 0), 0);
   }, [filteredBookings]);
 
   // Course Breakdown formatting: Recorded, Live Batch, Live Individual
   const courseStats = useMemo(() => {
     const counts = { Recorded: 0, LiveBatch: 0, LiveIndividual: 0 };
-    courses.forEach((c: any) => {
+    courses.forEach((c) => {
       const f = (c.format || "").toLowerCase();
       if (f.includes("recorded")) counts.Recorded++;
       else if (f.includes("batch")) counts.LiveBatch++;
@@ -176,7 +168,7 @@ export default function DashboardPage() {
   // Session Breakdown formatting: 1 on 1, Group
   const sessionStats = useMemo(() => {
     const counts = { OneOnOne: 0, Group: 0 };
-    sessions.forEach((s: any) => {
+    sessions.forEach((s) => {
       const t = (s.type || "").toLowerCase();
       if (t.includes("group")) counts.Group++;
       else counts.OneOnOne++;
@@ -208,7 +200,7 @@ export default function DashboardPage() {
       const dateStr = d.toDateString();
 
       const dayRevenue = filteredBookings
-        .filter((b: any) => new Date(b.createdAt).toDateString() === dateStr && b.paymentStatus === "paid")
+        .filter((b) => new Date(b.createdAt).toDateString() === dateStr && b.paymentStatus === "paid")
         .reduce((sum, b) => sum + (b.amountPaid || 0), 0);
 
       results.push({ label: dayLabel, revenue: dayRevenue });
@@ -224,7 +216,7 @@ export default function DashboardPage() {
   }, [filteredBookings]);
 
   const recentSignupsList = useMemo(() => {
-    return filteredBookings.slice(0, 4).map((b: any) => {
+    return filteredBookings.slice(0, 4).map((b) => {
       const initials = b.studentName
         .split(" ")
         .map((w: string) => w[0])

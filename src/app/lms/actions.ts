@@ -36,7 +36,7 @@ export async function checkStudentInvitation(email: string) {
     }
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err) {
     console.error("Unexpected error checking student invitation:", err);
     return { success: false, error: "An unexpected error occurred. Please try again." };
   }

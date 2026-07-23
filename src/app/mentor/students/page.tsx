@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { IconSearch, IconUsers, IconMail, IconPhone, IconCalendar } from "@tabler/icons-react";
 import { getMentorStudents } from "@/app/actions";
 
@@ -104,7 +105,7 @@ export default function MentorStudentsPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {s.avatarUrl ? (
-                            <img src={s.avatarUrl} alt={s.name} className="w-9 h-9 rounded-full bg-slate-100 object-cover border border-[#D0DCF5]" />
+                            <Image src={s.avatarUrl} alt={s.name} width={36} height={36} className="w-9 h-9 rounded-full bg-slate-100 object-cover border border-[#D0DCF5]" />
                           ) : (
                             <div className="w-9 h-9 rounded-full bg-[#EBF2FF] flex items-center justify-center font-heading text-xs font-bold text-[#2F7FE8] border border-[#D0DCF5]">
                               {initials}

@@ -91,6 +91,7 @@ export default function MentorAssignmentsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 

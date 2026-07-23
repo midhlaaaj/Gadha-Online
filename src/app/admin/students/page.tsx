@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { IconSearch, IconNotebook, IconUsers, IconUserMinus } from "@tabler/icons-react";
+import { IconSearch, IconUserMinus } from "@tabler/icons-react";
 import { getAdminData } from "../../actions";
 import { SkeletonCard } from "@/components/Skeleton";
 
+type AdminBooking = Awaited<ReturnType<typeof getAdminData>>["bookings"][number];
+
 export default function StudentsPage() {
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -25,8 +27,17 @@ export default function StudentsPage() {
   }, []);
 
   // De-duplicate parents and students from bookings table to populate the directory catalog
-  const studentMap = new Map();
-  bookings.forEach((b: any) => {
+  interface StudentEntry {
+    studentName: string;
+    parentName: string;
+    parentEmail: string;
+    bookingCount: number;
+    grade: string;
+    registeredAt: string;
+  }
+
+  const studentMap = new Map<string, StudentEntry>();
+  bookings.forEach((b) => {
     const key = `${b.studentName}-${b.parentEmail}`.toLowerCase();
     if (!studentMap.has(key)) {
       studentMap.set(key, {
@@ -38,14 +49,14 @@ export default function StudentsPage() {
         registeredAt: b.createdAt,
       });
     } else {
-      const existing = studentMap.get(key);
+      const existing = studentMap.get(key)!;
       existing.bookingCount += 1;
     }
   });
 
   const studentsList = Array.from(studentMap.values());
 
-  const filteredStudents = studentsList.filter((s: any) => {
+  const filteredStudents = studentsList.filter((s) => {
     const term = search.toLowerCase();
     return (
       s.studentName.toLowerCase().includes(term) ||
@@ -93,7 +104,7 @@ export default function StudentsPage() {
 
       {/* Grid of Student Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 font-sans">
-        {filteredStudents.map((s: any, idx: number) => (
+        {filteredStudents.map((s, idx) => (
           <div key={idx} className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition-all flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center gap-3">

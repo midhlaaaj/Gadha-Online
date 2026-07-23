@@ -56,6 +56,7 @@ export default function AdminLeadsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -63,8 +64,9 @@ export default function AdminLeadsPage() {
     try {
       await toggleLeadResolved(id, current);
       await loadData();
-    } catch (err: any) {
-      alert("Error updating lead: " + err.message);
+    } catch (err) {
+      console.error("Error updating lead:", err);
+      alert("Couldn't update this lead. Please try again.");
     }
   };
 

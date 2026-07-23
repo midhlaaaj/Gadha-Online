@@ -15,6 +15,8 @@ import {
 import { SkeletonCard } from "@/components/Skeleton";
 import NewBookingModal from "./_components/NewBookingModal";
 
+type AdminData = Awaited<ReturnType<typeof getAdminData>>;
+
 interface Booking {
   id: string;
   parentName: string;
@@ -48,9 +50,8 @@ function statusBadgeClass(status: string) {
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [courses, setCourses] = useState<any[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [mentors, setMentors] = useState<any[]>([]);
+  const [courses, setCourses] = useState<AdminData["courses"]>([]);
+  const [sessions, setSessions] = useState<AdminData["sessions"]>([]);
   const [loading, setLoading] = useState(true);
   const [newBookingOpen, setNewBookingOpen] = useState(false);
 
@@ -61,7 +62,7 @@ export default function BookingsPage() {
   const [bookingSearch, setBookingSearch] = useState("");
 
   // Selected booking details popup modal state
-  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmForm, setConfirmForm] = useState({
     paymentMethod: "Cash",
@@ -101,8 +102,9 @@ export default function BookingsPage() {
       });
       setSelectedBooking(null);
       await loadData();
-    } catch (err: any) {
-      alert("Failed to confirm booking: " + err.message);
+    } catch (err) {
+      console.error("Failed to confirm booking:", err);
+      alert("Couldn't confirm this booking. Please try again.");
     } finally {
       setConfirming(false);
     }
@@ -114,7 +116,6 @@ export default function BookingsPage() {
       setBookings(res.bookings || []);
       setCourses(res.courses || []);
       setSessions(res.sessions || []);
-      setMentors(res.mentors || []);
     } catch (err) {
       console.error("Failed to load bookings:", err);
     } finally {
@@ -131,8 +132,9 @@ export default function BookingsPage() {
       try {
         await cancelBooking(id);
         await loadData();
-      } catch (err: any) {
-        alert("Failed to cancel booking: " + err.message);
+      } catch (err) {
+        console.error("Failed to cancel booking:", err);
+        alert("Couldn't cancel this booking. Please try again.");
       }
     }
   };
@@ -629,7 +631,6 @@ export default function BookingsPage() {
         onCreated={loadData}
         courses={courses}
         sessions={sessions}
-        mentors={mentors}
       />
     </div>
   );

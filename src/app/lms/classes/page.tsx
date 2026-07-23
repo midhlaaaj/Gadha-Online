@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   IconVideo, IconClock, IconCheck, IconX,
   IconPlayerPlay, IconBroadcast, IconCalendar,
-  IconChevronRight, IconLoader,
+  IconLoader,
 } from "@tabler/icons-react";
 import { getStudentClasses, getStudentBookingsAction, getStudentScheduledClassesResolved } from "@/app/actions";
 
@@ -142,15 +141,19 @@ function EmptyState({ label }: { label: string }) {
 export default function StudentClassesPage() {
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<Classes | null>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [, setBookings] = useState<Awaited<ReturnType<typeof getStudentBookingsAction>>>([]);
   const [tab, setTab] = useState<SubTab>("today");
 
   // Live booking classes schedule drill-down states
-  const [selectedLiveBooking, setSelectedLiveBooking] = useState<any | null>(null);
-  const [bookingClasses, setBookingClasses] = useState<any[]>([]);
+  const [selectedLiveBooking, setSelectedLiveBooking] = useState<Awaited<ReturnType<typeof getStudentBookingsAction>>[number] | null>(null);
+  const [bookingClasses, setBookingClasses] = useState<Awaited<ReturnType<typeof getStudentScheduledClassesResolved>>>([]);
   const [loadingBookingClasses, setLoadingBookingClasses] = useState(false);
 
-  const handleOpenLiveBooking = async (b: any) => {
+  // NOTE: not currently wired to any click handler in this page's JSX (pre-existing;
+  // the drill-down modal below is effectively unreachable). Kept as-is to avoid
+  // changing behavior; retyped only to satisfy no-explicit-any.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleOpenLiveBooking = async (b: Awaited<ReturnType<typeof getStudentBookingsAction>>[number]) => {
     setSelectedLiveBooking(b);
     setLoadingBookingClasses(true);
     try {
@@ -308,7 +311,7 @@ export default function StudentClassesPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {bookingClasses.map((c: any) => {
+                  {bookingClasses.map((c) => {
                     const now = new Date();
                     const classTime = new Date(c.scheduled_at);
                     const minsUntil = (classTime.getTime() - now.getTime()) / 60000;

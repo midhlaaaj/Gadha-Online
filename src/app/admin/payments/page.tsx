@@ -16,20 +16,22 @@ import {
 import { getAdminData, recordBookingInstallment, getBookingPaymentLogs } from "../../actions";
 import { SkeletonMetric } from "@/components/Skeleton";
 
+type AdminBooking = Awaited<ReturnType<typeof getAdminData>>["bookings"][number];
+
 export default function PaymentsPage() {
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [trendOffset, setTrendOffset] = useState(0);
 
   // Installment Modal State
-  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<AdminBooking | null>(null);
   const [installmentAmount, setInstallmentAmount] = useState<number>(0);
   const [installmentMethod, setInstallmentMethod] = useState<string>("Cash");
   const [installmentRef, setInstallmentRef] = useState<string>("");
   const [installmentNotes, setInstallmentNotes] = useState<string>("");
   const [recording, setRecording] = useState(false);
-  const [paymentLogs, setPaymentLogs] = useState<any[]>([]);
+  const [paymentLogs, setPaymentLogs] = useState<Awaited<ReturnType<typeof getBookingPaymentLogs>>>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   async function loadData() {
@@ -44,10 +46,11 @@ export default function PaymentsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
-  const openInstallmentModal = async (b: any) => {
+  const openInstallmentModal = async (b: AdminBooking) => {
     setSelectedBooking(b);
     setInstallmentAmount(b.remainingBalance || 0);
     setInstallmentMethod("Cash");
@@ -78,8 +81,9 @@ export default function PaymentsPage() {
       });
       await loadData();
       setSelectedBooking(null);
-    } catch (err: any) {
-      alert(err.message || "Failed to record installment");
+    } catch (err) {
+      console.error("Failed to record installment:", err);
+      alert("Couldn't record this payment. Please try again.");
     } finally {
       setRecording(false);
     }

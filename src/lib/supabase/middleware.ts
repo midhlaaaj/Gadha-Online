@@ -39,8 +39,6 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  console.log(`[MIDDLEWARE LOG] Path: ${pathname} | User: ${user?.email ?? "None"} | Cookies:`, request.cookies.getAll().map(c => c.name));
-
   if (pathname.startsWith("/lms")) {
     if (!user) {
       if (pathname !== "/lms/login") {

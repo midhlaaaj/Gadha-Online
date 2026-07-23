@@ -33,7 +33,7 @@ export function ChildSwitcher() {
 
   useEffect(() => {
     getParentChildren()
-      .then((all: any[]) => {
+      .then((all) => {
         // Show ALL children — both joined and pending invitations
         setChildren(all);
 

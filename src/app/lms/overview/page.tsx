@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  IconCalendarCheck, IconClipboardList, IconFlame, IconVideo,
+  IconCalendarCheck, IconClipboardList, IconVideo,
   IconArrowRight, IconAlertTriangle, IconCheck, IconX, IconSparkles,
   IconChartBar,
 } from "@tabler/icons-react";
@@ -215,8 +215,8 @@ export default function StudentOverviewPage() {
       getStudentProfile().catch(() => null),
       getStudentOverviewStats().catch(() => null),
     ]).then(([p, s]) => {
-      setProfile(p as any);
-      setStats(s as any);
+      setProfile(p);
+      setStats(s);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -243,8 +243,8 @@ export default function StudentOverviewPage() {
           </p>
         </div>
 
-        {/* Profile pill */}
-        <div className="flex items-center gap-2 pl-1.5 pr-4 py-1.5 border border-[#d0e0f8] bg-white rounded-full shadow-sm shrink-0">
+        {/* Profile pill (desktop only — mobile shows this in the top bar) */}
+        <div className="hidden sm:flex items-center gap-2 pl-1.5 pr-4 py-1.5 border border-[#d0e0f8] bg-white rounded-full shadow-sm shrink-0">
           <div className="w-8 h-8 rounded-full bg-[#0f2347] flex items-center justify-center font-heading text-xs font-extrabold text-[#ffc107] shadow-inner shrink-0">
             {profile?.avatarText ?? "S"}
           </div>
@@ -287,7 +287,7 @@ export default function StudentOverviewPage() {
           {/* Today's Classes */}
           <div className="bg-white rounded-2xl border border-[#E6EBF8] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Today's Classes</h2>
+              <h2 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Today&apos;s Classes</h2>
               <Link href="/lms/classes" className="text-[11px] font-semibold text-[#2F7FE8] hover:underline flex items-center gap-1">
                 View all <IconArrowRight className="w-3 h-3" />
               </Link>

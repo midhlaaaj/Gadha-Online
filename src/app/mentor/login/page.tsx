@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { IconEye, IconEyeOff, IconMail, IconLock } from "@tabler/icons-react";
+import Image from "next/image";
+import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 import { validateEmail, validatePassword, sanitizeText } from "@/lib/validate";
 import { checkMentorInvitation } from "@/app/actions";
@@ -20,18 +20,21 @@ export default function MentorLoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const supabase = createClient();
 
-  useEffect(() => {
+  const switchMode = (newMode: "signin" | "signup" | "forgot") => {
+    setMode(newMode);
     setError(null);
     setSuccess(null);
     setEmail("");
     setPassword("");
     setConfirmPassword("");
-  }, [mode]);
+    setRedirecting(false);
+  };
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -48,8 +51,8 @@ export default function MentorLoginPage() {
         },
       });
       if (err) throw err;
-    } catch (err: any) {
-      setError(err.message || "Failed to start Google Sign In. Verify if OAuth is enabled.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start Google Sign In. Verify if OAuth is enabled.");
       setLoading(false);
     }
   };
@@ -81,6 +84,7 @@ export default function MentorLoginPage() {
     }
 
     setLoading(true);
+    let keepLoading = false;
 
     try {
       if (mode === "signin") {
@@ -90,16 +94,18 @@ export default function MentorLoginPage() {
         });
         if (err) throw err;
 
+        keepLoading = true;
         setSuccess("Signed in successfully!");
+        setRedirecting(true);
+        router.refresh();
         setTimeout(() => {
           router.replace("/mentor/overview");
-        }, 200);
+        }, 300);
       } else if (mode === "signup") {
         // Enforce admin-invited email restriction
         const inviteCheck = await checkMentorInvitation(email);
         if (!inviteCheck.success) {
           setError(inviteCheck.error!);
-          setLoading(false);
           return;
         }
 
@@ -117,9 +123,10 @@ export default function MentorLoginPage() {
         });
         if (err) throw err;
 
+        keepLoading = true;
         setSuccess("Account created successfully! Check your email or try signing in.");
         setTimeout(() => {
-          setMode("signin");
+          switchMode("signin");
           setLoading(false);
         }, 2000);
       } else if (mode === "forgot") {
@@ -130,12 +137,18 @@ export default function MentorLoginPage() {
 
         setSuccess("Password reset instructions have been sent to your email.");
       }
-    } catch (err: any) {
-      setError(err.message || "An authentication error occurred. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An authentication error occurred. Please try again.");
     } finally {
-      setLoading(false);
+      if (!keepLoading) setLoading(false);
     }
   };
+
+  const submitLabel = redirecting
+    ? "Redirecting..."
+    : loading
+      ? (mode === "signin" ? "Signing in..." : mode === "signup" ? "Creating account..." : "Sending reset link...")
+      : (mode === "signin" ? "Sign In" : mode === "signup" ? "Create Account" : "Send Reset Link");
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[#F5F8FF]">
@@ -144,8 +157,9 @@ export default function MentorLoginPage() {
         
         {/* Header logo & title */}
         <div className="pb-2 mb-1 flex flex-col items-center">
-          <div className="font-heading text-2xl font-extrabold tracking-tight text-[#1B3A6B] mb-1">
-            Tuto<span className="text-[#2F7FE8]">board</span>
+          <div className="flex items-center gap-2 font-heading text-xl font-extrabold tracking-tight text-[#1B3A6B] mb-1">
+            <Image src="/logo.png" alt="Gadha Online" width={40} height={40} className="w-10 h-10 object-contain" />
+            <span>Gadha Online</span>
           </div>
           <p className="text-[10px] font-bold text-[#9BA8C0] uppercase tracking-widest mb-2">Tutor Portal</p>
           
@@ -167,13 +181,22 @@ export default function MentorLoginPage() {
               disabled={loading}
               className="w-full flex items-center justify-center gap-3 py-3 border border-slate-200 hover:border-slate-300 rounded-lg bg-white text-[#1B3A6B] text-xs font-semibold hover:bg-slate-50 hover:shadow-sm transition-all cursor-pointer mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              <span>Continue with Google</span>
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-[#1B3A6B]/30 border-t-[#1B3A6B] rounded-full animate-spin"></div>
+                  <span>Connecting...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
+                  <span>Continue with Google</span>
+                </>
+              )}
             </button>
 
             <div className="flex items-center">
@@ -266,7 +289,7 @@ export default function MentorLoginPage() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setMode("forgot")}
+                  onClick={() => switchMode("forgot")}
                   className="font-semibold text-[#2F7FE8] hover:text-[#2F7FE8]/80 hover:underline cursor-pointer focus:outline-none"
                 >
                   Forgot password?
@@ -290,19 +313,23 @@ export default function MentorLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-[#1B3A6B] hover:bg-[#1B3A6B]/95 text-white text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer mt-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full py-3.5 text-white text-xs font-bold rounded-lg shadow-md transition-all cursor-pointer mt-4 flex items-center justify-center gap-2 disabled:cursor-not-allowed ${
+                redirecting ? "bg-emerald-600 hover:bg-emerald-600" : "bg-[#1B3A6B] hover:bg-[#1B3A6B]/95 hover:shadow-lg disabled:opacity-50"
+              }`}
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Processing...</span>
+                  {redirecting ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                  <span>{submitLabel}</span>
                 </>
               ) : (
-                <>
-                  {mode === "signin" && "Sign In"}
-                  {mode === "signup" && "Create Account"}
-                  {mode === "forgot" && "Send Reset Link"}
-                </>
+                <span>{submitLabel}</span>
               )}
             </button>
           </form>
@@ -312,9 +339,9 @@ export default function MentorLoginPage() {
         <div className="pt-4 mt-4 border-t border-slate-100 text-center text-xs text-[#4A5A7A] font-medium">
           {mode === "signin" && (
             <p>
-              Want to teach on Tutoboard?{" "}
+              Want to teach on Gadha Online?{" "}
               <button
-                onClick={() => setMode("signup")}
+                onClick={() => switchMode("signup")}
                 className="font-bold text-[#2F7FE8] hover:text-[#2F7FE8]/80 cursor-pointer focus:outline-none"
               >
                 Create account
@@ -325,7 +352,7 @@ export default function MentorLoginPage() {
             <p>
               Already have an account?{" "}
               <button
-                onClick={() => setMode("signin")}
+                onClick={() => switchMode("signin")}
                 className="font-bold text-[#2F7FE8] hover:text-[#2F7FE8]/80 cursor-pointer focus:outline-none"
               >
                 Sign In
@@ -334,7 +361,7 @@ export default function MentorLoginPage() {
           )}
           {mode === "forgot" && (
             <button
-              onClick={() => setMode("signin")}
+              onClick={() => switchMode("signin")}
               className="font-bold text-[#2F7FE8] hover:text-[#2F7FE8]/80 cursor-pointer focus:outline-none"
             >
               Back to Sign In

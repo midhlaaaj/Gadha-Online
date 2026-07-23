@@ -66,7 +66,7 @@ export function UserNotificationBell() {
     try {
       const data = await getUserNotifications();
       setNotifications(data);
-      const unreadIds = data.filter((n: any) => !n.is_read).map((n: any) => n.id);
+      const unreadIds = data.filter((n) => !n.is_read).map((n) => n.id);
       if (unreadIds.length > 0) {
         await markUserNotificationsRead(unreadIds);
         setUnreadCount(0);
@@ -119,7 +119,7 @@ export function UserNotificationBell() {
               </div>
             ) : (
               <div className="divide-y divide-[#F0F3FB]">
-                {notifications.map((n: any) => (
+                {notifications.map((n) => (
                   <Link
                     key={n.id}
                     href={n.link_url || "/bookings"}

@@ -54,6 +54,7 @@ export default function AdminManagementPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -66,8 +67,9 @@ export default function AdminManagementPage() {
       setInviteName("");
       setInviteOpen(false);
       await loadData();
-    } catch (err: any) {
-      alert("Error sending invite: " + err.message);
+    } catch (err) {
+      console.error("Error sending invite:", err);
+      alert("Couldn't send the invite. Please try again.");
     } finally {
       setSending(false);
     }
@@ -98,8 +100,9 @@ export default function AdminManagementPage() {
         try {
           await revokeAdminInvite(id);
           await loadData();
-        } catch (err: any) {
-          alert("Error cancelling invite: " + err.message);
+        } catch (err) {
+          console.error("Error cancelling invite:", err);
+          alert("Couldn't cancel the invite. Please try again.");
         }
       },
     });

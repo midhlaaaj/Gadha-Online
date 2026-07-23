@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  IconCalendarCheck, IconClipboardList, IconVideo,
-  IconArrowRight, IconCheck, IconX, IconSparkles,
-  IconChartBar, IconCoin, IconMessageCircle, IconUsers
+  IconClipboardList, IconVideo,
+  IconArrowRight,
+  IconCoin, IconMessageCircle,
+  IconUser, IconLogout, IconChevronDown,
 } from "@tabler/icons-react";
 import { getMentorOverviewStats, getMentorProfile, getMentorClasses } from "@/app/actions";
+import { createClient } from "@/lib/supabase/client";
+import { NotificationBell } from "../_components/NotificationBell";
 
 type Stats = Awaited<ReturnType<typeof getMentorOverviewStats>>;
 type Profile = Awaited<ReturnType<typeof getMentorProfile>>;
@@ -141,10 +145,27 @@ function ClassCard({ cls }: { cls: MentorClass }) {
 }
 
 export default function MentorOverviewPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [classes, setClasses] = useState<MentorClass[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  };
 
   useEffect(() => {
     Promise.all([
@@ -196,14 +217,44 @@ export default function MentorOverviewPage() {
           </p>
         </div>
 
-        {/* Profile pill */}
-        <div className="flex items-center gap-2 pl-1.5 pr-4 py-1.5 border border-[#d0e0f8] bg-white rounded-full shadow-sm shrink-0">
-          <div className="w-8 h-8 rounded-full bg-[#0f2347] flex items-center justify-center font-heading text-xs font-extrabold text-[#ffc107] shadow-inner shrink-0">
-            {profile?.avatarText ?? "T"}
-          </div>
-          <div className="hidden sm:block">
-            <p className="text-[12px] font-bold text-[#1B3A6B] leading-tight">{profile?.name ?? "Tutor"}</p>
-            <p className="text-[10px] text-[#9BA8C0] leading-tight capitalize">{profile?.qualification ?? "Educator"}</p>
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <NotificationBell />
+
+          {/* Profile pill */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 border border-[#d0e0f8] bg-white rounded-full shadow-sm cursor-pointer hover:bg-[#F5F7FF] transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#0f2347] flex items-center justify-center font-heading text-xs font-extrabold text-[#ffc107] shadow-inner shrink-0">
+                {profile?.avatarText ?? "T"}
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="text-[12px] font-bold text-[#1B3A6B] leading-tight">{profile?.name ?? "Tutor"}</p>
+                <p className="text-[10px] text-[#9BA8C0] leading-tight capitalize">{profile?.qualification ?? "Educator"}</p>
+              </div>
+              <IconChevronDown className={`w-3.5 h-3.5 text-[#9BA8C0] shrink-0 transition-transform ${menuOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 top-11 w-48 bg-white rounded-2xl border border-[#D0DCF5] shadow-2xl shadow-[#1B3A6B]/10 z-50 overflow-hidden py-1.5">
+                <Link
+                  href="/mentor/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-semibold text-[#1B3A6B] hover:bg-[#F5F7FF] transition-colors"
+                >
+                  <IconUser className="w-4 h-4 text-[#9BA8C0]" />
+                  View Profile
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-semibold text-[#E24B4A] hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <IconLogout className="w-4 h-4" />
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -241,7 +292,7 @@ export default function MentorOverviewPage() {
           {/* Today's Classes */}
           <div className="bg-white rounded-2xl border border-[#E6EBF8] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Today's Schedule</h2>
+              <h2 className="text-[16px] md:text-[18px] font-extrabold font-heading text-[#1B3A6B]">Today&apos;s Schedule</h2>
               <Link href="/mentor/classes" className="text-[11px] font-semibold text-[#2F7FE8] hover:underline flex items-center gap-1">
                 View calendar <IconArrowRight className="w-3 h-3" />
               </Link>
@@ -281,7 +332,7 @@ export default function MentorOverviewPage() {
         {/* ── Right: 1/3 width ── */}
         <div className="space-y-5">
           {/* Profile details & expertise */}
-          <div className="bg-white rounded-2xl border border-[#E6EBF8] p-6 flex flex-col items-center text-center gap-4">
+          <div className="hidden sm:flex bg-white rounded-2xl border border-[#E6EBF8] p-6 flex-col items-center text-center gap-4">
             <h3 className="text-[13px] font-bold text-[#1B3A6B] self-start">Tutor Profile</h3>
             
             <div className="w-16 h-16 rounded-2xl bg-[#F5F8FF] border border-[#d0e0f8] flex items-center justify-center font-heading text-lg font-extrabold text-[#2F7FE8] shadow-inner shrink-0">

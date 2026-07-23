@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import {
   IconVideo,
   IconClock,
-  IconCalendarCheck,
   IconPlayerPlay,
   IconCheck,
   IconX,
@@ -133,8 +132,8 @@ function EnrolledRow({ b }: { b: Booking }) {
 
     // Live Batch date check
     if (b.format === "Live batch") {
-      const bStartStr = (b as any).batchStartDate;
-      const bEndStr = (b as any).batchEndDate;
+      const bStartStr = b.batchStartDate;
+      const bEndStr = b.batchEndDate;
       if (!bStartStr || !bEndStr) {
         return { label: "Active Access", bg: "bg-green-50", text: "text-green-600", active: true };
       }
@@ -154,8 +153,8 @@ function EnrolledRow({ b }: { b: Booking }) {
 
     // Live Individual date validity limit check
     if (b.format === "Live individual") {
-      const createdStr = (b as any).createdAt;
-      const duration = (b as any).durationDays;
+      const createdStr = b.createdAt;
+      const duration = b.durationDays;
       if (!createdStr || !duration) {
         return { label: "Active Access", bg: "bg-green-50", text: "text-green-600", active: true };
       }
@@ -223,6 +222,7 @@ export default function ClassesPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-driven-by-childId-param; bails out synchronously only when there's no child to load
     if (!childId) { setLoading(false); return; }
     setLoading(true);
     Promise.all([
@@ -232,7 +232,7 @@ export default function ClassesPage() {
       .then(([sc, bk]) => {
         setScheduled(sc);
         // Only bookings for this child
-        setBookings((bk as Booking[]).filter((b) => (b as any).studentId === childId));
+        setBookings(bk.filter((b) => b.studentId === childId));
       })
       .finally(() => setLoading(false));
   }, [childId]);

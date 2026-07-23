@@ -72,6 +72,7 @@ export default function MentorResourcesPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -265,7 +266,7 @@ export default function MentorResourcesPage() {
                 </label>
                 <select
                   value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                  onChange={(e) => setForm({ ...form, type: e.target.value as "pdf" | "video" | "link" | "document" })}
                   className="w-full text-[13px] px-3.5 py-2.5 rounded-xl border border-[#D0DCF5] bg-white text-[#1B3A6B] focus:outline-none focus:border-[#2F7FE8] font-semibold"
                 >
                   <option value="document">Document / File</option>

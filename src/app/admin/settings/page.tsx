@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { IconSettings, IconShieldCheck, IconMail, IconDatabase } from "@tabler/icons-react";
+import { IconSettings, IconMail } from "@tabler/icons-react";
 
 export default function SettingsPage() {
   const [commissionRate, setCommissionRate] = useState(15);

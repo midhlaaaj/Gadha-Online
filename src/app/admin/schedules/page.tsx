@@ -4,20 +4,42 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   IconSearch,
   IconCalendar,
-  IconClock,
   IconLink,
   IconUsers,
   IconEdit,
   IconX,
   IconCheck,
-  IconAlertCircle,
   IconInfoCircle,
 } from "@tabler/icons-react";
 import { getAdminSchedules, markAdminAttendance } from "../../actions";
 import { SkeletonCard } from "@/components/Skeleton";
 
+type ScheduleItem = Awaited<ReturnType<typeof getAdminSchedules>>[number];
+type StudentInfo = ScheduleItem["studentInfo"];
+
+interface Occurrence {
+  id: string;
+  lessonTopic: string;
+  date: string;
+  time: string;
+  scheduledAt: string;
+  zoomLink: string | null;
+  students: StudentInfo[];
+}
+
+interface GroupedCard {
+  courseTitle: string;
+  subject: string;
+  mentor: string;
+  itemType: "course" | "session";
+  subType: string;
+  occurrences: Occurrence[];
+  studentsBooked: number;
+  attendanceRate: string;
+}
+
 export default function SchedulesPage() {
-  const [schedules, setSchedules] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -26,7 +48,7 @@ export default function SchedulesPage() {
   const [filterSubType, setFilterSubType] = useState<string>("all");
 
   // Selected Card (representing a Course or Session group) for the modal
-  const [selectedCard, setSelectedCard] = useState<any | null>(null);
+  const [selectedCard, setSelectedCard] = useState<GroupedCard | null>(null);
   const [selectedOccurrenceId, setSelectedOccurrenceId] = useState<string>("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAttendance, setEditingAttendance] = useState<Record<string, "present" | "absent" | "excused" | "unmarked">>({});
@@ -45,17 +67,21 @@ export default function SchedulesPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
-  // Reset SubType filter when Main Type changes
-  useEffect(() => {
-    setFilterSubType("all");
-  }, [filterType]);
-
   // Group flat scheduled classes by unique Course / Session title
-  const groupedCards = useMemo(() => {
-    const cardsMap = new Map<string, any>();
+  const groupedCards = useMemo((): GroupedCard[] => {
+    interface CardAccumulator {
+      courseTitle: string;
+      subject: string;
+      mentor: string;
+      itemType: "course" | "session";
+      subType: string;
+      occurrencesMap: Map<string, Occurrence>;
+    }
+    const cardsMap = new Map<string, CardAccumulator>();
 
     schedules.forEach((item) => {
       const cardKey = item.courseTitle.toLowerCase();
@@ -67,11 +93,11 @@ export default function SchedulesPage() {
           mentor: item.mentor,
           itemType: item.itemType,
           subType: item.subType,
-          occurrencesMap: new Map<string, any>()
+          occurrencesMap: new Map<string, Occurrence>()
         });
       }
 
-      const card = cardsMap.get(cardKey);
+      const card = cardsMap.get(cardKey)!;
       const occKey = item.id; // scheduled_class.id
 
       if (!card.occurrencesMap.has(occKey)) {
@@ -85,28 +111,28 @@ export default function SchedulesPage() {
           students: [item.studentInfo]
         });
       } else {
-        card.occurrencesMap.get(occKey).students.push(item.studentInfo);
+        card.occurrencesMap.get(occKey)!.students.push(item.studentInfo);
       }
     });
 
-    return Array.from(cardsMap.values()).map((card: any) => {
+    return Array.from(cardsMap.values()).map((card) => {
       const occurrences = Array.from(card.occurrencesMap.values()).sort(
-        (a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+        (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
       );
 
       // Unique student count
       const studentIds = new Set();
-      occurrences.forEach((occ: any) => {
-        occ.students.forEach((std: any) => {
+      occurrences.forEach((occ) => {
+        occ.students.forEach((std) => {
           if (std.studentId) studentIds.add(std.studentId);
         });
       });
       const uniqueStudentsCount = studentIds.size;
 
       // Attendance rate across all occurrences
-      const allStudentMarks: any[] = [];
-      occurrences.forEach((occ: any) => {
-        occ.students.forEach((std: any) => {
+      const allStudentMarks: StudentInfo[] = [];
+      occurrences.forEach((occ) => {
+        occ.students.forEach((std) => {
           if (std.status !== "unmarked") allStudentMarks.push(std);
         });
       });
@@ -150,14 +176,14 @@ export default function SchedulesPage() {
     });
   }, [groupedCards, search, filterType, filterSubType]);
 
-  const openAttendanceModal = (card: any) => {
+  const openAttendanceModal = (card: GroupedCard) => {
     setSelectedCard(card);
     if (card.occurrences.length > 0) {
       const initialOcc = card.occurrences[0];
       setSelectedOccurrenceId(initialOcc.id);
-      
-      const initialMarks: Record<string, any> = {};
-      initialOcc.students.forEach((s: any) => {
+
+      const initialMarks: Record<string, "present" | "absent" | "excused" | "unmarked"> = {};
+      initialOcc.students.forEach((s) => {
         initialMarks[s.studentId] = s.status || "unmarked";
       });
       setEditingAttendance(initialMarks);
@@ -169,10 +195,10 @@ export default function SchedulesPage() {
     setSelectedOccurrenceId(occId);
     if (!selectedCard) return;
 
-    const occ = selectedCard.occurrences.find((o: any) => o.id === occId);
+    const occ = selectedCard.occurrences.find((o) => o.id === occId);
     if (occ) {
-      const updatedMarks: Record<string, any> = {};
-      occ.students.forEach((s: any) => {
+      const updatedMarks: Record<string, "present" | "absent" | "excused" | "unmarked"> = {};
+      occ.students.forEach((s) => {
         updatedMarks[s.studentId] = s.status || "unmarked";
       });
       setEditingAttendance(updatedMarks);
@@ -189,26 +215,30 @@ export default function SchedulesPage() {
   const saveAttendanceMarks = async () => {
     if (!selectedCard || !selectedOccurrenceId) return;
 
-    const activeOcc = selectedCard.occurrences.find((o: any) => o.id === selectedOccurrenceId);
+    const activeOcc = selectedCard.occurrences.find((o) => o.id === selectedOccurrenceId);
     if (!activeOcc) return;
 
     setSaving(true);
     try {
-      const recordsToUpdate = activeOcc.students.map((s: any) => ({
-        studentId: s.studentId,
-        scheduledClassId: s.scheduledClassId,
-        bookingId: s.bookingId,
-        status: editingAttendance[s.studentId] === "unmarked" ? "absent" : editingAttendance[s.studentId],
-        date: activeOcc.date,
-        subject: selectedCard.subject,
-      }));
+      const recordsToUpdate = activeOcc.students.map((s) => {
+        const mark = editingAttendance[s.studentId];
+        return {
+          studentId: s.studentId,
+          scheduledClassId: s.scheduledClassId,
+          bookingId: s.bookingId,
+          status: mark === "unmarked" ? ("absent" as const) : mark,
+          date: activeOcc.date,
+          subject: selectedCard.subject,
+        };
+      });
 
       await markAdminAttendance(recordsToUpdate);
       setModalOpen(false);
       setSelectedCard(null);
       await loadData();
-    } catch (err: any) {
-      alert("Failed to save attendance: " + err.message);
+    } catch (err) {
+      console.error("Failed to save attendance:", err);
+      alert("Couldn't save attendance. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -232,7 +262,7 @@ export default function SchedulesPage() {
   // Find currently active occurrence in modal context
   const activeOccurrence = useMemo(() => {
     if (!selectedCard || !selectedOccurrenceId) return null;
-    return selectedCard.occurrences.find((o: any) => o.id === selectedOccurrenceId) || null;
+    return selectedCard.occurrences.find((o) => o.id === selectedOccurrenceId) || null;
   }, [selectedCard, selectedOccurrenceId]);
 
   if (loading) {
@@ -273,7 +303,10 @@ export default function SchedulesPage() {
             <div className="space-y-0.5 flex-1 md:flex-initial">
               <select
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value as any)}
+                onChange={(e) => {
+                  setFilterType(e.target.value as "all" | "course" | "session");
+                  setFilterSubType("all");
+                }}
                 className="w-full md:w-40 text-xs font-bold p-2 border border-[#E6EBF8] rounded-lg outline-none bg-white text-[#1B3A6B] cursor-pointer"
               >
                 <option value="all">All Schedules</option>
@@ -401,7 +434,7 @@ export default function SchedulesPage() {
                     onChange={(e) => handleOccurrenceChange(e.target.value)}
                     className="w-full text-xs font-bold p-2.5 border border-[#E6EBF8] rounded-lg outline-none bg-white text-[#1B3A6B] cursor-pointer focus:border-[#2F7FE8]"
                   >
-                    {selectedCard.occurrences.map((o: any) => (
+                    {selectedCard.occurrences.map((o) => (
                       <option key={o.id} value={o.id}>
                         {o.lessonTopic} ({o.date} &middot; {o.time})
                       </option>
@@ -429,7 +462,7 @@ export default function SchedulesPage() {
                   <h4 className="font-bold text-[#1B3A6B] text-xs uppercase tracking-wider">Student Roster</h4>
                   
                   <div className="divide-y divide-[#E6EBF8] border border-[#E6EBF8] rounded-xl overflow-hidden">
-                    {activeOccurrence.students.map((student: any) => (
+                    {activeOccurrence.students.map((student) => (
                       <div key={student.studentId} className="flex items-center justify-between p-3.5 bg-white hover:bg-slate-50/50 transition-colors">
                         <div>
                           <div className="text-xs font-bold text-[#1B3A6B]">{student.studentName}</div>

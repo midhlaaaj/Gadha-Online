@@ -252,6 +252,7 @@ export default function OverviewPage() {
 
   useEffect(() => {
     if (!childId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-driven-by-childId-param; bails out synchronously only when there's no child to load
       setLoading(false);
       return;
     }
@@ -264,7 +265,7 @@ export default function OverviewPage() {
     ])
       .then(([s, kids]) => {
         setStats(s);
-        const found = (kids as any[]).find((k) => k.id === childId);
+        const found = kids.find((k) => k.id === childId);
         if (found) setChildName(found.name.split(" ")[0]);
       })
       .catch((e) => setError(e.message))

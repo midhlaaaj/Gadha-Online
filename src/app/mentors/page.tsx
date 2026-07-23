@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
 import {
   IconSearch,
   IconAdjustmentsHorizontal,
@@ -13,17 +16,18 @@ import {
   IconBrandTwitter,
   IconBrandLinkedin,
   IconBrandYoutube,
-  IconSchool,
-  IconUsers,
-  IconBook,
 } from "@tabler/icons-react";
 import { getMentorsPageData } from "../actions";
-import BookingModal from "@/components/BookingModal";
 
-export default function MentorsPage() {
-  const [mentors, setMentors] = useState<any[]>([]);
+type Mentor = Awaited<ReturnType<typeof getMentorsPageData>>[number];
+
+function MentorsPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [mentors, setMentors] = useState<Mentor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMentorForBooking, setSelectedMentorForBooking] = useState<any | null>(null);
 
   // Filter & Search States
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,15 +36,24 @@ export default function MentorsPage() {
 
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedExperiences, setSelectedExperiences] = useState<string[]>([]);
-  const [minRate, setMinRate] = useState("");
-  const [maxRate, setMaxRate] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
   const [sortOption, setSortOption] = useState("Most popular");
-  const [currentPage, setCurrentPage] = useState(1);
+  const initialPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+  const [currentPage, setCurrentPageState] = useState(initialPage);
   const itemsPerPage = 6;
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const setCurrentPage = (value: number | ((prev: number) => number)) => {
+    const next = typeof value === "function" ? value(currentPage) : value;
+    setCurrentPageState(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next <= 1) params.delete("page");
+    else params.set("page", String(next));
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  };
+
+  const [toastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -55,13 +68,6 @@ export default function MentorsPage() {
     }
     loadData();
   }, []);
-
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
-  };
 
   // Sync subjects with tab selection
   const handleTabSelect = (tab: string) => {
@@ -92,8 +98,6 @@ export default function MentorsPage() {
   const resetAllFilters = () => {
     setSelectedSubjects([]);
     setSelectedExperiences([]);
-    setMinRate("");
-    setMaxRate("");
     setSelectedRating(null);
     setSearchQuery("");
     setCurrentPage(1);
@@ -139,10 +143,6 @@ export default function MentorsPage() {
       if (!matchesExp) return false;
     }
 
-    // Rate filter
-    if (minRate && m.rate < Number(minRate)) return false;
-    if (maxRate && m.rate > Number(maxRate)) return false;
-
     // Rating filter
     if (selectedRating !== null && m.rating < selectedRating) return false;
 
@@ -151,8 +151,6 @@ export default function MentorsPage() {
 
   // Sorting Logic
   const sortedMentors = [...filteredMentors].sort((a, b) => {
-    if (sortOption === "Hourly Rate: Low to High") return a.rate - b.rate;
-    if (sortOption === "Hourly Rate: High to Low") return b.rate - a.rate;
     if (sortOption === "Highest rated") return b.rating - a.rating;
     if (sortOption === "Most experienced") return b.experience - a.experience;
     // Default: Most popular (student count)
@@ -170,7 +168,6 @@ export default function MentorsPage() {
   const activeFilterCount =
     selectedSubjects.length +
     selectedExperiences.length +
-    (minRate || maxRate ? 1 : 0) +
     (selectedRating !== null ? 1 : 0);
 
   // Counts for checkboxes (calculated on raw active mentors list)
@@ -181,15 +178,15 @@ export default function MentorsPage() {
 
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-      <title>Explore Mentors | Tutoboard</title>
-      <meta name="description" content="Connect and learn 1-on-1 with verified educators and subject matter experts on Tutoboard." />
+      <title>Explore Mentors | Gadha Online</title>
+      <meta name="description" content="Connect and learn 1-on-1 with verified educators and subject matter experts on Gadha Online." />
       
       {/* PAGE HEADER */}
       <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
         <div className="max-w-7xl mx-auto">
           {/* Breadcrumb */}
           <nav className="text-xs text-text-muted mb-3 flex items-center gap-1.5 font-medium">
-            <a href="/" className="hover:text-secondary transition-colors">Home</a>
+            <Link href="/" className="hover:text-secondary transition-colors">Home</Link>
             <span className="text-slate-300">/</span>
             <span className="text-primary font-semibold">Mentors</span>
           </nav>
@@ -316,36 +313,6 @@ export default function MentorsPage() {
                           </div>
                         </div>
 
-                        {/* Hourly Rate Range Section */}
-                        <div>
-                          <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Hourly Rate (₹)
-                          </div>
-                          <div className="flex items-center gap-2 pt-1">
-                            <input
-                              type="number"
-                              value={minRate}
-                              onChange={(e) => {
-                                setMinRate(e.target.value);
-                                setCurrentPage(1);
-                              }}
-                              placeholder="Min"
-                              className="w-full text-xs p-2.5 border border-border-subtle rounded-lg outline-none focus:border-secondary text-primary"
-                            />
-                            <span className="text-slate-300">—</span>
-                            <input
-                              type="number"
-                              value={maxRate}
-                              onChange={(e) => {
-                                setMaxRate(e.target.value);
-                                setCurrentPage(1);
-                              }}
-                              placeholder="Max"
-                              className="w-full text-xs p-2.5 border border-border-subtle rounded-lg outline-none focus:border-secondary text-primary"
-                            />
-                          </div>
-                        </div>
-
                         {/* Rating Section */}
                         <div>
                           <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
@@ -425,8 +392,6 @@ export default function MentorsPage() {
             >
               <option>Most popular</option>
               <option>Highest rated</option>
-              <option>Hourly Rate: Low to High</option>
-              <option>Hourly Rate: High to Low</option>
               <option>Most experienced</option>
             </select>
           </div>
@@ -454,16 +419,6 @@ export default function MentorsPage() {
                 </button>
               </div>
             ))}
-
-            {/* Rate pills */}
-            {(minRate || maxRate) && (
-              <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                Rate: {minRate ? `₹${minRate}` : "0"} — {maxRate ? `₹${maxRate}` : "Max"}
-                <button onClick={() => { setMinRate(""); setMaxRate(""); }} className="hover:text-red-600 transition-colors">
-                  <IconX className="w-3 h-3" />
-                </button>
-              </div>
-            )}
 
             {/* Rating pill */}
             {selectedRating !== null && (
@@ -540,7 +495,7 @@ export default function MentorsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {currentMentors.map((m: any) => (
+            {currentMentors.map((m) => (
               <div
                 key={m.id}
                 className="bg-white border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
@@ -582,7 +537,7 @@ export default function MentorsPage() {
 
                     {/* Bio snippet */}
                     <p className="text-xs text-text-muted/85 leading-relaxed line-clamp-3 mb-4 min-h-[54px]">
-                      {m.bio || `${m.name} is a verified Tutoboard educator specialized in ${m.subject} tutoring.`}
+                      {m.bio || `${m.name} is a verified Gadha Online educator specialized in ${m.subject} tutoring.`}
                     </p>
                   </div>
 
@@ -599,32 +554,18 @@ export default function MentorsPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center mb-4">
                       <span className="text-xs font-bold text-accent flex items-center gap-0.5">
                         <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> {m.rating}
                       </span>
-                      <div className="text-right">
-                        <span className="text-[10px] text-text-muted font-medium block">Hourly rate</span>
-                        <span className="font-heading font-extrabold text-primary text-base">
-                          ₹{m.rate}/hr
-                        </span>
-                      </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setSelectedMentorForBooking(m)}
-                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer"
-                      >
-                        Book 1-on-1
-                      </button>
-                      <a
-                        href={`/mentors/${m.id}`}
-                        className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-transparent text-primary border border-primary hover:bg-primary/5 transition-colors cursor-pointer text-center"
-                      >
-                        View Profile
-                      </a>
-                    </div>
+                    <a
+                      href={`/mentors/${m.id}`}
+                      className="block w-full text-xs font-semibold py-2.5 rounded-lg bg-secondary text-white hover:bg-secondary/90 transition-colors cursor-pointer text-center"
+                    >
+                      View Profile
+                    </a>
                   </div>
                 </div>
               </div>
@@ -673,11 +614,12 @@ export default function MentorsPage() {
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
             <div className="lg:col-span-2">
-              <div className="font-heading text-xl font-extrabold text-white mb-3">
-                Tuto<span className="text-accent">board</span>
+              <div className="flex items-center gap-2 mb-3">
+                <Image src="/logo.png" alt="Gadha Online" width={40} height={40} className="w-10 h-10 object-contain" />
+                <span className="font-heading text-xl font-extrabold text-white">Gadha Online</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
-                India's most trusted online tutoring platform. Learn at your pace, with the best mentors.
+                India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
               </p>
             </div>
             <div>
@@ -688,14 +630,37 @@ export default function MentorsPage() {
                 <li>
                   <a href="/about" className="hover:text-white transition-colors">About us</a>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Explore
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">Careers</a>
+                  <Link href="/courses" className="hover:text-white transition-colors">Courses</Link>
+                </li>
+                <li>
+                  <Link href="/sessions" className="hover:text-white transition-colors">Sessions</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Legal
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
+                <li>
+                  <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+                </li>
+                <li>
+                  <a href="/terms" className="hover:text-white transition-colors">Terms &amp; Conditions</a>
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2026 Tutoboard. All rights reserved.</p>
+            <p>&copy; 2026 Gadha Online. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">
                 <IconBrandInstagram className="w-5 h-5" />
@@ -713,18 +678,19 @@ export default function MentorsPage() {
           </div>
         </div>
       </footer>
-      {selectedMentorForBooking && (
-        <BookingModal
-          isOpen={true}
-          onClose={() => setSelectedMentorForBooking(null)}
-          targetId={selectedMentorForBooking.id}
-          targetType="mentor"
-          title={`1-on-1 Session with ${selectedMentorForBooking.name}`}
-          mentorName={selectedMentorForBooking.name}
-          isLiveIndividual={true}
-          price={selectedMentorForBooking.rate}
-        />
-      )}
     </div>
+  );
+}
+
+export default function MentorsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-[400px] h-screen bg-[#F5F8FF] font-sans text-primary">
+        <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-xs font-semibold text-slate-500 animate-pulse">Loading Mentors...</p>
+      </div>
+    }>
+      <MentorsPageContent />
+    </Suspense>
   );
 }

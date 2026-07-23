@@ -3,13 +3,25 @@
 import React, { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { IconMenu2, IconX, IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import Image from "next/image";
+import { IconMenu2, IconX, IconChevronDown } from "@tabler/icons-react";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import AuthModal from "./AuthModal";
 import { UserNotificationBell } from "./UserNotificationBell";
 
+function readCachedUser(): User | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const cached = localStorage.getItem("tutoboard_user_cache");
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function Navbar() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">("signin");
@@ -34,6 +46,7 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears role in sync with the user auth state (set by the Supabase auth listener in another effect), not a user event
       setRole(null);
       localStorage.removeItem("tutoboard_user_role_cache");
       return;
@@ -55,6 +68,7 @@ export default function Navbar() {
           localStorage.setItem("tutoboard_user_role_cache", data.role);
         }
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase.auth is a new instance each render; including it would refetch the role on every render instead of only when the user changes
   }, [user]);
 
   const getDropdownItemClass = (path: string) => {
@@ -63,14 +77,6 @@ export default function Navbar() {
       return `${base} font-semibold text-[#2F7FE8] bg-blue-50/40 hover:bg-blue-50/60`;
     }
     return `${base} font-medium text-slate-700 hover:bg-slate-50 hover:text-[#0f2347]`;
-  };
-
-  const getMobileDropdownItemClass = (path: string) => {
-    const base = "text-sm font-semibold py-2 px-1 border-b border-slate-50 transition-colors min-h-[44px] flex items-center";
-    if (pathname === path) {
-      return `${base} text-[#2F7FE8] hover:text-[#2F7FE8]/80`;
-    }
-    return `${base} text-slate-700 hover:text-primary`;
   };
 
   const getHeaderLinkClass = (path: string) => {
@@ -96,15 +102,11 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    // Try to load cached user instantly to prevent initial network load flicker
-    try {
-      const cached = localStorage.getItem("tutoboard_user_cache");
-      if (cached) {
-        setUser(JSON.parse(cached));
-        setLoading(false);
-      }
-    } catch (e) {
-      console.warn("Failed to parse cached user:", e);
+    // Read cached user synchronously on mount to avoid layout flash / hydration issues
+    const cached = readCachedUser();
+    if (cached) {
+      setUser(cached);
+      setLoading(false);
     }
 
     // Get initial session
@@ -133,6 +135,7 @@ export default function Navbar() {
     return () => {
       subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase is a new client instance each render; including it would re-subscribe on every render instead of just on mount
   }, []);
 
   useEffect(() => {
@@ -154,7 +157,7 @@ export default function Navbar() {
     await supabase.auth.signOut();
     try {
       localStorage.removeItem("tutoboard_user_cache");
-    } catch (e) {}
+    } catch {}
     setMobileMenuOpen(false);
     window.location.href = "/";
   };
@@ -165,7 +168,7 @@ export default function Navbar() {
     setMobileMenuOpen(false);
   };
 
-  const getUserInitials = (currentUser: any) => {
+  const getUserInitials = (currentUser: User | null) => {
     const fullName = currentUser?.user_metadata?.full_name;
     if (fullName) {
       return fullName
@@ -179,7 +182,7 @@ export default function Navbar() {
     return email.substring(0, 2).toUpperCase();
   };
 
-  const getUserDisplayName = (currentUser: any) => {
+  const getUserDisplayName = (currentUser: User | null) => {
     return currentUser?.user_metadata?.full_name || currentUser?.email?.split("@")[0] || "User";
   };
 
@@ -201,8 +204,11 @@ export default function Navbar() {
           >
             {mobileMenuOpen ? <IconX className="w-5 h-5" /> : <IconMenu2 className="w-5 h-5" />}
           </button>
-          <Link href="/" className="font-heading text-xl sm:text-2xl font-extrabold tracking-tight text-primary hover:opacity-95 transition-opacity shrink-0">
-            Tuto<span className="text-secondary">board</span>
+          <Link href="/" className="flex items-center gap-2 hover:opacity-95 transition-opacity shrink-0">
+            <Image src="/logo.png" alt="Gadha Online" width={48} height={48} className="w-11 h-11 sm:w-12 sm:h-12 object-contain" priority />
+            <span className="font-heading text-lg sm:text-2xl font-extrabold tracking-tight text-primary">
+              Gadha Online
+            </span>
           </Link>
         </div>
 

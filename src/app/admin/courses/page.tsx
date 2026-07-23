@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   IconSearch,
   IconLayoutGrid,
@@ -31,6 +32,9 @@ import {
 import { SkeletonCard } from "@/components/Skeleton";
 import ImageCropperModal from "@/components/ImageCropperModal";
 
+type AdminData = Awaited<ReturnType<typeof getAdminData>>;
+type CourseUnit = Awaited<ReturnType<typeof getCourseUnits>>[number];
+
 interface Course {
   id: string;
   title: string;
@@ -50,7 +54,7 @@ interface Course {
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [mentors, setMentors] = useState<any[]>([]);
+  const [mentors, setMentors] = useState<AdminData["mentors"]>([]);
   const [loading, setLoading] = useState(true);
 
   // View States
@@ -65,13 +69,12 @@ export default function CoursesPage() {
   // Drawer modal state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerEditId, setDrawerEditId] = useState<string | null>(null);
-  const [drawerForm, setDrawerForm] = useState<any>({});
+  const [drawerForm, setDrawerForm] = useState<Partial<Parameters<typeof upsertCourse>[0]> & { _customSubjectActive?: boolean }>({});
   const [showMoreCourseDetails, setShowMoreCourseDetails] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [courseLangDropdownOpen, setCourseLangDropdownOpen] = useState(false);
 
   // Recorded units editor state
-  const [courseUnits, setCourseUnits] = useState<any[]>([]);
+  const [courseUnits, setCourseUnits] = useState<CourseUnit[]>([]);
   const [newUnitTitle, setNewUnitTitle] = useState("");
   const [newUnitUrl, setNewUnitUrl] = useState("");
   const [newUnitDesc, setNewUnitDesc] = useState("");
@@ -84,7 +87,7 @@ export default function CoursesPage() {
   const loadData = async () => {
     try {
       const res = await getAdminData();
-      setCourses(res.courses);
+      setCourses(res.courses as Course[]);
       setMentors(res.mentors);
     } catch (err) {
       console.error("Failed to load courses:", err);
@@ -94,6 +97,7 @@ export default function CoursesPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -121,9 +125,10 @@ export default function CoursesPage() {
       const formData = new FormData();
       formData.append("file", file);
       const res = await uploadCourseCover(formData);
-      setDrawerForm((prev: any) => ({ ...prev, coverImageUrl: res.publicUrl }));
-    } catch (err: any) {
-      alert("Image upload failed: " + err.message);
+      setDrawerForm((prev) => ({ ...prev, coverImageUrl: res.publicUrl }));
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      alert("Couldn't upload the image. Please try again.");
     } finally {
       setUploadingImage(false);
     }
@@ -172,11 +177,12 @@ export default function CoursesPage() {
 
   const saveDrawerData = async () => {
     try {
-      await upsertCourse(drawerForm);
+      await upsertCourse(drawerForm as Parameters<typeof upsertCourse>[0]);
       closeDrawer();
       await loadData();
-    } catch (err: any) {
-      alert("Error saving course: " + err.message);
+    } catch (err) {
+      console.error("Error saving course:", err);
+      alert("Couldn't save this course. Please try again.");
     }
   };
 
@@ -185,8 +191,9 @@ export default function CoursesPage() {
       try {
         await apiDeleteCourse(id);
         await loadData();
-      } catch (err: any) {
-        alert("Error deleting course: " + err.message);
+      } catch (err) {
+        console.error("Error deleting course:", err);
+        alert("Couldn't delete this course. Please try again.");
       }
     }
   };
@@ -197,8 +204,9 @@ export default function CoursesPage() {
     try {
       await apiToggleCourseStatus(id, item.status);
       await loadData();
-    } catch (err: any) {
-      alert("Error toggling course status: " + err.message);
+    } catch (err) {
+      console.error("Error toggling course status:", err);
+      alert("Couldn't update the course status. Please try again.");
     }
   };
 
@@ -231,14 +239,15 @@ export default function CoursesPage() {
       
       const updated = await getCourseUnits(drawerEditId);
       setCourseUnits(updated);
-    } catch (err: any) {
-      alert("Failed to save unit: " + err.message);
+    } catch (err) {
+      console.error("Failed to save unit:", err);
+      alert("Couldn't save this video unit. Please try again.");
     } finally {
       setUnitSaving(false);
     }
   };
 
-  const handleEditUnit = (unit: any) => {
+  const handleEditUnit = (unit: CourseUnit) => {
     setEditingUnitId(unit.id);
     setNewUnitTitle(unit.title);
     setNewUnitUrl(unit.youtube_url || "");
@@ -264,8 +273,9 @@ export default function CoursesPage() {
         await deleteCourseUnit(unitId);
         const updated = await getCourseUnits(drawerEditId);
         setCourseUnits(updated);
-      } catch (err: any) {
-        alert("Failed to delete unit: " + err.message);
+      } catch (err) {
+        console.error("Failed to delete unit:", err);
+        alert("Couldn't delete this video unit. Please try again.");
       }
     }
   };
@@ -288,8 +298,8 @@ export default function CoursesPage() {
 
     try {
       await reorderCourseUnits(updatedList.map((x) => x.id));
-    } catch (err: any) {
-      console.error("Failed to persist order: " + err.message);
+    } catch (err) {
+      console.error("Failed to persist order: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -438,7 +448,7 @@ export default function CoursesPage() {
                 <div>
                   {c.coverImageUrl ? (
                     <div className="w-full h-28 overflow-hidden relative border-b border-[#E6EBF8]">
-                      <img src={c.coverImageUrl} alt={c.title} className="w-full h-full object-cover" />
+                      <Image src={c.coverImageUrl} alt={c.title} fill className="object-cover" />
                       <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button
                           onClick={() => openDrawer(c.id)}
@@ -674,7 +684,7 @@ export default function CoursesPage() {
                 <select
                   className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
                   value={
-                    ["Mathematics", "Science", "Programming", "English"].includes(drawerForm.subject)
+                    ["Mathematics", "Science", "Programming", "English"].includes(drawerForm.subject || "")
                       ? drawerForm.subject
                       : drawerForm.subject
                       ? "Custom"
@@ -695,7 +705,7 @@ export default function CoursesPage() {
                   <option value="English">English</option>
                   <option value="Custom">Create New Subject...</option>
                 </select>
-                {(drawerForm._customSubjectActive || !["Mathematics", "Science", "Programming", "English"].includes(drawerForm.subject)) && (
+                {(drawerForm._customSubjectActive || !["Mathematics", "Science", "Programming", "English"].includes(drawerForm.subject || "")) && (
                   <input
                     className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B] mt-1.5"
                     type="text"
@@ -712,7 +722,7 @@ export default function CoursesPage() {
                   className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B]"
                   type="text"
                   placeholder="e.g. Class 10, Grade 8, JEE Prep"
-                  value={drawerForm.classLevel || drawerForm.class_level || ""}
+                  value={drawerForm.classLevel || ""}
                   onChange={(e) => setDrawerForm({ ...drawerForm, classLevel: e.target.value })}
                 />
               </div>
@@ -759,7 +769,7 @@ export default function CoursesPage() {
                 <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Cover Image</label>
                 {drawerForm.coverImageUrl ? (
                   <div className="relative border border-[#E6EBF8] rounded-lg p-2 flex items-center gap-3 bg-slate-50">
-                    <img src={drawerForm.coverImageUrl} className="w-12 h-12 rounded object-cover" alt="Cover Preview" />
+                    <Image src={drawerForm.coverImageUrl || ""} width={48} height={48} className="w-12 h-12 rounded object-cover" alt="Cover Preview" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[9px] font-semibold text-primary truncate">{drawerForm.coverImageUrl}</p>
                       <button

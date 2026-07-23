@@ -2,8 +2,8 @@
 
 import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
-  IconCheck,
   IconStar,
   IconBrandInstagram,
   IconBrandTwitter,
@@ -11,13 +11,9 @@ import {
   IconBrandYoutube,
   IconAward,
   IconBriefcase,
-  IconBook,
-  IconArrowLeft,
   IconShieldCheck,
-  IconUsers,
 } from "@tabler/icons-react";
 import { getMentorDetailsData } from "../../actions";
-import BookingModal from "@/components/BookingModal";
 
 // Helper for subject badges colors
 const getSubjectBgColor = (subject: string) => {
@@ -97,7 +93,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [bookingModalOpen, setBookingModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -105,8 +100,8 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
         const res = await getMentorDetailsData(id);
         setData(res as MentorDetailsResponse);
       } catch (err: unknown) {
-        console.error(err);
-        setError(err instanceof Error ? err.message : "Failed to load mentor details");
+        console.error("Failed to load mentor details:", err);
+        setError("Failed to load mentor details. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -225,8 +220,8 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-      <title>{`${mentor.name} - Expert Subject Tutor | Tutoboard`}</title>
-      <meta name="description" content={`Book 1-on-1 sessions and explore courses taught by ${mentor.name}, verified educator specializing in ${mentor.subject || "tutoring"} on Tutoboard.`} />
+      <title>{`${mentor.name} - Expert Subject Tutor | Gadha Online`}</title>
+      <meta name="description" content={`Explore courses and hourly sessions taught by ${mentor.name}, verified educator specializing in ${mentor.subject || "tutoring"} on Gadha Online.`} />
 
       {/* TOAST MESSAGE */}
       {toastMessage && (
@@ -451,18 +446,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            <div className="w-full flex items-center justify-between mb-5 px-1">
-              <span className="text-xs font-bold text-text-muted">Hourly Rate</span>
-              <span className="font-heading font-extrabold text-2xl text-primary">₹{mentor.rate}/hr</span>
-            </div>
-
-            <button
-              onClick={() => setBookingModalOpen(true)}
-              className="w-full text-xs font-bold py-3.5 rounded-xl bg-secondary text-white hover:bg-secondary/90 transition-all cursor-pointer shadow-md mb-2.5"
-            >
-              Book 1-on-1 Session
-            </button>
-
             <button
               onClick={() => triggerToast("Message service coming soon!")}
               className="w-full text-xs font-bold py-3.5 rounded-xl bg-transparent text-primary border border-border-subtle hover:bg-slate-50 transition-all cursor-pointer"
@@ -477,7 +460,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
             <div>
               <h4 className="text-xs font-bold text-primary mb-1">Vetted & Verified educator</h4>
               <p className="text-[11px] text-text-muted/90 leading-relaxed">
-                Credentials, certifications, and teaching standards of this mentor have been thoroughly vetted by Tutoboard quality managers.
+                Credentials, certifications, and teaching standards of this mentor have been thoroughly vetted by Gadha Online quality managers.
               </p>
             </div>
           </div>
@@ -490,8 +473,9 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
             <div className="lg:col-span-2">
-              <div className="font-heading text-xl font-extrabold text-white mb-3">
-                Tuto<span className="text-accent">board</span>
+              <div className="flex items-center gap-2 mb-3">
+                <Image src="/logo.png" alt="Gadha Online" width={40} height={40} className="w-10 h-10 object-contain" />
+                <span className="font-heading text-xl font-extrabold text-white">Gadha Online</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
                 India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
@@ -505,14 +489,37 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
                 <li>
                   <Link href="/about" className="hover:text-white transition-colors">About us</Link>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Explore
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">Careers</a>
+                  <Link href="/courses" className="hover:text-white transition-colors">Courses</Link>
+                </li>
+                <li>
+                  <Link href="/sessions" className="hover:text-white transition-colors">Sessions</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Legal
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
+                <li>
+                  <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2026 Tutoboard. All rights reserved.</p>
+            <p>&copy; 2026 Gadha Online. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">
                 <IconBrandInstagram className="w-5 h-5" />
@@ -530,18 +537,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </footer>
-      {bookingModalOpen && (
-        <BookingModal
-          isOpen={bookingModalOpen}
-          onClose={() => setBookingModalOpen(false)}
-          targetId={mentor.id}
-          targetType="mentor"
-          title={`1-on-1 Session with ${mentor.name}`}
-          price={mentor.rate}
-          mentorName={mentor.name}
-          isLiveIndividual={true}
-        />
-      )}
     </div>
   );
 }

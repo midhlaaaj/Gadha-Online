@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconCoin, IconCalendar, IconTrendingUp, IconTrendingDown, IconSearch } from "@tabler/icons-react";
+import { IconCoin, IconCalendar, IconTrendingUp, IconSearch } from "@tabler/icons-react";
 import { getMentorEarnings } from "@/app/actions";
 
 type EarningsData = Awaited<ReturnType<typeof getMentorEarnings>>;
@@ -87,7 +87,7 @@ export default function MentorEarningsPage() {
                 <IconCalendar className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-[#9BA8C0] uppercase tracking-wider">This Month's Revenue</p>
+                <p className="text-[11px] font-bold text-[#9BA8C0] uppercase tracking-wider">This Month&apos;s Revenue</p>
                 <h3 className="text-[28px] font-extrabold font-heading text-[#1B3A6B] leading-tight mt-1">
                   ₹{earnings.thisMonthEarnings.toLocaleString("en-IN")}
                 </h3>

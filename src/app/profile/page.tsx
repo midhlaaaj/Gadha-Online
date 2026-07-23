@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import {
   IconAlertTriangle,
-  IconCamera,
   IconAlertCircle,
   IconX,
   IconCalendarEvent,
@@ -25,9 +26,11 @@ import {
 } from "../actions";
 import { validateName, validatePhone, validatePassword, sanitizeText } from "@/lib/validate";
 
+type Profile = Awaited<ReturnType<typeof getParentProfile>>;
+
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -81,15 +84,16 @@ export default function ProfilePage() {
       setProfile(data);
       setEditName(data.name);
       setEditPhone(data.phone);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to load profile details. Please sign in.");
+    } catch (err) {
+      console.error("Failed to load profile details:", err);
+      setError("Failed to load profile details. Please sign in.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadProfile();
   }, []);
 
@@ -130,27 +134,31 @@ export default function ProfilePage() {
       setSuccess("Profile information updated successfully.");
       setIsEditMode(false);
       await loadProfile();
-    } catch (err: any) {
-      setError(err.message || "Failed to save profile changes.");
+    } catch (err) {
+      console.error("Failed to save profile changes:", err);
+      setError("Failed to save profile changes. Please try again.");
     } finally {
       setSaving(false);
     }
   };
 
   const handleTogglePref = async (key: string) => {
+    if (!profile) return;
+    const currentPrefs = profile.notificationPreferences as Record<string, boolean>;
     const updatedPrefs = {
-      ...profile.notificationPreferences,
-      [key]: !profile.notificationPreferences[key],
+      ...currentPrefs,
+      [key]: !currentPrefs[key],
     };
     // Optimistic update
     setProfile({ ...profile, notificationPreferences: updatedPrefs });
     try {
       await updateParentSecurityAndNotifications({ notificationPreferences: updatedPrefs });
       triggerToast("Notification preferences updated.");
-    } catch (err: any) {
-      setError(err.message || "Failed to update notification preferences.");
+    } catch (err) {
+      console.error("Failed to update notification preferences:", err);
+      setError("Failed to update notification preferences. Please try again.");
       // Rollback
-      setProfile({ ...profile, notificationPreferences: { ...profile.notificationPreferences } });
+      setProfile({ ...profile, notificationPreferences: { ...currentPrefs } });
     }
   };
 
@@ -168,6 +176,8 @@ export default function ProfilePage() {
   const handleUpdatePassword = async () => {
     setPwError(null);
     setPwSuccess(null);
+
+    if (!profile) return;
 
     if (!currentPassword) {
       setPwError("Please enter your current password.");
@@ -210,15 +220,15 @@ export default function ProfilePage() {
         setIsPwModalOpen(false);
         setPwSuccess(null);
       }, 1800);
-    } catch (err: any) {
-      setPwError(err.message || "Failed to update password. Please try again.");
+    } catch (err) {
+      setPwError(err instanceof Error ? err.message : "Failed to update password. Please try again.");
     } finally {
       setPwSaving(false);
     }
   };
 
   const handleSendVerification = async () => {
-    if (verificationSent) return;
+    if (verificationSent || !profile) return;
     setVerificationLoading(true);
     setTimeout(() => {
       setVerificationSent(true);
@@ -243,13 +253,15 @@ export default function ProfilePage() {
     return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
   };
 
+  const notifPrefs = (profile?.notificationPreferences as Record<string, boolean> | undefined) || {};
+
   return (
     <div className="w-full bg-slate-50 min-h-screen flex flex-col font-sans text-[#1B3A6B]">
       {/* PAGE HEADER */}
       <header className="bg-[#f5f8ff] px-6 md:px-12 py-8 border-b border-[#d0dcf5]">
         <div className="max-w-7xl mx-auto w-full">
           <nav className="text-[11px] text-slate-400 mb-3 flex items-center gap-1.5 font-medium">
-            <a href="/" className="hover:text-[#2F7FE8] transition-colors">Home</a>
+            <Link href="/" className="hover:text-[#2F7FE8] transition-colors">Home</Link>
             <span className="text-slate-300">/</span>
             <span className="text-[#1B3A6B] font-semibold">My profile</span>
           </nav>
@@ -357,6 +369,10 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+      ) : !profile ? (
+        <div className="max-w-[760px] mx-auto w-full px-6 py-8 flex-1 text-center">
+          <p className="text-sm font-semibold text-red-600">{error || "Failed to load profile."}</p>
+        </div>
       ) : (
         <div className="max-w-[760px] mx-auto w-full px-6 py-8 flex-1">
 
@@ -381,7 +397,7 @@ export default function ProfilePage() {
               <div className="flex gap-3">
                 <IconAlertTriangle className="w-5 h-5 text-[#854F0B] flex-shrink-0" />
                 <div className="text-xs text-[#854F0B] leading-relaxed">
-                  <strong>Your email isn't verified.</strong> Verify it so you never miss booking confirmations or joining links.
+                  <strong>Your email isn&apos;t verified.</strong> Verify it so you never miss booking confirmations or joining links.
                 </div>
               </div>
               <button
@@ -420,9 +436,9 @@ export default function ProfilePage() {
                   <div className="relative flex-shrink-0">
                     <div className="w-14 h-14 rounded-full bg-[#1B3A6B] flex items-center justify-center font-heading text-lg font-bold text-[#FFC107] shadow-inner overflow-hidden">
                       {photoPreview ? (
-                        <img src={photoPreview} alt="avatar" className="w-full h-full object-cover" />
+                        <Image src={photoPreview} alt="avatar" width={56} height={56} className="w-full h-full object-cover" />
                       ) : profile.avatarUrl ? (
-                        <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                        <Image src={profile.avatarUrl} alt="avatar" width={56} height={56} className="w-full h-full object-cover" />
                       ) : (
                         getInitials(profile.name)
                       )}
@@ -469,9 +485,9 @@ export default function ProfilePage() {
                   <div className="relative flex-shrink-0">
                     <div className="w-14 h-14 rounded-full bg-[#1B3A6B] flex items-center justify-center font-heading text-lg font-bold text-[#FFC107] shadow-inner overflow-hidden">
                       {photoPreview ? (
-                        <img src={photoPreview} alt="avatar" className="w-full h-full object-cover" />
+                        <Image src={photoPreview} alt="avatar" width={56} height={56} className="w-full h-full object-cover" />
                       ) : profile.avatarUrl ? (
-                        <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                        <Image src={profile.avatarUrl} alt="avatar" width={56} height={56} className="w-full h-full object-cover" />
                       ) : (
                         getInitials(editName)
                       )}
@@ -585,7 +601,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between py-3">
               <div>
                 <p className="text-xs font-bold text-[#1B3A6B]">Active sessions</p>
-                <p className="text-[10px] text-slate-400 mt-0.5 font-medium">You're signed in on 1 device</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-medium">You&apos;re signed in on 1 device</p>
               </div>
               <button className="text-xs font-semibold px-4 py-2 border border-[#d0dcf5] text-[#1B3A6B] rounded-lg hover:border-[#1B3A6B] transition-colors cursor-pointer">
                 Manage
@@ -619,9 +635,9 @@ export default function ProfilePage() {
                   </div>
                   <button
                     onClick={() => handleTogglePref(key)}
-                    className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer border-none ${profile.notificationPreferences?.[key] ? "bg-[#1B3A6B]" : "bg-slate-200"}`}
+                    className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer border-none ${notifPrefs[key] ? "bg-[#1B3A6B]" : "bg-slate-200"}`}
                   >
-                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${profile.notificationPreferences?.[key] ? "right-1" : "left-1"}`}></div>
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${notifPrefs[key] ? "right-1" : "left-1"}`}></div>
                   </button>
                 </div>
               ))}
@@ -647,9 +663,9 @@ export default function ProfilePage() {
                   </div>
                   <button
                     onClick={() => handleTogglePref(key)}
-                    className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer border-none ${profile.notificationPreferences?.[key] ? "bg-[#1B3A6B]" : "bg-slate-200"}`}
+                    className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer border-none ${notifPrefs[key] ? "bg-[#1B3A6B]" : "bg-slate-200"}`}
                   >
-                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${profile.notificationPreferences?.[key] ? "right-1" : "left-1"}`}></div>
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${notifPrefs[key] ? "right-1" : "left-1"}`}></div>
                   </button>
                 </div>
               ))}
@@ -670,9 +686,9 @@ export default function ProfilePage() {
                 </div>
                 <button
                   onClick={() => handleTogglePref("offers_promotions")}
-                  className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer border-none ${profile.notificationPreferences?.offers_promotions ? "bg-[#1B3A6B]" : "bg-slate-200"}`}
+                  className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer border-none ${notifPrefs.offers_promotions ? "bg-[#1B3A6B]" : "bg-slate-200"}`}
                 >
-                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${profile.notificationPreferences?.offers_promotions ? "right-1" : "left-1"}`}></div>
+                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${notifPrefs.offers_promotions ? "right-1" : "left-1"}`}></div>
                 </button>
               </div>
             </div>

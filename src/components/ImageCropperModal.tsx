@@ -28,21 +28,6 @@ export default function ImageCropperModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
 
-  useEffect(() => {
-    if (!isOpen || !imageSrc) return;
-
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = imageSrc;
-    img.onload = () => {
-      imageRef.current = img;
-      drawCanvas(img, 1, { x: 0, y: 0 });
-    };
-  }, [isOpen, imageSrc]);
-
   const drawCanvas = (
     img: HTMLImageElement,
     currentZoom: number,
@@ -82,6 +67,23 @@ export default function ImageCropperModal({
     ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
     ctx.restore();
   };
+
+  useEffect(() => {
+    if (!isOpen || !imageSrc) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate reset-on-reopen; modal stays mounted, crop state is cleared each time a new image is loaded
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = imageSrc;
+    img.onload = () => {
+      imageRef.current = img;
+      drawCanvas(img, 1, { x: 0, y: 0 });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- drawCanvas only closes over aspectRatio (a prop) and canvasRef; re-running on every render isn't needed
+  }, [isOpen, imageSrc]);
 
   const handleZoomChange = (newZoom: number) => {
     const clamped = Math.max(1, Math.min(3, newZoom));

@@ -2,6 +2,7 @@
 
 import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   IconCheck,
   IconClock,
@@ -12,8 +13,6 @@ import {
   IconMessageCircle,
   IconRotate,
   IconStar,
-  IconChevronDown,
-  IconChevronUp,
   IconShieldCheck,
   IconCalculator,
   IconFlask,
@@ -45,22 +44,6 @@ const getDetailsIcon = (name: string) => {
       return <IconPencil className="w-20 h-20 text-purple-700 opacity-85" />;
     default:
       return <IconBook className="w-20 h-20 text-[#1B3A6B] opacity-85" />;
-  }
-};
-
-// Subject Color Class Mapper (for fallback)
-const getSubjectBgColor = (subject: string) => {
-  switch (subject) {
-    case "Mathematics":
-      return "bg-blue-50";
-    case "Programming":
-      return "bg-green-50";
-    case "Science":
-      return "bg-yellow-50";
-    case "English":
-      return "bg-purple-50";
-    default:
-      return "bg-slate-50";
   }
 };
 
@@ -178,10 +161,9 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
   const [error, setError] = useState<string | null>(null);
 
   // Booking details states
-  const [isSaved, setIsSaved] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
 
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Awaited<ReturnType<typeof getItemReviews>>>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [newReviewRating, setNewReviewRating] = useState(5);
@@ -207,14 +189,16 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
         const res = await getSessionDetails(id);
         setData(res as SessionDetailsResponse);
       } catch (err: unknown) {
-        console.error(err);
-        setError(err instanceof Error ? err.message : "Failed to load session details");
+        console.error("Failed to load session details:", err);
+        setError("Couldn't load this session. Please try again.");
       } finally {
         setLoading(false);
       }
     }
     loadData();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadReviews is redefined each render but only reads id, which is already tracked
   }, [id]);
 
   const handleAddReviewSubmit = async (e: React.FormEvent) => {
@@ -235,8 +219,9 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
       setReviewModalOpen(false);
       await loadReviews();
       alert("Review submitted successfully!");
-    } catch (err: any) {
-      alert("Failed to submit review: " + err.message);
+    } catch (err) {
+      console.error("Failed to submit review:", err);
+      alert("Couldn't submit your review. Please try again.");
     } finally {
       setSubmittingReview(false);
     }
@@ -606,7 +591,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
             ) : (
               <div className="overflow-hidden relative w-full pb-2 [mask-image:linear-gradient(to_right,transparent,black_3%,black_97%,transparent)]">
                 <div className="animate-marquee gap-4">
-                  {[...reviews, ...reviews, ...reviews, ...reviews].map((r: any, idx: number) => (
+                  {[...reviews, ...reviews, ...reviews, ...reviews].map((r, idx) => (
                     <div key={`${r.id}-${idx}`} className="w-[260px] sm:w-[280px] shrink-0 border border-border-subtle rounded-2xl p-4 shadow-sm space-y-2 bg-white">
                       <div className="flex items-center gap-2.5">
                         <div className="w-7.5 h-7.5 rounded-full bg-secondary/10 flex items-center justify-center text-[10px] font-bold text-secondary">
@@ -615,7 +600,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
                         <div>
                           <p className="text-xs font-bold text-primary">{r.studentName}</p>
                           <p className="text-[9px] text-text-muted">
-                            {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                            {new Date(r.createdAt ?? 0).toLocaleDateString("en-IN", {
                               day: "numeric",
                               month: "short",
                               year: "numeric"
@@ -767,8 +752,9 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
         <div className="px-6 md:px-[28px] max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
             <div className="lg:col-span-2">
-              <div className="font-heading text-lg font-extrabold text-white mb-2">
-                Tuto<span className="text-accent">board</span>
+              <div className="flex items-center gap-2 mb-2">
+                <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain" />
+                <span className="font-heading text-lg font-extrabold text-white">Gadha Online</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
                 India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
@@ -782,14 +768,37 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ id: s
                 <li>
                   <Link href="/about" className="hover:text-white transition-colors">About us</Link>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-3">
+                Explore
+              </div>
+              <ul className="space-y-2 text-xs text-white/60">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">Careers</a>
+                  <Link href="/courses" className="hover:text-white transition-colors">Courses</Link>
+                </li>
+                <li>
+                  <Link href="/sessions" className="hover:text-white transition-colors">Sessions</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-3">
+                Legal
+              </div>
+              <ul className="space-y-2 text-xs text-white/60">
+                <li>
+                  <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2026 Tutoboard. All rights reserved.</p>
+            <p>&copy; 2026 Gadha Online. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">
                 <IconBrandInstagram className="w-5 h-5" />

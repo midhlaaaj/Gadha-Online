@@ -2,22 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   IconChevronLeft,
   IconVideo,
-  IconClock,
   IconCalendar,
   IconFileText,
-  IconCheck,
-  IconX,
-  IconArrowRight,
-  IconSparkles,
   IconAlertTriangle,
   IconDownload,
   IconExternalLink,
   IconBook,
-  IconLoader,
 } from "@tabler/icons-react";
 import { getStudentBookingDashboardDetails } from "@/app/actions";
 
@@ -81,7 +74,7 @@ export default function StudentBookingDashboardPage() {
   const bookingId = params.id as string;
 
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<Awaited<ReturnType<typeof getStudentBookingDashboardDetails>> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("schedule");
 
@@ -92,8 +85,8 @@ export default function StudentBookingDashboardPage() {
         setData(res);
       })
       .catch((err) => {
-        console.error(err);
-        setError(err.message || "Failed to load booking details.");
+        console.error("Failed to load booking details:", err);
+        setError("Failed to load booking details. Please try again.");
       })
       .finally(() => setLoading(false));
   }, [bookingId]);
@@ -122,14 +115,14 @@ export default function StudentBookingDashboardPage() {
 
   // Calculate metrics
   const totalClasses = classes.length;
-  const completedClasses = classes.filter((c: any) => c.status === "completed").length;
-  const scheduledClasses = classes.filter((c: any) => c.status === "scheduled").length;
+  const completedClasses = classes.filter((c) => c.status === "completed").length;
+  const scheduledClasses = classes.filter((c) => c.status === "scheduled").length;
   
-  const presentCount = attendance.filter((a: any) => a.status === "present").length;
+  const presentCount = attendance.filter((a) => a.status === "present").length;
   const totalAttendance = attendance.length;
   const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : null;
 
-  const pendingAssignments = assignments.filter((a: any) => a.status !== "submitted" && a.status !== "graded").length;
+  const pendingAssignments = assignments.filter((a) => a.status !== "submitted" && a.status !== "graded").length;
 
   return (
     <div className="space-y-6">
@@ -243,11 +236,11 @@ export default function StudentBookingDashboardPage() {
                 <IconVideo className="w-8 h-8 text-[#9BA8C0] mx-auto" />
                 <h4 className="text-[13px] font-bold text-[#1B3A6B]">No Scheduled Classes</h4>
                 <p className="text-[11px] text-[#4A5A7A] max-w-xs mx-auto">
-                  Your mentor hasn't scheduled any classes for this booking yet.
+                  Your mentor hasn&apos;t scheduled any classes for this booking yet.
                 </p>
               </div>
             ) : (
-              classes.map((c: any) => {
+              classes.map((c) => {
                 const now = new Date();
                 const classTime = new Date(c.scheduled_at);
                 const bookingCreatedAt = new Date(booking.createdAt);
@@ -257,7 +250,7 @@ export default function StudentBookingDashboardPage() {
                 const canJoin = c.status === "scheduled" && minsUntil <= 15 && minsUntil > -120;
                 const isPastClass = minsUntil < -(c.duration_minutes || 60);
 
-                const classAttendance = attendance?.find((a: any) => a.scheduled_class_id === c.id);
+                const classAttendance = attendance?.find((a) => a.scheduled_class_id === c.id);
 
                 const formatCountdown = () => {
                   if (minsUntil <= 0) return null;
@@ -378,11 +371,11 @@ export default function StudentBookingDashboardPage() {
                 <IconFileText className="w-8 h-8 text-[#9BA8C0] mx-auto" />
                 <h4 className="text-[13px] font-bold text-[#1B3A6B]">No Homework assigned</h4>
                 <p className="text-[11px] text-[#4A5A7A] max-w-xs mx-auto">
-                  Your mentor hasn't assigned any homework worksheets or tests for this booking yet.
+                  Your mentor hasn&apos;t assigned any homework worksheets or tests for this booking yet.
                 </p>
               </div>
             ) : (
-              assignments.map((a: any) => {
+              assignments.map((a: (typeof assignments)[number] & { grade_score?: number; file_url?: string }) => {
                 const dateStr = a.due_date 
                   ? new Date(a.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
                   : "No due date";
@@ -452,11 +445,11 @@ export default function StudentBookingDashboardPage() {
                 <IconBook className="w-8 h-8 text-[#9BA8C0] mx-auto" />
                 <h4 className="text-[13px] font-bold text-[#1B3A6B]">No study material</h4>
                 <p className="text-[11px] text-[#4A5A7A] max-w-xs mx-auto">
-                  Your mentor hasn't shared any textbooks or cheat sheets for this course yet.
+                  Your mentor hasn&apos;t shared any textbooks or cheat sheets for this course yet.
                 </p>
               </div>
             ) : (
-              resources.map((r: any) => (
+              resources.map((r) => (
                 <div key={r.id} className="bg-white rounded-2xl border border-[#D0DCF5] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-xs transition-shadow">
                   <div className="flex items-start gap-3.5 min-w-0">
                     <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 text-[#2F7FE8]">

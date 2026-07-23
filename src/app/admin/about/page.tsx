@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   IconPlus,
   IconEdit,
@@ -29,8 +30,12 @@ import {
 import ImageCropperModal from "@/components/ImageCropperModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
+type AdminData = Awaited<ReturnType<typeof getAdminData>>;
+type TeamMember = AdminData["teamMembers"][number];
+type Achievement = AdminData["achievements"][number];
+
 const DEFAULT_SETTINGS = {
-  heroTitle: "About Tutoboard",
+  heroTitle: "About Gadha Online",
   heroSubtitle: "Connecting students with expert mentors since day one.",
   visionTitle: "Our Vision",
   visionText: "To make quality, personalized education accessible to every student, everywhere.",
@@ -56,8 +61,8 @@ function AdminAboutContent() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [savedSettings, setSavedSettings] = useState(DEFAULT_SETTINGS);
   const [contentEditMode, setContentEditMode] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [achievements, setAchievements] = useState<any[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -81,13 +86,13 @@ function AdminAboutContent() {
   // Team drawer
   const [teamDrawerOpen, setTeamDrawerOpen] = useState(false);
   const [teamDrawerEditId, setTeamDrawerEditId] = useState<string | null>(null);
-  const [teamForm, setTeamForm] = useState<any>({});
+  const [teamForm, setTeamForm] = useState<Partial<TeamMember>>({});
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Achievement drawer
   const [achDrawerOpen, setAchDrawerOpen] = useState(false);
   const [achDrawerEditId, setAchDrawerEditId] = useState<string | null>(null);
-  const [achForm, setAchForm] = useState<any>({});
+  const [achForm, setAchForm] = useState<Partial<Achievement>>({});
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const loadData = async () => {
@@ -115,6 +120,7 @@ function AdminAboutContent() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -124,8 +130,9 @@ function AdminAboutContent() {
       await updateAboutSettings(settings);
       await loadData();
       setContentEditMode(false);
-    } catch (err: any) {
-      alert("Failed to save about page content: " + err.message);
+    } catch (err) {
+      console.error("Failed to save about page content:", err);
+      alert("Couldn't save the About page. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -190,9 +197,10 @@ function AdminAboutContent() {
         const fd = new FormData();
         fd.append("file", file);
         const { publicUrl } = await uploadTeamMemberPhoto(fd);
-        setTeamForm((prev: any) => ({ ...prev, photoUrl: publicUrl }));
-      } catch (err: any) {
-        alert("Error uploading photo: " + err.message);
+        setTeamForm((prev) => ({ ...prev, photoUrl: publicUrl }));
+      } catch (err) {
+        console.error("Error uploading photo:", err);
+        alert("Couldn't upload the photo. Please try again.");
       } finally {
         setUploadingPhoto(false);
       }
@@ -203,9 +211,10 @@ function AdminAboutContent() {
         const fd = new FormData();
         fd.append("file", file);
         const { publicUrl } = await uploadAchievementImage(fd);
-        setAchForm((prev: any) => ({ ...prev, imageUrl: publicUrl }));
-      } catch (err: any) {
-        alert("Error uploading image: " + err.message);
+        setAchForm((prev) => ({ ...prev, imageUrl: publicUrl }));
+      } catch (err) {
+        console.error("Error uploading image:", err);
+        alert("Couldn't upload the image. Please try again.");
       } finally {
         setUploadingImage(false);
       }
@@ -238,11 +247,12 @@ function AdminAboutContent() {
 
   const saveTeamMember = async () => {
     try {
-      await upsertTeamMember(teamForm);
+      await upsertTeamMember(teamForm as Parameters<typeof upsertTeamMember>[0]);
       closeTeamDrawer();
       await loadData();
-    } catch (err: any) {
-      alert("Error saving team member: " + err.message);
+    } catch (err) {
+      console.error("Error saving team member:", err);
+      alert("Couldn't save this team member. Please try again.");
     }
   };
 
@@ -258,8 +268,9 @@ function AdminAboutContent() {
         try {
           await deleteTeamMember(id);
           await loadData();
-        } catch (err: any) {
-          alert("Error deleting team member: " + err.message);
+        } catch (err) {
+          console.error("Error deleting team member:", err);
+          alert("Couldn't delete this team member. Please try again.");
         }
       },
     });
@@ -271,8 +282,9 @@ function AdminAboutContent() {
     try {
       await toggleTeamMemberStatus(id, item.showOnSite);
       await loadData();
-    } catch (err: any) {
-      alert("Error toggling visibility: " + err.message);
+    } catch (err) {
+      console.error("Error toggling team member visibility:", err);
+      alert("Couldn't update visibility. Please try again.");
     }
   };
 
@@ -288,8 +300,9 @@ function AdminAboutContent() {
     try {
       const payload = newList.map((item, idx) => ({ id: item.id, displayOrder: idx }));
       await reorderTeamMembers(payload);
-    } catch (err: any) {
-      alert("Failed to save team member order: " + err.message);
+    } catch (err) {
+      console.error("Failed to save team member order:", err);
+      alert("Couldn't save the new order. Please try again.");
     }
   };
 
@@ -318,11 +331,12 @@ function AdminAboutContent() {
 
   const saveAchievement = async () => {
     try {
-      await upsertAchievement(achForm);
+      await upsertAchievement(achForm as Parameters<typeof upsertAchievement>[0]);
       closeAchDrawer();
       await loadData();
-    } catch (err: any) {
-      alert("Error saving achievement: " + err.message);
+    } catch (err) {
+      console.error("Error saving achievement:", err);
+      alert("Couldn't save this achievement. Please try again.");
     }
   };
 
@@ -338,8 +352,9 @@ function AdminAboutContent() {
         try {
           await deleteAchievement(id);
           await loadData();
-        } catch (err: any) {
-          alert("Error deleting achievement: " + err.message);
+        } catch (err) {
+          console.error("Error deleting achievement:", err);
+          alert("Couldn't delete this achievement. Please try again.");
         }
       },
     });
@@ -351,8 +366,9 @@ function AdminAboutContent() {
     try {
       await toggleAchievementStatus(id, item.showOnSite);
       await loadData();
-    } catch (err: any) {
-      alert("Error toggling visibility: " + err.message);
+    } catch (err) {
+      console.error("Error toggling achievement visibility:", err);
+      alert("Couldn't update visibility. Please try again.");
     }
   };
 
@@ -368,8 +384,9 @@ function AdminAboutContent() {
     try {
       const payload = newList.map((item, idx) => ({ id: item.id, displayOrder: idx }));
       await reorderAchievements(payload);
-    } catch (err: any) {
-      alert("Failed to save achievement order: " + err.message);
+    } catch (err) {
+      console.error("Failed to save achievement order:", err);
+      alert("Couldn't save the new order. Please try again.");
     }
   };
 
@@ -588,7 +605,7 @@ function AdminAboutContent() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {m.photoUrl ? (
-                        <img src={m.photoUrl} alt={m.name} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                        <Image src={m.photoUrl} alt={m.name} width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0" />
                       ) : (
                         <div
                           style={{ backgroundColor: m.avatarBg }}
@@ -694,7 +711,7 @@ function AdminAboutContent() {
                 >
                   <div className="relative rounded-xl overflow-hidden h-32 bg-slate-50 border border-slate-100 flex items-center justify-center">
                     {a.imageUrl ? (
-                      <img src={a.imageUrl} alt={a.statLabel} className="w-full h-full object-cover" />
+                      <Image src={a.imageUrl} alt={a.statLabel} fill className="object-cover" />
                     ) : (
                       <IconPhoto className="w-7 h-7 stroke-[1.5] text-slate-300" />
                     )}
@@ -800,7 +817,7 @@ function AdminAboutContent() {
                 <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Photo (optional)</label>
                 {teamForm.photoUrl ? (
                   <div className="relative rounded-lg overflow-hidden border border-[#E6EBF8] aspect-square w-24 bg-slate-100">
-                    <img src={teamForm.photoUrl} alt="Team member" className="w-full h-full object-cover" />
+                    <Image src={teamForm.photoUrl} alt="Team member" fill className="object-cover" />
                     <button
                       type="button"
                       onClick={() => setTeamForm({ ...teamForm, photoUrl: "" })}
@@ -836,7 +853,7 @@ function AdminAboutContent() {
                   className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B]"
                   type="number"
                   value={teamForm.displayOrder ?? 0}
-                  onChange={(e) => setTeamForm({ ...teamForm, displayOrder: e.target.value })}
+                  onChange={(e) => setTeamForm({ ...teamForm, displayOrder: Number(e.target.value) })}
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -915,7 +932,7 @@ function AdminAboutContent() {
                 <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Image (optional)</label>
                 {achForm.imageUrl ? (
                   <div className="relative rounded-lg overflow-hidden border border-[#E6EBF8] aspect-video bg-slate-100">
-                    <img src={achForm.imageUrl} alt="Achievement" className="w-full h-full object-cover" />
+                    <Image src={achForm.imageUrl} alt="Achievement" fill className="object-cover" />
                     <button
                       type="button"
                       onClick={() => setAchForm({ ...achForm, imageUrl: "" })}
@@ -950,7 +967,7 @@ function AdminAboutContent() {
                   className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B]"
                   type="number"
                   value={achForm.displayOrder ?? 0}
-                  onChange={(e) => setAchForm({ ...achForm, displayOrder: e.target.value })}
+                  onChange={(e) => setAchForm({ ...achForm, displayOrder: Number(e.target.value) })}
                 />
               </div>
               <div className="flex flex-col gap-1">

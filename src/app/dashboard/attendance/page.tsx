@@ -67,7 +67,7 @@ function StatBubble({
 const STATUS_META: Record<string, { dot: string; label: string }> = {
   present: { dot: "bg-green-400",  label: "Present" },
   absent:  { dot: "bg-red-400",    label: "Absent" },
-  late:    { dot: "bg-amber-400",  label: "Late" },
+  excused: { dot: "bg-amber-400",  label: "Excused" },
 };
 
 // ─── Empty state ────────────────────────────────────────────────────
@@ -92,6 +92,7 @@ export default function AttendancePage() {
   const [data, setData] = useState<AttendanceData | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-driven-by-childId-param; bails out synchronously only when there's no child to load
     if (!childId) { setLoading(false); return; }
     setLoading(true);
     getChildAttendance(childId)
@@ -199,7 +200,7 @@ export default function AttendancePage() {
                     <span className="text-[11px] text-[#4A5A7A] shrink-0">{dateStr}</span>
                     <span className={`text-[11px] font-bold shrink-0 ${
                       rec.status === "present" ? "text-green-600" :
-                      rec.status === "late" ? "text-amber-500" : "text-red-500"
+                      rec.status === "excused" ? "text-amber-500" : "text-red-500"
                     }`}>
                       {meta.label}
                     </span>

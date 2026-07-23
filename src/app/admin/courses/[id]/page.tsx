@@ -2,21 +2,19 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   IconArrowLeft,
-  IconCalendar,
   IconClock,
   IconStar,
   IconSchool,
-  IconUsers,
   IconBook,
   IconCurrencyRupee,
   IconCheck,
   IconLoader,
   IconBookmark,
   IconEdit,
-  IconTrash,
-  IconPlus,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import {
   getAdminCourseDetails,
@@ -27,29 +25,50 @@ import {
   upsertCourseUnit,
   deleteCourseUnit,
   reorderCourseUnits,
+  checkMentorScheduleConflict,
+  type ScheduleConflict,
 } from "../../../actions";
+import { parseTimeToMinutes, minutesToTimeString } from "@/lib/schedule";
 
-export default function AdminCourseDetailPage({ params }: { params: React.ComponentProps<any>['params'] }) {
+const START_TIME_OPTIONS = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"];
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+type CourseDetails = Awaited<ReturnType<typeof getAdminCourseDetails>>;
+type Course = CourseDetails["course"];
+type CourseBooking = CourseDetails["bookings"][number];
+type Mentor = Awaited<ReturnType<typeof getAdminData>>["mentors"][number];
+type CourseUnit = Awaited<ReturnType<typeof getCourseUnits>>[number];
+type EditForm = Omit<Partial<Parameters<typeof upsertCourse>[0]>, "durationDays" | "totalSessions" | "sessionsPerWeek"> & {
+  _customSubjectActive?: boolean;
+  // Bound directly to number `<input>` onChange handlers, which pass the raw string value.
+  durationDays?: number | string;
+  totalSessions?: number | string;
+  sessionsPerWeek?: number | string;
+};
+
+export default function AdminCourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [courseId, setCourseId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.resolve(params).then((resolvedParams: any) => {
+    Promise.resolve(params).then((resolvedParams) => {
       setCourseId(resolvedParams.id);
     });
   }, [params]);
 
-  const [course, setCourse] = useState<any>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [mentors, setMentors] = useState<any[]>([]);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [bookings, setBookings] = useState<CourseBooking[]>([]);
+  const [mentors, setMentors] = useState<Mentor[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Editing States
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<any>({});
+  const [editForm, setEditForm] = useState<EditForm>({});
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [scheduleConflicts, setScheduleConflicts] = useState<ScheduleConflict[]>([]);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
 
   // Curriculum Editor States
-  const [courseUnits, setCourseUnits] = useState<any[]>([]);
+  const [courseUnits, setCourseUnits] = useState<CourseUnit[]>([]);
   const [newUnitTitle, setNewUnitTitle] = useState("");
   const [newUnitUrl, setNewUnitUrl] = useState("");
   const [newUnitDesc, setNewUnitDesc] = useState("");
@@ -82,10 +101,13 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData is redefined each render but only reads courseId, which is already tracked
   }, [courseId]);
 
   const startEdit = () => {
+    if (!course) return;
     setEditForm({
       ...course,
       mentor: course.mentor ? course.mentor.name : mentors[0]?.name || "",
@@ -95,6 +117,7 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
 
   const cancelEdit = () => {
     setIsEditing(false);
+    setScheduleConflicts([]);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,23 +129,65 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
       const formData = new FormData();
       formData.append("file", file);
       const res = await uploadCourseCover(formData);
-      setEditForm((prev: any) => ({ ...prev, coverImageUrl: res.publicUrl }));
-    } catch (err: any) {
-      alert("Image upload failed: " + err.message);
+      setEditForm((prev) => ({ ...prev, coverImageUrl: res.publicUrl }));
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      alert("Couldn't upload the image. Please try again.");
     } finally {
       setUploadingImage(false);
     }
   };
 
-  const handleSave = async () => {
+  const doSave = async () => {
     try {
-      await upsertCourse(editForm);
+      await upsertCourse(editForm as Parameters<typeof upsertCourse>[0]);
       setIsEditing(false);
+      setScheduleConflicts([]);
       setLoading(true);
       await loadData();
-    } catch (err: any) {
-      alert("Failed to save course: " + err.message);
+    } catch (err) {
+      console.error("Failed to save course:", err);
+      alert("Couldn't save this course. Please try again.");
     }
+  };
+
+  // Only Live batch / Live individual courses have a fixed weekly
+  // schedule worth conflict-checking; Recorded courses have none.
+  const handleSave = async () => {
+    const mentorId = mentors.find((m) => m.name === editForm.mentor)?.id;
+    const days = editForm.classDays ? editForm.classDays.split(",").map((d) => d.trim()).filter(Boolean) : [];
+    const isScheduled = editForm.format === "Live batch" || editForm.format === "Live individual";
+
+    if (mentorId && isScheduled && days.length > 0 && editForm.classTime) {
+      setCheckingConflicts(true);
+      try {
+        const duration = Number(editForm.durationMinutes) || 60;
+        const startMinutes = parseTimeToMinutes(editForm.classTime);
+        const endTimeStr = startMinutes === -1 ? editForm.classTime : minutesToTimeString(startMinutes + duration);
+
+        const conflicts = await checkMentorScheduleConflict(mentorId, {
+          days,
+          startTime: editForm.classTime,
+          endTime: endTimeStr,
+          excludeId: courseId || undefined,
+          excludeType: "course",
+        });
+
+        if (conflicts.length > 0) {
+          setScheduleConflicts(conflicts);
+          return;
+        }
+      } finally {
+        setCheckingConflicts(false);
+      }
+    }
+
+    await doSave();
+  };
+
+  const saveAnyway = async () => {
+    setScheduleConflicts([]);
+    await doSave();
   };
 
   // Recorded Units CRUD handlers
@@ -154,14 +219,15 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
       
       const updated = await getCourseUnits(courseId);
       setCourseUnits(updated);
-    } catch (err: any) {
-      alert("Failed to save unit: " + err.message);
+    } catch (err) {
+      console.error("Failed to save unit:", err);
+      alert("Couldn't save this video unit. Please try again.");
     } finally {
       setUnitSaving(false);
     }
   };
 
-  const handleEditUnit = (unit: any) => {
+  const handleEditUnit = (unit: CourseUnit) => {
     setEditingUnitId(unit.id);
     setNewUnitTitle(unit.title);
     setNewUnitUrl(unit.youtube_url || "");
@@ -186,8 +252,9 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
         await deleteCourseUnit(unitId);
         const updated = await getCourseUnits(courseId as string);
         setCourseUnits(updated);
-      } catch (err: any) {
-        alert("Failed to delete unit: " + err.message);
+      } catch (err) {
+        console.error("Failed to delete unit:", err);
+        alert("Couldn't delete this video unit. Please try again.");
       }
     }
   };
@@ -209,8 +276,8 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
 
     try {
       await reorderCourseUnits(updatedList.map((x) => x.id));
-    } catch (err: any) {
-      console.error("Failed to persist order: " + err.message);
+    } catch (err) {
+      console.error("Failed to persist order: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -273,13 +340,44 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
             </button>
             <button
               onClick={handleSave}
-              className="text-xs font-bold px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-all cursor-pointer"
+              disabled={checkingConflicts}
+              className="text-xs font-bold px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Changes
+              {checkingConflicts ? "Checking availability..." : "Save Changes"}
             </button>
           </div>
         )}
       </div>
+
+      {isEditing && scheduleConflicts.length > 0 && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+            <IconAlertTriangle className="w-4 h-4 shrink-0" />
+            Schedule conflict with this mentor
+          </div>
+          <ul className="space-y-1">
+            {scheduleConflicts.map((c) => (
+              <li key={`${c.type}-${c.id}`} className="text-[11px] text-amber-700 font-medium">
+                Conflicts with {c.type} &quot;{c.name}&quot;{c.days ? ` on ${c.days}` : ""} at {c.time}
+              </li>
+            ))}
+          </ul>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => setScheduleConflicts([])}
+              className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-white text-primary border border-amber-300 hover:bg-amber-100/50 cursor-pointer"
+            >
+              Go back and edit
+            </button>
+            <button
+              onClick={saveAnyway}
+              className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 cursor-pointer"
+            >
+              Save anyway
+            </button>
+          </div>
+        </div>
+      )}
 
       {isEditing ? (
         /* COURSE EDITING PANEL LAYOUT */
@@ -316,7 +414,7 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
                   <select
                     className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
                     value={
-                      standardSubjects.includes(editForm.subject)
+                      standardSubjects.includes(editForm.subject ?? "")
                         ? editForm.subject
                         : editForm.subject
                         ? "Custom"
@@ -336,7 +434,7 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
                     ))}
                     <option value="Custom">Create New Subject...</option>
                   </select>
-                  {(editForm._customSubjectActive || !standardSubjects.includes(editForm.subject)) && (
+                  {(editForm._customSubjectActive || !standardSubjects.includes(editForm.subject ?? "")) && (
                     <input
                       className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none font-semibold text-[#1B3A6B] mt-1.5 bg-white w-full"
                       type="text"
@@ -435,25 +533,77 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
                 </div>
               </div>
 
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Class Days</label>
+                <div className="flex flex-wrap gap-1">
+                  {WEEKDAYS.map((day) => {
+                    const selectedDays = editForm.classDays ? editForm.classDays.split(",").map((d) => d.trim()).filter(Boolean) : [];
+                    const isSelected = selectedDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          const newDays = isSelected
+                            ? selectedDays.filter((d) => d !== day)
+                            : [...selectedDays, day].sort((a, b) => WEEKDAYS.indexOf(a) - WEEKDAYS.indexOf(b));
+                          setEditForm({ ...editForm, classDays: newDays.join(", ") });
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+                          isSelected
+                            ? "bg-[#2F7FE8] border-[#2F7FE8] text-white shadow-sm font-bold"
+                            : "bg-white border-[#E6EBF8] text-primary hover:bg-slate-50"
+                        }`}
+                      >
+                        {day.slice(0, 3)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Class Days</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mon, Wed, Fri"
-                    value={editForm.classDays || ""}
-                    onChange={(e) => setEditForm({ ...editForm, classDays: e.target.value })}
-                    className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none font-semibold text-[#1B3A6B] bg-white w-full"
-                  />
+                  <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Start Time</label>
+                  <select
+                    value={editForm.classTime || "05:00 PM"}
+                    onChange={(e) => {
+                      const startTime = e.target.value;
+                      const duration = Number(editForm.durationMinutes) || 60;
+                      const startMin = parseTimeToMinutes(startTime);
+                      const endTime = startMin === -1 ? "" : minutesToTimeString(startMin + duration);
+                      setEditForm({
+                        ...editForm,
+                        classTime: startTime,
+                        classTiming: endTime ? `${startTime} - ${endTime}` : startTime,
+                      });
+                    }}
+                    className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
+                  >
+                    {START_TIME_OPTIONS.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Timing</label>
+                  <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Duration (minutes)</label>
                   <input
-                    type="text"
-                    placeholder="e.g. 5:00 PM - 6:30 PM"
-                    value={editForm.classTiming || ""}
-                    onChange={(e) => setEditForm({ ...editForm, classTiming: e.target.value })}
+                    type="number"
+                    min={15}
+                    step={15}
+                    value={editForm.durationMinutes || 60}
+                    onChange={(e) => {
+                      const duration = Number(e.target.value) || 60;
+                      const startTime = editForm.classTime || "05:00 PM";
+                      const startMin = parseTimeToMinutes(startTime);
+                      const endTime = startMin === -1 ? "" : minutesToTimeString(startMin + duration);
+                      setEditForm({
+                        ...editForm,
+                        durationMinutes: duration,
+                        classTiming: endTime ? `${startTime} - ${endTime}` : startTime,
+                      });
+                    }}
                     className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none font-semibold text-[#1B3A6B] bg-white w-full"
                   />
                 </div>
@@ -644,7 +794,9 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
               </h3>
               {editForm.coverImageUrl ? (
                 <div className="relative border border-[#E6EBF8] rounded-2xl p-2 bg-slate-50">
-                  <img src={editForm.coverImageUrl} className="w-full h-32 rounded-xl object-cover" alt="Cover Preview" />
+                  <div className="relative w-full h-32">
+                    <Image src={editForm.coverImageUrl} fill className="rounded-xl object-cover" alt="Cover Preview" />
+                  </div>
                   <button
                     type="button"
                     onClick={() => setEditForm({ ...editForm, coverImageUrl: "" })}
@@ -698,8 +850,8 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
           <div className="bg-white border border-[#E6EBF8] rounded-3xl p-6 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-stretch">
             <div className="flex flex-col md:flex-row gap-5 items-start flex-1">
               {course.coverImageUrl ? (
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border border-[#E6EBF8] shrink-0">
-                  <img src={course.coverImageUrl} alt={course.title} className="w-full h-full object-cover" />
+                <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-[#E6EBF8] shrink-0">
+                  <Image src={course.coverImageUrl} alt={course.title} fill className="object-cover" />
                 </div>
               ) : (
                 <div className="w-24 h-24 rounded-2xl bg-[#EBF2FF] flex items-center justify-center text-[#2F7FE8] shrink-0 border border-[#D0DCF5]">
@@ -810,7 +962,7 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
 
                 {course.learningOutcomes && course.learningOutcomes.length > 0 && (
                   <div className="pt-4 border-t border-[#E6EBF8] space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">What You'll Learn</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">What You&apos;ll Learn</span>
                     <ul className="list-disc pl-4 space-y-1 text-xs text-[#6B7A99] font-medium">
                       {course.learningOutcomes.map((out: string, index: number) => (
                         <li key={index}>{out}</li>
@@ -931,8 +1083,8 @@ export default function AdminCourseDetailPage({ params }: { params: React.Compon
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       {course.mentor.avatarUrl ? (
-                        <div className="w-12 h-12 rounded-full overflow-hidden border border-[#E6EBF8] shrink-0">
-                          <img src={course.mentor.avatarUrl} alt={course.mentor.name} className="w-full h-full object-cover" />
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-[#E6EBF8] shrink-0">
+                          <Image src={course.mentor.avatarUrl} alt={course.mentor.name} fill className="object-cover" />
                         </div>
                       ) : (
                         <div className="w-12 h-12 rounded-full bg-[#1B3A6B] text-accent flex items-center justify-center font-heading text-sm font-bold shrink-0">

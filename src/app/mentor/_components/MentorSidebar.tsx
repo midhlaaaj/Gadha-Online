@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSelectedLayoutSegment, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -8,7 +9,6 @@ import {
   IconFiles, IconCalendarCheck, IconMessageCircle,
   IconLogout, IconUsers, IconCoin, IconClock, IconUser
 } from "@tabler/icons-react";
-import { NotificationBell } from "./NotificationBell";
 
 const NAV = [
   { segment: "overview",     label: "Overview",     icon: IconLayoutDashboard },
@@ -35,12 +35,12 @@ export function MentorAppSidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-white border-r border-[#E6EBF8] h-screen sticky top-0 z-30">
-      {/* Logo + Bell */}
-      <div className="h-[80px] flex items-center justify-between px-6 border-b border-[#E6EBF8] shrink-0">
-        <Link href="/mentor/overview" className="font-heading text-2xl font-extrabold tracking-tight text-[#1B3A6B] hover:opacity-90 transition-opacity">
-          Tuto<span className="text-[#2F7FE8]">board</span>
+      {/* Logo */}
+      <div className="h-[80px] flex items-center px-6 border-b border-[#E6EBF8] shrink-0">
+        <Link href="/mentor/overview" className="flex items-center gap-2 font-heading text-lg font-extrabold tracking-tight text-[#1B3A6B] hover:opacity-90 transition-opacity">
+          <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" />
+          <span>Gadha Online</span>
         </Link>
-        <NotificationBell />
       </div>
 
       {/* Nav */}

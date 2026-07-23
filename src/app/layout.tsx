@@ -16,7 +16,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Tutoboard - Premium Online Tutoring",
+  title: "Gadha Online - Premium Online Tutoring",
   description: "Connect with verified top-rated tutors for 1-on-1 sessions, structured courses, and hourly lessons.",
 };
 

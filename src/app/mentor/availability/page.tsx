@@ -5,7 +5,8 @@ import {
   IconClock, IconPlus, IconTrash, IconCalendar, 
   IconCheck, IconAlertCircle, IconLoader, IconX 
 } from "@tabler/icons-react";
-import { getMentorAvailability, updateMentorAvailability } from "@/app/actions";
+import { getMentorAvailability, updateMentorAvailability, getMentorBusySlots } from "@/app/actions";
+import type { MentorAvailability, ScheduleConflict } from "@/app/actions";
 
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -29,15 +30,20 @@ export default function MentorAvailabilityPage() {
   // Availability state: { [day]: [{ start, end }] }
   const [availability, setAvailability] = useState<Record<string, { start: string; end: string }[]>>({});
   const [activeDays, setActiveDays] = useState<Record<string, boolean>>({});
+  const [busySlots, setBusySlots] = useState<ScheduleConflict[]>([]);
 
   const loadAvailability = async () => {
     try {
-      const data = await getMentorAvailability();
+      const [data, busy] = await Promise.all([
+        getMentorAvailability(),
+        getMentorBusySlots().catch(() => []),
+      ]);
+      setBusySlots(busy);
       const initialActive: Record<string, boolean> = {};
       const initialSlots: Record<string, { start: string; end: string }[]> = {};
 
       // If data is empty or has no configured active days, default to Mon-Fri 9am-9pm
-      const hasCustom = Object.keys(data).length > 0 && Object.values(data).some((arr: any) => arr.length > 0);
+      const hasCustom = Object.keys(data).length > 0 && Object.values(data).some((arr) => arr.length > 0);
 
       DAYS_OF_WEEK.forEach((day) => {
         let slots = data[day] || [];
@@ -54,15 +60,16 @@ export default function MentorAvailabilityPage() {
 
       setAvailability(initialSlots);
       setActiveDays(initialActive);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to load availability.");
+    } catch (err) {
+      console.error("Failed to load availability:", err);
+      setError("Failed to load availability. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadAvailability();
   }, []);
 
@@ -126,7 +133,7 @@ export default function MentorAvailabilityPage() {
     setError(null);
     setSuccess(null);
     try {
-      const payload: Record<string, any> = {};
+      const payload: MentorAvailability = {};
 
       // Validate inputs for each active day
       for (const day of DAYS_OF_WEEK) {
@@ -169,9 +176,9 @@ export default function MentorAvailabilityPage() {
       setSuccess("Availability updated successfully.");
       setIsEditing(false);
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to save availability.");
+      setError(err instanceof Error ? err.message : "Failed to save availability.");
     } finally {
       setSaving(false);
     }
@@ -186,7 +193,7 @@ export default function MentorAvailabilityPage() {
             Weekly Availability
           </h1>
           <p className="text-[13px] text-[#4A5A7A] mt-0.5">
-            Configure the weekly days and time slots during which parents and students can book 1-on-1 private tutoring sessions with you.
+            Configure the weekly days and time slots you&apos;re generally free to teach. Slots already committed to an assigned course or session show as read-only busy blocks below.
           </p>
         </div>
         {!loading && (
@@ -251,6 +258,7 @@ export default function MentorAvailabilityPage() {
           {DAYS_OF_WEEK.map((day) => {
             const isActive = activeDays[day];
             const slots = availability[day] || [];
+            const dayBusySlots = busySlots.filter((s) => s.days?.split("/").includes(day));
 
             return (
               <div
@@ -283,6 +291,21 @@ export default function MentorAvailabilityPage() {
 
                 {/* Time Slots Editors Column */}
                 <div className="flex-1 space-y-3">
+                  {dayBusySlots.length > 0 && (
+                    <div className="space-y-1.5 mb-1">
+                      {dayBusySlots.map((s) => (
+                        <div
+                          key={`${s.type}-${s.id}`}
+                          className="flex items-center gap-2 border border-amber-200 bg-amber-50 rounded-xl px-3.5 py-2 max-w-md"
+                        >
+                          <IconClock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          <span className="text-xs font-semibold text-amber-800 truncate">
+                            Booked: {s.name} · {s.time}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {!isActive ? (
                     <p className="text-xs text-slate-400 italic py-1">Unavailable on this day</p>
                   ) : (
@@ -341,6 +364,25 @@ export default function MentorAvailabilityPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!loading && busySlots.some((s) => s.date) && (
+        <div className="bg-white border border-[#D0DCF5] rounded-2xl p-5 space-y-2.5">
+          <h2 className="text-sm font-bold text-[#1B3A6B] font-heading">Upcoming one-off commitments</h2>
+          <div className="space-y-1.5">
+            {busySlots.filter((s) => s.date).map((s) => (
+              <div
+                key={`${s.type}-${s.id}`}
+                className="flex items-center gap-2 border border-amber-200 bg-amber-50 rounded-xl px-3.5 py-2 max-w-md"
+              >
+                <IconCalendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span className="text-xs font-semibold text-amber-800 truncate">
+                  {s.name} · {new Date(s.date!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} · {s.time}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import {
   IconTargetArrow,
   IconBulb,
@@ -11,10 +13,12 @@ import {
 } from "@tabler/icons-react";
 import { getAboutPageData } from "../actions";
 
+type AboutPageData = Awaited<ReturnType<typeof getAboutPageData>>;
+
 export default function AboutPage() {
-  const [settings, setSettings] = useState<any>(null);
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [achievements, setAchievements] = useState<any[]>([]);
+  const [settings, setSettings] = useState<AboutPageData["settings"] | null>(null);
+  const [teamMembers, setTeamMembers] = useState<AboutPageData["teamMembers"]>([]);
+  const [achievements, setAchievements] = useState<AboutPageData["achievements"]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,14 +39,14 @@ export default function AboutPage() {
 
   return (
     <div className="w-full bg-white text-primary flex-1 min-h-screen flex flex-col font-sans">
-      <title>About Us | Tutoboard</title>
-      <meta name="description" content="Learn about Tutoboard's vision, mission, team, and achievements." />
+      <title>About Us | Gadha Online</title>
+      <meta name="description" content="Learn about Gadha Online's vision, mission, team, and achievements." />
 
       {/* PAGE HEADER */}
       <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
         <div className="max-w-7xl mx-auto">
           <nav className="text-xs text-text-muted mb-3 flex items-center gap-1.5 font-medium">
-            <a href="/" className="hover:text-secondary transition-colors">Home</a>
+            <Link href="/" className="hover:text-secondary transition-colors">Home</Link>
             <span className="text-slate-300">/</span>
             <span className="text-primary font-semibold">About</span>
           </nav>
@@ -111,7 +115,7 @@ export default function AboutPage() {
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
           <div className="mb-6 sm:mb-10 text-left">
             <span className="text-[11px] font-bold text-secondary uppercase tracking-wider block mb-1">
-              The people behind Tutoboard
+              The people behind Gadha Online
             </span>
             <h2 className="font-heading text-2xl sm:text-3xl font-extrabold text-primary">
               Meet the team
@@ -150,7 +154,7 @@ export default function AboutPage() {
                     {/* Header Image / Avatar Banner */}
                     <div className="relative w-full h-36 bg-slate-100 overflow-hidden flex items-center justify-center">
                       {m.photoUrl ? (
-                        <img src={m.photoUrl} alt={m.name} className="w-full h-full object-cover" />
+                        <Image src={m.photoUrl} alt={m.name} fill className="object-cover" />
                       ) : (
                         <div className="w-full h-full bg-blue-50 flex items-center justify-center">
                           <div
@@ -213,7 +217,7 @@ export default function AboutPage() {
                     {/* Header Image / Avatar Banner */}
                     <div className="relative w-full h-44 bg-slate-100 overflow-hidden flex items-center justify-center">
                       {m.photoUrl ? (
-                        <img src={m.photoUrl} alt={m.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                        <Image src={m.photoUrl} alt={m.name} fill className="object-cover hover:scale-105 transition-transform duration-300" />
                       ) : (
                         <div className="w-full h-full bg-blue-50 flex items-center justify-center">
                           <div
@@ -288,11 +292,12 @@ export default function AboutPage() {
                   className="w-[85%] sm:w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[85%] sm:min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-center sm:snap-start shrink-0 bg-surface border border-border-subtle rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between"
                 >
                   {a.imageUrl ? (
-                    <div className="w-full h-44 overflow-hidden bg-slate-100">
-                      <img
+                    <div className="relative w-full h-44 overflow-hidden bg-slate-100">
+                      <Image
                         src={a.imageUrl}
                         alt={a.statLabel}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        fill
+                        className="object-cover hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                   ) : (
@@ -316,8 +321,9 @@ export default function AboutPage() {
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
             <div className="lg:col-span-2">
-              <div className="font-heading text-xl font-extrabold text-white mb-3">
-                Tuto<span className="text-accent">board</span>
+              <div className="flex items-center gap-2 mb-3">
+                <Image src="/logo.png" alt="Gadha Online" width={40} height={40} className="w-10 h-10 object-contain" />
+                <span className="font-heading text-xl font-extrabold text-white">Gadha Online</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
                 India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
@@ -331,14 +337,37 @@ export default function AboutPage() {
                 <li>
                   <a href="/about" className="hover:text-white transition-colors">About us</a>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Explore
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">Careers</a>
+                  <Link href="/courses" className="hover:text-white transition-colors">Courses</Link>
+                </li>
+                <li>
+                  <Link href="/sessions" className="hover:text-white transition-colors">Sessions</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Legal
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
+                <li>
+                  <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+                </li>
+                <li>
+                  <a href="/terms" className="hover:text-white transition-colors">Terms &amp; Conditions</a>
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2026 Tutoboard. All rights reserved.</p>
+            <p>&copy; 2026 Gadha Online. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">
                 <IconBrandInstagram className="w-5 h-5" />

@@ -51,7 +51,7 @@ export default function MentorsPage() {
   // Drawer modal state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerEditId, setDrawerEditId] = useState<string | null>(null);
-  const [drawerForm, setDrawerForm] = useState<any>({});
+  const [drawerForm, setDrawerForm] = useState<Partial<Parameters<typeof upsertMentor>[0]>>({});
 
   const loadData = async () => {
     try {
@@ -65,6 +65,7 @@ export default function MentorsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -79,7 +80,6 @@ export default function MentorsPage() {
         email: "",
         subject: "Mathematics",
         rate: 0,
-        bio: "",
         experience: 1,
         qualification: "",
         verified: false,
@@ -95,11 +95,12 @@ export default function MentorsPage() {
 
   const saveDrawerData = async () => {
     try {
-      await upsertMentor(drawerForm);
+      await upsertMentor(drawerForm as Parameters<typeof upsertMentor>[0]);
       closeDrawer();
       await loadData();
-    } catch (err: any) {
-      alert("Error saving mentor: " + err.message);
+    } catch (err) {
+      console.error("Error saving mentor:", err);
+      alert("Couldn't save this mentor. Please try again.");
     }
   };
 
@@ -108,8 +109,9 @@ export default function MentorsPage() {
       try {
         await apiDeleteMentor(id);
         await loadData();
-      } catch (err: any) {
-        alert("Error deleting mentor: " + err.message);
+      } catch (err) {
+        console.error("Error deleting mentor:", err);
+        alert("Couldn't delete this mentor. Please try again.");
       }
     }
   };
@@ -401,7 +403,7 @@ export default function MentorsPage() {
                 <input
                   className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B]"
                   type="email"
-                  placeholder="e.g. arjun@tutoboard.com"
+                  placeholder="e.g. arjun@gadhaonline.com"
                   value={drawerForm.email || ""}
                   onChange={(e) => setDrawerForm({ ...drawerForm, email: e.target.value })}
                 />

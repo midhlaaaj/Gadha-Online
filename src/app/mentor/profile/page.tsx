@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   IconAlertCircle, IconX, IconChecks, IconEye,
-  IconEyeOff, IconCertificate, IconLoader
+  IconEyeOff, IconCertificate
 } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 import { getMentorProfile, updateMentorProfile, updateParentPassword } from "@/app/actions";
@@ -46,7 +47,7 @@ function ProfileSkeleton() {
 
 export default function MentorProfilePage() {
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<(Awaited<ReturnType<typeof getMentorProfile>> & { avatarUrl?: string }) | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -88,15 +89,16 @@ export default function MentorProfilePage() {
       setEditQualification(data.qualification || "");
       setEditExpertise(data.expertise ? data.expertise.join(", ") : "");
       setEditHourlyRate(data.hourlyRate || 0);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to load profile details.");
+    } catch (err) {
+      console.error("Failed to load profile details:", err);
+      setError("Failed to load profile details.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadProfile();
   }, []);
 
@@ -132,8 +134,9 @@ export default function MentorProfilePage() {
       setSuccess("Profile information updated successfully.");
       setIsEditMode(false);
       await loadProfile();
-    } catch (err: any) {
-      setError(err.message || "Failed to save profile changes.");
+    } catch (err) {
+      console.error("Failed to save profile changes:", err);
+      setError("Failed to save profile changes. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -171,7 +174,7 @@ export default function MentorProfilePage() {
     setPwSaving(true);
     try {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
-        email: profile.email,
+        email: profile!.email,
         password: currentPassword,
       });
 
@@ -190,8 +193,8 @@ export default function MentorProfilePage() {
         setIsPwModalOpen(false);
         setPwSuccess(null);
       }, 1800);
-    } catch (err: any) {
-      setPwError(err.message || "Failed to update password.");
+    } catch (err) {
+      setPwError(err instanceof Error ? err.message : "Failed to update password.");
     } finally {
       setPwSaving(false);
     }
@@ -220,11 +223,11 @@ export default function MentorProfilePage() {
               <button
                 onClick={() => {
                   if (isEditMode) {
-                    setEditName(profile.name);
-                    setEditBio(profile.bio || "");
-                    setEditQualification(profile.qualification || "");
-                    setEditExpertise(profile.expertise ? profile.expertise.join(", ") : "");
-                    setEditHourlyRate(profile.hourlyRate || 0);
+                    setEditName(profile!.name);
+                    setEditBio(profile!.bio || "");
+                    setEditQualification(profile!.qualification || "");
+                    setEditExpertise(profile!.expertise ? profile!.expertise.join(", ") : "");
+                    setEditHourlyRate(profile!.hourlyRate || 0);
                   }
                   setIsEditMode(!isEditMode);
                 }}
@@ -235,20 +238,22 @@ export default function MentorProfilePage() {
             </div>
 
             {/* VIEW MODE */}
-            {!isEditMode ? (
+            {!isEditMode ? (() => {
+              const p = profile!;
+              return (
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-[#0f2347] flex items-center justify-center font-heading text-lg font-bold text-[#ffc107] shadow-inner overflow-hidden shrink-0">
-                    {profile.avatarUrl ? (
-                      <img src={profile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                    {p.avatarUrl ? (
+                      <Image src={p.avatarUrl} alt="avatar" width={56} height={56} className="w-full h-full object-cover" />
                     ) : (
-                      profile.avatarText
+                      p.avatarText
                     )}
                   </div>
                   <div>
-                    <h4 className="font-heading text-base font-bold text-[#1B3A6B]">{profile.name}</h4>
+                    <h4 className="font-heading text-base font-bold text-[#1B3A6B]">{p.name}</h4>
                     <p className="text-slate-400 text-[11px] mt-0.5 font-medium">
-                      {profile.qualification || "Verified Educator"} · {profile.email}
+                      {p.qualification || "Verified Educator"} · {p.email}
                     </p>
                   </div>
                 </div>
@@ -257,7 +262,7 @@ export default function MentorProfilePage() {
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Biography</span>
                     <p className="text-xs text-[#1B3A6B] leading-relaxed whitespace-pre-wrap">
-                      {profile.bio || "No biography added yet."}
+                      {p.bio || "No biography added yet."}
                     </p>
                   </div>
 
@@ -266,14 +271,14 @@ export default function MentorProfilePage() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Qualifications</span>
                       <div className="flex items-center gap-2 text-xs text-[#1B3A6B] font-semibold">
                         <IconCertificate className="w-4 h-4 text-[#2F7FE8]" />
-                        <span>{profile.qualification || "Educator"}</span>
+                        <span>{p.qualification || "Educator"}</span>
                       </div>
                     </div>
 
                     <div className="space-y-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Hourly Rate</span>
                       <div className="text-xs text-[#1B3A6B] font-bold">
-                        ₹{profile.hourlyRate ?? 0} / hr
+                        ₹{p.hourlyRate ?? 0} / hr
                       </div>
                     </div>
                   </div>
@@ -281,8 +286,8 @@ export default function MentorProfilePage() {
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Subject Expertise</span>
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {profile.expertise && profile.expertise.length > 0 ? (
-                        profile.expertise.map((exp: string, index: number) => (
+                      {p.expertise && p.expertise.length > 0 ? (
+                        p.expertise.map((exp: string, index: number) => (
                           <span
                             key={index}
                             className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#EBF2FF] text-[#2F7FE8]"
@@ -297,7 +302,8 @@ export default function MentorProfilePage() {
                   </div>
                 </div>
               </div>
-            ) : (
+              );
+            })() : (
               /* EDIT MODE */
               <div className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -365,11 +371,11 @@ export default function MentorProfilePage() {
                   </button>
                   <button
                     onClick={() => {
-                      setEditName(profile.name);
-                      setEditBio(profile.bio || "");
-                      setEditQualification(profile.qualification || "");
-                      setEditExpertise(profile.expertise ? profile.expertise.join(", ") : "");
-                      setEditHourlyRate(profile.hourlyRate || 0);
+                      setEditName(profile!.name);
+                      setEditBio(profile!.bio || "");
+                      setEditQualification(profile!.qualification || "");
+                      setEditExpertise(profile!.expertise ? profile!.expertise.join(", ") : "");
+                      setEditHourlyRate(profile!.hourlyRate || 0);
                       setIsEditMode(false);
                     }}
                     className="text-xs font-semibold px-5 py-2.5 border border-[#D0DCF5] text-[#1B3A6B] bg-white hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"

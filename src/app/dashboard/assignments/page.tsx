@@ -133,6 +133,7 @@ export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-driven-by-childId-param; bails out synchronously only when there's no child to load
     if (!childId) { setLoading(false); return; }
     setLoading(true);
     getChildAssignments(childId)

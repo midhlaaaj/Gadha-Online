@@ -12,19 +12,27 @@ import {
   IconBook,
   IconCurrencyRupee,
   IconEdit,
-  IconCheck,
   IconX,
   IconChevronLeft,
   IconChevronRight,
   IconLoader,
 } from "@tabler/icons-react";
-import { getMentorDetailsData, getAdminData, updateMentorRate, updateMentorProfileByAdmin } from "../../../actions";
+import { getMentorDetailsData, getAdminData, updateMentorProfileByAdmin } from "../../../actions";
 
-interface Params {
-  id: string;
+type MentorDetails = Awaited<ReturnType<typeof getMentorDetailsData>>;
+type Mentor = MentorDetails["mentor"];
+type MentorCourse = MentorDetails["courses"][number];
+type MentorSession = MentorDetails["sessions"][number];
+type MentorScheduledClass = MentorDetails["scheduledClasses"][number];
+type AdminBooking = Awaited<ReturnType<typeof getAdminData>>["bookings"][number];
+
+interface AvailabilitySlot {
+  start: string;
+  end: string;
 }
+type Availability = Record<string, AvailabilitySlot[] | string[]>;
 
-const DEFAULT_MENTOR_AVAILABILITY: any = {
+const DEFAULT_MENTOR_AVAILABILITY: Availability = {
   Monday: [{ start: "09:00 AM", end: "09:00 PM" }],
   Tuesday: [{ start: "09:00 AM", end: "09:00 PM" }],
   Wednesday: [{ start: "09:00 AM", end: "09:00 PM" }],
@@ -34,22 +42,22 @@ const DEFAULT_MENTOR_AVAILABILITY: any = {
   Sunday: []
 };
 
-export default function MentorDetailPage({ params }: { params: React.ComponentProps<any>["params"] }) {
+export default function MentorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [mentorId, setMentorId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.resolve(params).then((resolvedParams: any) => {
+    Promise.resolve(params).then((resolvedParams) => {
       setMentorId(resolvedParams.id);
     });
   }, [params]);
 
-  const [mentor, setMentor] = useState<any>(null);
-  const [courses, setCourses] = useState<any[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [mentorBookings, setMentorBookings] = useState<any[]>([]);
-  const [scheduledClasses, setScheduledClasses] = useState<any[]>([]);
+  const [mentor, setMentor] = useState<Mentor | null>(null);
+  const [courses, setCourses] = useState<MentorCourse[]>([]);
+  const [sessions, setSessions] = useState<MentorSession[]>([]);
+  const [mentorBookings, setMentorBookings] = useState<AdminBooking[]>([]);
+  const [scheduledClasses, setScheduledClasses] = useState<MentorScheduledClass[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<MentorScheduledClass | null>(null);
 
   // Profile editing states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -62,17 +70,17 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
   const [editExperience, setEditExperience] = useState<number>(0);
   const [editBio, setEditBio] = useState("");
 
-  useEffect(() => {
-    if (mentor && isEditingProfile) {
-      setEditName(mentor.name || "");
-      setEditEmail(mentor.email || "");
-      setEditRate(mentor.rate || 0);
-      setEditVerified(mentor.verified || false);
-      setEditQualification(mentor.qualification || "");
-      setEditExperience(mentor.experience || 0);
-      setEditBio(mentor.bio || "");
-    }
-  }, [isEditingProfile, mentor]);
+  const startEditingProfile = () => {
+    if (!mentor) return;
+    setEditName(mentor.name || "");
+    setEditEmail(mentor.email || "");
+    setEditRate(mentor.rate || 0);
+    setEditVerified(mentor.verified || false);
+    setEditQualification(mentor.qualification || "");
+    setEditExperience(mentor.experience || 0);
+    setEditBio(mentor.bio || "");
+    setIsEditingProfile(true);
+  };
 
   // Weekly Calendar Navigation helper functions
   const getMonday = (d: Date) => {
@@ -86,9 +94,9 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
 
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
 
-  const getMentorAvail = () => {
-    const avail = mentor?.availability || {};
-    const hasSlots = Object.values(avail).some((slots: any) => slots && slots.length > 0);
+  const getMentorAvail = (): Availability => {
+    const avail = (mentor?.availability || {}) as Availability;
+    const hasSlots = Object.values(avail).some((slots) => slots && slots.length > 0);
     return hasSlots ? avail : DEFAULT_MENTOR_AVAILABILITY;
   };
 
@@ -96,6 +104,7 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
     if (!mentorId) return;
 
     // Reset previous states to prevent bleeding from other loaded mentor pages
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets state in response to the mentorId route param changing (client-side nav between mentor pages), not a user event
     setMentor(null);
     setCourses([]);
     setSessions([]);
@@ -117,10 +126,10 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
         const allBookings = adminData.bookings || [];
         
         // Match bookings with this mentor's courses or sessions
-        const mentorCourseTitles = details.courses.map((c: any) => c.title.toLowerCase());
-        const mentorSessionTitles = details.sessions.map((s: any) => s.title.toLowerCase());
-        
-        const filtered = allBookings.filter((b: any) => {
+        const mentorCourseTitles = details.courses.map((c) => c.title.toLowerCase());
+        const mentorSessionTitles = details.sessions.map((s) => s.title.toLowerCase());
+
+        const filtered = allBookings.filter((b) => {
           const title = b.itemTitle.toLowerCase();
           return mentorCourseTitles.includes(title) || mentorSessionTitles.includes(title);
         });
@@ -170,7 +179,7 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
       });
 
       // Update local state
-      setMentor((prev: any) => ({
+      setMentor((prev) => prev ? ({
         ...prev,
         name: editName,
         email: editEmail,
@@ -180,11 +189,12 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
         experience: expNum,
         bio: editBio,
         avatarText: editName.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase()
-      }));
+      }) : prev);
 
       setIsEditingProfile(false);
-    } catch (err: any) {
-      alert("Failed to update mentor profile: " + err.message);
+    } catch (err) {
+      console.error("Failed to update mentor profile:", err);
+      alert("Couldn't update this mentor's profile. Please try again.");
     } finally {
       setProfileSaving(false);
     }
@@ -240,7 +250,7 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
       return h + m / 60;
     };
 
-    return slots.some((s: any) => {
+    return slots.some((s: string | AvailabilitySlot) => {
       if (typeof s === "string") {
         const parts = s.split("-");
         if (parts.length === 2) {
@@ -258,7 +268,7 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
   };
 
   const getBookingForDateTime = (date: Date, hour: number) => {
-    return scheduledClasses.find((c: any) => {
+    return scheduledClasses.find((c) => {
       const classDate = new Date(c.scheduledAt);
       if (!isSameDay(classDate, date)) return false;
       
@@ -399,7 +409,7 @@ export default function MentorDetailPage({ params }: { params: React.ComponentPr
       <div className="bg-white border border-[#E6EBF8] rounded-3xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-start justify-between relative">
         {/* Edit Button in Top Right */}
         <button
-          onClick={() => setIsEditingProfile(true)}
+          onClick={startEditingProfile}
           className="absolute top-6 right-6 inline-flex items-center gap-1.5 bg-[#2F7FE8] hover:bg-[#1B3A6B] text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer transition-all shadow-sm duration-150 hover:scale-[1.02]"
         >
           <IconEdit className="w-3.5 h-3.5" /> Edit Profile

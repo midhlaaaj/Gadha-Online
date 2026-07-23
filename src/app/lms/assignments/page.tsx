@@ -98,11 +98,13 @@ function AssignmentDrawer({
   const isOpen = !!assignment;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate reset-on-reopen; drawer stays mounted, form state is cleared whenever the target assignment changes
     setFile(null);
     setSubmitted(false);
     if (isOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
     return () => { document.body.style.overflow = ""; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isOpen is derived directly from assignment, which is already tracked
   }, [assignment]);
 
   const handleSubmit = () => {

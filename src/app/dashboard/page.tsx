@@ -10,6 +10,7 @@ export default function DashboardIndex() {
   useEffect(() => {
     const child = searchParams.get("child");
     router.replace(`/dashboard/overview${child ? `?child=${child}` : ""}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redirect-on-mount only; router/searchParams are stable Next.js instances and re-running this on their identity changes would cause redirect loops
   }, []);
 
   return null;

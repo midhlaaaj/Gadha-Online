@@ -20,7 +20,10 @@ import {
   updateSessionJoinUrl,
 } from "@/app/actions";
 
-type MentorClass = Awaited<ReturnType<typeof getMentorClasses>>[number];
+type MentorClass = Awaited<ReturnType<typeof getMentorClasses>>[number] & {
+  bookingCourseId?: string;
+  bookingSessionId?: string;
+};
 type StudentInfo = Awaited<ReturnType<typeof getMentorStudents>>[number];
 
 function ClassesSkeleton() {
@@ -61,11 +64,13 @@ function StatusBadge({ status }: { status: string }) {
   return null;
 }
 
+type ClassAttendanceResult = Awaited<ReturnType<typeof getClassAttendance>>;
+
 function AttendanceModal({ classId, onClose, onSaved }: { classId: string; onClose: () => void; onSaved: () => void }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [classInfo, setClassInfo] = useState<any>(null);
-  const [students, setStudents] = useState<any[]>([]);
+  const [classInfo, setClassInfo] = useState<ClassAttendanceResult["class"]>(null);
+  const [students, setStudents] = useState<ClassAttendanceResult["students"]>([]);
   const [attendance, setAttendance] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -74,7 +79,7 @@ function AttendanceModal({ classId, onClose, onSaved }: { classId: string; onClo
       setStudents(res.students);
       const pre: Record<string, string> = {};
       const att = (res.attendance || {}) as Record<string, string>;
-      res.students.forEach((s: any) => { pre[s.id] = att[s.id] || "present"; });
+      res.students.forEach((s) => { pre[s.id] = att[s.id] || "present"; });
       setAttendance(pre);
     }).finally(() => setLoading(false));
   }, [classId]);
@@ -112,7 +117,7 @@ function AttendanceModal({ classId, onClose, onSaved }: { classId: string; onClo
             </div>
           )) : students.length === 0 ? (
             <p className="text-[12px] text-[#9BA8C0] text-center py-6">No students found</p>
-          ) : students.map((s: any) => {
+          ) : students.map((s) => {
             const isPresent = attendance[s.id] === "present";
             const initials = (s.full_name || "?").split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
             return (
@@ -139,7 +144,7 @@ function AttendanceModal({ classId, onClose, onSaved }: { classId: string; onClo
   );
 }
 
-function LinkModal({ cls, onClose, onSaved }: { cls: any; onClose: () => void; onSaved: () => void }) {
+function LinkModal({ cls, onClose, onSaved }: { cls: MentorClass; onClose: () => void; onSaved: () => void }) {
   const [value, setValue] = useState(cls.join_url || "");
   const [saving, setSaving] = useState(false);
 
@@ -198,7 +203,7 @@ export default function MentorClassesPage() {
   const [editingClass, setEditingClass] = useState<MentorClass | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({ studentIndex: "", title: "", subject: "", scheduledAt: "", durationMinutes: 60, joinUrl: "" });
-  const [linkModalClass, setLinkModalClass] = useState<any | null>(null);
+  const [linkModalClass, setLinkModalClass] = useState<MentorClass | null>(null);
   const [attendanceClassId, setAttendanceClassId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
 
@@ -211,7 +216,10 @@ export default function MentorClassesPage() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
+    loadData();
+  }, [loadData]);
 
   const openAddModal = () => {
     setEditingClass(null);

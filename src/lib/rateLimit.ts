@@ -33,7 +33,7 @@ export function rateLimit(
   
   // Stricter limits for POST, auth, and sensitive operations
   let max = options.maxRequests;
-  let windowMs = options.windowMs;
+  const windowMs = options.windowMs;
 
   if (pathname.includes("/auth") || pathname.includes("/login") || pathname.includes("/signup")) {
     max = 10; // Max 10 auth attempts per minute

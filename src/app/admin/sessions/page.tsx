@@ -9,21 +9,21 @@ import {
   IconPlus,
   IconEdit,
   IconTrash,
-  IconBook,
-  IconMath,
-  IconCode,
-  IconFlask,
-  IconPencil,
-  IconDna,
   IconEye,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import {
   getAdminData,
   upsertSession,
   deleteSession as apiDeleteSession,
   toggleSessionStatus as apiToggleSessionStatus,
+  checkMentorScheduleConflict,
+  type ScheduleConflict,
 } from "../../actions";
 import { SkeletonCard } from "@/components/Skeleton";
+import { parseTimeToMinutes, minutesToTimeString } from "@/lib/schedule";
+
+type AdminData = Awaited<ReturnType<typeof getAdminData>>;
 
 interface Session {
   id: string;
@@ -44,7 +44,7 @@ interface Session {
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [mentors, setMentors] = useState<any[]>([]);
+  const [mentors, setMentors] = useState<AdminData["mentors"]>([]);
   const [loading, setLoading] = useState(true);
 
   // View States
@@ -59,14 +59,15 @@ export default function SessionsPage() {
   // Drawer modal state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerEditId, setDrawerEditId] = useState<string | null>(null);
-  const [drawerForm, setDrawerForm] = useState<any>({});
+  const [drawerForm, setDrawerForm] = useState<Partial<Parameters<typeof upsertSession>[0]> & { _customSubjectActive?: boolean }>({});
   const [showMoreSessionDetails, setShowMoreSessionDetails] = useState(false);
-  const [sessionLangDropdownOpen, setSessionLangDropdownOpen] = useState(false);
+  const [scheduleConflicts, setScheduleConflicts] = useState<ScheduleConflict[]>([]);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
 
   const loadData = async () => {
     try {
       const res = await getAdminData();
-      setSessions(res.sessions);
+      setSessions(res.sessions as Session[]);
       setMentors(res.mentors);
     } catch (err) {
       console.error("Failed to load sessions:", err);
@@ -76,6 +77,7 @@ export default function SessionsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -106,6 +108,7 @@ export default function SessionsPage() {
         classLevel: "",
       });
     }
+    setScheduleConflicts([]);
     setDrawerOpen(true);
   };
 
@@ -113,16 +116,72 @@ export default function SessionsPage() {
     setDrawerOpen(false);
     setDrawerEditId(null);
     setShowMoreSessionDetails(false);
+    setScheduleConflicts([]);
+  };
+
+  // Only Group sessions with a fixed weekly day-list or a specific date
+  // have a schedule worth conflict-checking; 1-on-1 sessions are booked
+  // against the mentor's general availability, not a committed slot.
+  const getProposedSchedule = (): { days?: string[]; sessionDate?: string; startTime: string } | null => {
+    if (drawerForm.type !== "Group" || !drawerForm.sessionTime) return null;
+    const startTime = drawerForm.sessionTime;
+    if (drawerForm.isRepeatable) {
+      const days = drawerForm.days ? drawerForm.days.split(",").map((d) => d.trim()).filter(Boolean) : [];
+      if (days.length === 0) return null;
+      return { days, startTime };
+    }
+    if (drawerForm.sessionDate) {
+      return { sessionDate: drawerForm.sessionDate, startTime };
+    }
+    return null;
+  };
+
+  const doSave = async () => {
+    try {
+      await upsertSession(drawerForm as Parameters<typeof upsertSession>[0]);
+      closeDrawer();
+      await loadData();
+    } catch (err) {
+      console.error("Error saving session:", err);
+      alert("Couldn't save this session. Please try again.");
+    }
   };
 
   const saveDrawerData = async () => {
-    try {
-      await upsertSession(drawerForm);
-      closeDrawer();
-      await loadData();
-    } catch (err: any) {
-      alert("Error saving session: " + err.message);
+    const mentorId = mentors.find((m) => m.name === drawerForm.mentor)?.id;
+    const proposed = getProposedSchedule();
+
+    if (mentorId && proposed) {
+      setCheckingConflicts(true);
+      try {
+        const duration = drawerForm.durationMinutes || 60;
+        const startMinutes = parseTimeToMinutes(proposed.startTime);
+        const endTimeStr = startMinutes === -1 ? proposed.startTime : minutesToTimeString(startMinutes + duration);
+
+        const conflicts = await checkMentorScheduleConflict(mentorId, {
+          days: proposed.days,
+          sessionDate: proposed.sessionDate,
+          startTime: proposed.startTime,
+          endTime: endTimeStr,
+          excludeId: drawerEditId || undefined,
+          excludeType: drawerEditId ? "session" : undefined,
+        });
+
+        if (conflicts.length > 0) {
+          setScheduleConflicts(conflicts);
+          return;
+        }
+      } finally {
+        setCheckingConflicts(false);
+      }
     }
+
+    await doSave();
+  };
+
+  const saveAnyway = async () => {
+    setScheduleConflicts([]);
+    await doSave();
   };
 
   const deleteItem = async (id: string) => {
@@ -130,8 +189,9 @@ export default function SessionsPage() {
       try {
         await apiDeleteSession(id);
         await loadData();
-      } catch (err: any) {
-        alert("Error deleting session: " + err.message);
+      } catch (err) {
+        console.error("Error deleting session:", err);
+        alert("Couldn't delete this session. Please try again.");
       }
     }
   };
@@ -142,8 +202,9 @@ export default function SessionsPage() {
     try {
       await apiToggleSessionStatus(id, item.status);
       await loadData();
-    } catch (err: any) {
-      alert("Error toggling session status: " + err.message);
+    } catch (err) {
+      console.error("Error toggling session status:", err);
+      alert("Couldn't update the session status. Please try again.");
     }
   };
 
@@ -505,7 +566,7 @@ export default function SessionsPage() {
                 <select
                   className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
                   value={
-                    ["Mathematics", "Science", "English", "Programming"].includes(drawerForm.subject)
+                    ["Mathematics", "Science", "English", "Programming"].includes(drawerForm.subject || "")
                       ? drawerForm.subject
                       : drawerForm.subject
                       ? "Custom"
@@ -526,7 +587,7 @@ export default function SessionsPage() {
                   <option value="Programming">Programming</option>
                   <option value="Custom">Create New Subject...</option>
                 </select>
-                {(drawerForm._customSubjectActive || !["Mathematics", "Science", "English", "Programming"].includes(drawerForm.subject)) && (
+                {(drawerForm._customSubjectActive || !["Mathematics", "Science", "English", "Programming"].includes(drawerForm.subject || "")) && (
                   <input
                     className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B] mt-1.5"
                     type="text"
@@ -543,7 +604,7 @@ export default function SessionsPage() {
                   className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B]"
                   type="text"
                   placeholder="e.g. Class 10, Grade 8, JEE Prep"
-                  value={drawerForm.classLevel || drawerForm.class_level || ""}
+                  value={drawerForm.classLevel || ""}
                   onChange={(e) => setDrawerForm({ ...drawerForm, classLevel: e.target.value })}
                 />
               </div>
@@ -720,7 +781,7 @@ export default function SessionsPage() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">What's Covered (one item per line)</label>
+                    <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">What&apos;s Covered (one item per line)</label>
                     <textarea
                       className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B] resize-none h-20"
                       placeholder="Topic details..."
@@ -773,19 +834,56 @@ export default function SessionsPage() {
               )}
             </div>
 
+            {scheduleConflicts.length > 0 && (
+              <div className="mx-6 mb-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                  <IconAlertTriangle className="w-4 h-4 shrink-0" />
+                  Schedule conflict with this mentor
+                </div>
+                <ul className="space-y-1">
+                  {scheduleConflicts.map((c) => (
+                    <li key={`${c.type}-${c.id}`} className="text-[11px] text-amber-700 font-medium">
+                      Conflicts with {c.type} &quot;{c.name}&quot;{c.days ? ` on ${c.days}` : ""} at {c.time}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-amber-700">You can still save this session, or go back and change the day/time.</p>
+              </div>
+            )}
+
             <footer className="px-6 py-4 border-t border-[#E6EBF8] flex gap-3 shrink-0">
-              <button
-                onClick={closeDrawer}
-                className="text-xs font-semibold px-4 py-2.5 rounded-lg bg-transparent text-primary border border-border-subtle hover:bg-surface"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveDrawerData}
-                className="flex-1 text-xs font-bold py-2.5 rounded-lg bg-[#2F7FE8] text-white hover:bg-[#1B3A6B] transition-colors"
-              >
-                Save changes
-              </button>
+              {scheduleConflicts.length > 0 ? (
+                <>
+                  <button
+                    onClick={() => setScheduleConflicts([])}
+                    className="text-xs font-semibold px-4 py-2.5 rounded-lg bg-transparent text-primary border border-border-subtle hover:bg-surface"
+                  >
+                    Go back and edit
+                  </button>
+                  <button
+                    onClick={saveAnyway}
+                    className="flex-1 text-xs font-bold py-2.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                  >
+                    Save anyway
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={closeDrawer}
+                    className="text-xs font-semibold px-4 py-2.5 rounded-lg bg-transparent text-primary border border-border-subtle hover:bg-surface"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveDrawerData}
+                    disabled={checkingConflicts}
+                    className="flex-1 text-xs font-bold py-2.5 rounded-lg bg-[#2F7FE8] text-white hover:bg-[#1B3A6B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {checkingConflicts ? "Checking availability..." : "Save changes"}
+                  </button>
+                </>
+              )}
             </footer>
           </div>
         </>

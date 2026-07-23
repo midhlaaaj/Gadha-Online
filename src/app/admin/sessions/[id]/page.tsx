@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   IconArrowLeft,
-  IconCalendar,
   IconClock,
   IconStar,
   IconSchool,
-  IconUsers,
   IconVideo,
   IconCurrencyRupee,
   IconCheck,
@@ -22,23 +21,26 @@ import {
   upsertSession,
 } from "../../../actions";
 
-export default function AdminSessionDetailPage({ params }: { params: React.ComponentProps<any>['params'] }) {
+type SessionDetails = Awaited<ReturnType<typeof getAdminSessionDetails>>;
+type AdminData = Awaited<ReturnType<typeof getAdminData>>;
+
+export default function AdminSessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.resolve(params).then((resolvedParams: any) => {
+    Promise.resolve(params).then((resolvedParams) => {
       setSessionId(resolvedParams.id);
     });
   }, [params]);
 
-  const [session, setSession] = useState<any>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [mentors, setMentors] = useState<any[]>([]);
+  const [session, setSession] = useState<SessionDetails["session"] | null>(null);
+  const [bookings, setBookings] = useState<SessionDetails["bookings"]>([]);
+  const [mentors, setMentors] = useState<AdminData["mentors"]>([]);
   const [loading, setLoading] = useState(true);
 
   // Editing States
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<any>({});
+  const [editForm, setEditForm] = useState<Partial<Parameters<typeof upsertSession>[0]> & { _customSubjectActive?: boolean }>({});
 
   const loadData = async () => {
     if (!sessionId) return;
@@ -57,10 +59,13 @@ export default function AdminSessionDetailPage({ params }: { params: React.Compo
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData is redefined each render but only reads sessionId, which is already tracked
   }, [sessionId]);
 
   const startEdit = () => {
+    if (!session) return;
     setEditForm({
       ...session,
       mentor: session.mentor ? session.mentor.name : mentors[0]?.name || "",
@@ -74,12 +79,13 @@ export default function AdminSessionDetailPage({ params }: { params: React.Compo
 
   const handleSave = async () => {
     try {
-      await upsertSession(editForm);
+      await upsertSession(editForm as Parameters<typeof upsertSession>[0]);
       setIsEditing(false);
       setLoading(true);
       await loadData();
-    } catch (err: any) {
-      alert("Failed to save session: " + err.message);
+    } catch (err) {
+      console.error("Failed to save session:", err);
+      alert("Couldn't save this session. Please try again.");
     }
   };
 
@@ -183,7 +189,7 @@ export default function AdminSessionDetailPage({ params }: { params: React.Compo
                   <select
                     className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
                     value={
-                      standardSubjects.includes(editForm.subject)
+                      standardSubjects.includes(editForm.subject || "")
                         ? editForm.subject
                         : editForm.subject
                         ? "Custom"
@@ -203,7 +209,7 @@ export default function AdminSessionDetailPage({ params }: { params: React.Compo
                     ))}
                     <option value="Custom">Create New Subject...</option>
                   </select>
-                  {(editForm._customSubjectActive || !standardSubjects.includes(editForm.subject)) && (
+                  {(editForm._customSubjectActive || !standardSubjects.includes(editForm.subject || "")) && (
                     <input
                       className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none font-semibold text-[#1B3A6B] mt-1.5 bg-white w-full"
                       type="text"
@@ -595,8 +601,8 @@ export default function AdminSessionDetailPage({ params }: { params: React.Compo
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       {session.mentor.avatarUrl ? (
-                        <div className="w-12 h-12 rounded-full overflow-hidden border border-[#E6EBF8] shrink-0">
-                          <img src={session.mentor.avatarUrl} alt={session.mentor.name} className="w-full h-full object-cover" />
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-[#E6EBF8] shrink-0">
+                          <Image src={session.mentor.avatarUrl} alt={session.mentor.name} fill className="object-cover" />
                         </div>
                       ) : (
                         <div className="w-12 h-12 rounded-full bg-[#1B3A6B] text-accent flex items-center justify-center font-heading text-sm font-bold shrink-0">

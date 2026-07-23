@@ -8,6 +8,11 @@ import {
   createManualStudentAccount,
   createManualBooking,
 } from "../../../actions";
+import type { getAdminData } from "../../../actions";
+
+type AdminData = Awaited<ReturnType<typeof getAdminData>>;
+type SearchResult = Awaited<ReturnType<typeof searchAdminCustomers>>[number];
+type ParentChild = Awaited<ReturnType<typeof getAdminParentChildren>>[number];
 
 const TIME_SLOTS = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"];
 
@@ -28,23 +33,22 @@ interface NewBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
-  courses: any[];
-  sessions: any[];
-  mentors: any[];
+  courses: AdminData["courses"];
+  sessions: AdminData["sessions"];
 }
 
 type CustomerMode = "existing" | "new";
-type TargetType = "course" | "session" | "mentor";
+type TargetType = "course" | "session";
 
-export default function NewBookingModal({ isOpen, onClose, onCreated, courses, sessions, mentors }: NewBookingModalProps) {
+export default function NewBookingModal({ isOpen, onClose, onCreated, courses, sessions }: NewBookingModalProps) {
   const [customerMode, setCustomerMode] = useState<CustomerMode>("existing");
 
   // Existing-customer search
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selectedParent, setSelectedParent] = useState<any | null>(null);
-  const [parentChildren, setParentChildren] = useState<any[]>([]);
+  const [selectedParent, setSelectedParent] = useState<SearchResult | null>(null);
+  const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
   const [resolvedCustomer, setResolvedCustomer] = useState<{ studentId: string; parentId: string | null; label: string; email: string } | null>(null);
 
@@ -56,7 +60,6 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
   const [targetType, setTargetType] = useState<TargetType>("course");
   const [selectedTargetId, setSelectedTargetId] = useState("");
   const [duration, setDuration] = useState(60);
-  const [subject, setSubject] = useState("");
   const [selectedDate, setSelectedDate] = useState(getTomorrowDateString());
   const [selectedTime, setSelectedTime] = useState("10:00 AM");
 
@@ -74,11 +77,9 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
 
   const activeCourses = courses.filter((c) => c.status === "Active");
   const activeSessions = sessions.filter((s) => s.status === "Active");
-  const activeMentors = mentors.filter((m) => !m.isInvitation);
 
   const selectedCourse = activeCourses.find((c) => c.id === selectedTargetId);
   const selectedSession = activeSessions.find((s) => s.id === selectedTargetId);
-  const selectedMentor = activeMentors.find((m) => m.id === selectedTargetId);
 
   // Calculate base total price of selected item
   let calculatedTotal = 0;
@@ -86,21 +87,19 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
     calculatedTotal = Number(selectedCourse.price);
   } else if (targetType === "session" && selectedSession) {
     calculatedTotal = Number(selectedSession.price) * (duration === 90 && selectedSession.type === "1-on-1" ? 1.5 : 1);
-  } else if (targetType === "mentor" && selectedMentor) {
-    calculatedTotal = Number(selectedMentor.rate) * (duration === 90 ? 1.5 : 1);
   }
   calculatedTotal = Math.round(calculatedTotal);
 
   const needsSlot =
-    targetType === "mentor" ||
     (targetType === "course" && selectedCourse?.format === "Live individual") ||
     (targetType === "session" && (selectedSession?.type === "1-on-1" || selectedSession?.isRepeatable));
 
-  const needsDurationOnly = targetType === "mentor" || (targetType === "session" && selectedSession?.type === "1-on-1");
+  const needsDurationOnly = targetType === "session" && selectedSession?.type === "1-on-1";
 
   // Reset everything whenever the modal opens fresh
   useEffect(() => {
     if (!isOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the whole form when the modal is reopened; the modal stays mounted (isOpen just toggles visibility) so this can't be done via a `key` remount
     setCustomerMode("existing");
     setSearchTerm("");
     setSearchResults([]);
@@ -112,7 +111,6 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
     setTargetType("course");
     setSelectedTargetId("");
     setDuration(60);
-    setSubject("");
     setSelectedDate(getTomorrowDateString());
     setSelectedTime("10:00 AM");
     setPaymentMode("none");
@@ -128,6 +126,7 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
   useEffect(() => {
     if (customerMode !== "existing" || selectedParent) return;
     if (searchTerm.trim().length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears stale results when the query becomes too short to search
       setSearchResults([]);
       return;
     }
@@ -148,6 +147,7 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
   // Auto-fill amount collected based on payment mode
   useEffect(() => {
     if (paymentMode === "full") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- keeps the editable amount field's default in sync with both payment mode and the computed total; amount is still user-editable afterward
       setAmountCollected(calculatedTotal);
     } else if (paymentMode === "partial") {
       setAmountCollected(Math.round(calculatedTotal / 2));
@@ -158,7 +158,7 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
 
   if (!isOpen) return null;
 
-  const handlePickCustomer = async (result: any) => {
+  const handlePickCustomer = async (result: SearchResult) => {
     if (result.role === "parent") {
       setSelectedParent(result);
       setLoadingChildren(true);
@@ -175,7 +175,8 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
     }
   };
 
-  const handlePickChild = (child: any) => {
+  const handlePickChild = (child: ParentChild) => {
+    if (!selectedParent) return;
     setResolvedCustomer({ studentId: child.id, parentId: selectedParent.id, label: `${child.name} (child of ${selectedParent.fullName})`, email: child.email || selectedParent.email });
   };
 
@@ -217,7 +218,6 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
         durationMinutes: needsDurationOnly ? duration : undefined,
         selectedSlot: needsSlot ? { day: getDayOfWeekName(selectedDate), time: selectedTime } : undefined,
         selectedDate: needsSlot ? selectedDate : undefined,
-        subject: targetType === "mentor" ? (subject || undefined) : undefined,
         paymentMode,
         paymentDone: paymentMode === "full",
         paymentMethod: paymentMode !== "none" ? paymentMethod : undefined,
@@ -230,8 +230,9 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
 
       onCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to create booking.");
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to create booking.");
     } finally {
       setSubmitting(false);
     }
@@ -372,15 +373,15 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
           {/* STEP 2: ITEM */}
           <div className="space-y-2.5 border-t border-[#E6EBF8] pt-4">
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">2. What are they booking?</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(["course", "session", "mentor"] as TargetType[]).map((t) => (
+            <div className="grid grid-cols-2 gap-2">
+              {(["course", "session"] as TargetType[]).map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => { setTargetType(t); setSelectedTargetId(""); }}
                   className={`py-2 text-xs font-bold rounded-lg border capitalize transition-all cursor-pointer ${targetType === t ? "bg-primary text-white border-primary" : "bg-white text-text-muted border-slate-200"}`}
                 >
-                  {t === "mentor" ? "1-on-1" : t}
+                  {t}
                 </button>
               ))}
             </div>
@@ -390,27 +391,14 @@ export default function NewBookingModal({ isOpen, onClose, onCreated, courses, s
               onChange={(e) => setSelectedTargetId(e.target.value)}
               className="w-full text-xs p-2.5 border border-slate-200 rounded-lg outline-none bg-white text-primary font-semibold"
             >
-              <option value="">Select {targetType === "mentor" ? "a mentor" : `a ${targetType}`}...</option>
+              <option value="">Select a {targetType}...</option>
               {targetType === "course" && activeCourses.map((c) => (
                 <option key={c.id} value={c.id}>{c.title} — ₹{c.price} ({c.format})</option>
               ))}
               {targetType === "session" && activeSessions.map((s) => (
                 <option key={s.id} value={s.id}>{s.title} — ₹{s.price} ({s.type})</option>
               ))}
-              {targetType === "mentor" && activeMentors.map((m) => (
-                <option key={m.id} value={m.id}>{m.name} — ₹{m.rate}/hr ({m.subject})</option>
-              ))}
             </select>
-
-            {targetType === "mentor" && (
-              <input
-                type="text"
-                placeholder="Subject / topic (optional)"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full text-xs p-2.5 border border-slate-200 rounded-lg outline-none font-semibold text-primary"
-              />
-            )}
 
             {needsDurationOnly && (
               <select

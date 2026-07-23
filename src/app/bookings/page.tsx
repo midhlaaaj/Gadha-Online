@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   IconCalculator,
   IconCode,
@@ -8,7 +9,6 @@ import {
   IconPencil,
   IconBook,
   IconCalendarOff,
-  IconChevronRight,
   IconChevronDown,
   IconUser,
   IconCalendar,
@@ -17,6 +17,9 @@ import {
   IconAlertCircle,
 } from "@tabler/icons-react";
 import { getParentChildren, getParentBookings } from "../actions";
+
+type Child = Awaited<ReturnType<typeof getParentChildren>>[number];
+type Booking = Awaited<ReturnType<typeof getParentBookings>>[number] & { email?: string };
 
 // Dynamic Icon Picker Helper
 const getSubjectIcon = (iconName: string) => {
@@ -54,8 +57,8 @@ const getSubjectBgColor = (subject: string) => {
 
 export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
-  const [children, setChildren] = useState<any[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Filters State
@@ -73,15 +76,16 @@ export default function BookingsPage() {
       setChildren(kids);
       const bkList = await getParentBookings();
       setBookings(bkList);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to load bookings details. Please sign in.");
+    } catch (err) {
+      console.error("Failed to load bookings details:", err);
+      setError("Failed to load bookings details. Please sign in.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadData();
   }, []);
 
@@ -185,7 +189,7 @@ export default function BookingsPage() {
         <div className="max-w-7xl mx-auto w-full">
           {/* Breadcrumb */}
           <nav className="text-[11px] text-slate-400 mb-3 flex items-center gap-1.5 font-medium">
-            <a href="/" className="hover:text-[#2F7FE8] transition-colors">Home</a>
+            <Link href="/" className="hover:text-[#2F7FE8] transition-colors">Home</Link>
             <span className="text-slate-300">/</span>
             <span className="text-[#1B3A6B] font-semibold">My bookings</span>
           </nav>
@@ -393,7 +397,7 @@ export default function BookingsPage() {
               <IconCalendarOff className="w-12 h-12 text-slate-300 mb-3" />
               <h4 className="font-heading text-base font-bold text-[#1B3A6B] mb-1">No bookings found</h4>
               <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                Try changing the filters or checking on a different child's profile
+                Try changing the filters or checking on a different child&apos;s profile
               </p>
             </div>
           ) : (

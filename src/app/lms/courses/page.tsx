@@ -5,10 +5,11 @@ import Link from "next/link";
 import {
   IconVideo,
   IconChevronRight,
-  IconLoader,
   IconBook,
 } from "@tabler/icons-react";
 import { getStudentBookingsAction } from "@/app/actions";
+
+type Booking = Awaited<ReturnType<typeof getStudentBookingsAction>>[number];
 
 function CoursesSkeleton() {
   return (
@@ -30,7 +31,7 @@ function CoursesSkeleton() {
 }
 
 export default function StudentCoursesListPage() {
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

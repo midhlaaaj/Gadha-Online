@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  IconCalendarCheck, IconUser, IconClock, IconAlertTriangle,
-  IconCheck, IconX, IconArrowRight, IconLoader, IconMoodSmile
+  IconCalendarCheck, IconUser, IconClock,
+  IconCheck, IconArrowRight, IconLoader
 } from "@tabler/icons-react";
 import { getMentorClasses, saveAttendanceRecord } from "@/app/actions";
 
@@ -51,6 +51,7 @@ export default function MentorAttendancePage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadClasses();
   }, []);
 
@@ -198,7 +199,7 @@ export default function MentorAttendancePage() {
                         key={opt.id}
                         type="button"
                         onClick={() => {
-                          setStatus(opt.id as any);
+                          setStatus(opt.id as "present" | "absent" | "excused");
                           setSavedSuccess(false);
                         }}
                         className={`py-3 px-4 rounded-xl border text-[13px] font-bold transition-all text-center cursor-pointer focus:outline-none flex flex-col items-center justify-center gap-1 ${

@@ -1,9 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { IconX, IconCheck, IconCalendar, IconClock, IconUsers, IconChevronRight, IconAlertCircle } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
-import { getParentChildren, bookCourseOrSessionAction, uploadBookingAttachment } from "@/app/actions";
+import { getParentChildren, bookCourseOrSessionAction } from "@/app/actions";
+import type { Tables } from "@/lib/supabase/database.types";
+
+type CourseDetails = Pick<Tables<"courses">, "id" | "format" | "duration_days" | "total_sessions" | "sessions_per_week" | "mentor_id">;
+type SessionDetails = Pick<Tables<"sessions">, "id" | "type" | "price" | "session_date" | "session_time" | "mentor_id" | "is_repeatable" | "days">;
+type MentorActiveBatch = Pick<Tables<"courses">, "title" | "batch_start_date" | "batch_end_date" | "class_days" | "class_timing">;
+type ExistingBooking = Pick<Tables<"bookings">, "student_id" | "course_id" | "session_id">;
+type MentorAvailabilityMap = Record<string, { start: string; end: string }[]>;
 
 interface SupabaseUser {
   id: string;
@@ -21,7 +28,7 @@ interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   targetId: string;
-  targetType: "course" | "session" | "mentor";
+  targetType: "course" | "session";
   title: string;
   price: number;
   durationMinutes?: number;
@@ -57,7 +64,7 @@ export default function BookingModal({
   const [role, setRole] = useState<string | null>(null);
   const [children, setChildren] = useState<ChildStudent[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
-  const [existingBookings, setExistingBookings] = useState<any[]>([]);
+  const [existingBookings, setExistingBookings] = useState<ExistingBooking[]>([]);
   const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<number>(() => {
     const d = new Date();
@@ -75,21 +82,6 @@ export default function BookingModal({
   const [success, setSuccess] = useState(false);
 
   // States for Mentor Direct 1-on-1 Booking
-  const [availableDates] = useState(() => {
-    const dates = [];
-    for (let i = 1; i <= 7; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      dates.push({
-        dateStr: d.toISOString().split("T")[0],
-        dayName: d.toLocaleDateString("en-US", { weekday: "short" }),
-        dayNum: d.getDate(),
-        monthName: d.toLocaleDateString("en-US", { month: "short" }),
-      });
-    }
-    return dates;
-  });
-
   const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -97,16 +89,10 @@ export default function BookingModal({
   });
   const [selectedSlotTime, setSelectedSlotTime] = useState<string>("10:00 AM");
   const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
-  const [mentorAvailability, setMentorAvailability] = useState<any>(null);
-  const [sessionDetails, setSessionDetails] = useState<any>(null);
-  const [courseDetails, setCourseDetails] = useState<any>(null);
-  const [mentorActiveBatches, setMentorActiveBatches] = useState<any[]>([]);
-  const [mentorExpertise, setMentorExpertise] = useState<string[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<string>("General");
-  const [topicDetails, setTopicDetails] = useState<string>("");
-  const [selectedDuration, setSelectedDuration] = useState<number>(60);
-  const [attachmentUrl, setAttachmentUrl] = useState<string>("");
-  const [uploadingFile, setUploadingFile] = useState(false);
+  const [mentorAvailability, setMentorAvailability] = useState<MentorAvailabilityMap | null>(null);
+  const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
+  const [courseDetails, setCourseDetails] = useState<CourseDetails | null>(null);
+  const [mentorActiveBatches, setMentorActiveBatches] = useState<MentorActiveBatch[]>([]);
 
   const supabase = createClient();
 
@@ -199,15 +185,10 @@ export default function BookingModal({
           try {
             const { data: ment } = await supabase
               .from("mentors")
-              .select("availability, expertise")
+              .select("availability")
               .eq("id", targetMentorId)
               .single();
 
-            const expertiseArr = ment?.expertise || [];
-            setMentorExpertise(expertiseArr);
-            if (expertiseArr.length > 0) {
-              setSelectedSubject(expertiseArr[0]);
-            }
             const DEFAULT_MENTOR_AVAILABILITY = {
               Monday: [{ start: "09:00 AM", end: "09:00 PM" }],
               Tuesday: [{ start: "09:00 AM", end: "09:00 PM" }],
@@ -218,8 +199,9 @@ export default function BookingModal({
               Sunday: []
             };
 
-            if (ment?.availability && Object.keys(ment.availability).length > 0 && Object.values(ment.availability).some((arr: any) => arr.length > 0)) {
-              setMentorAvailability(ment.availability);
+            const availability = ment?.availability as MentorAvailabilityMap | null;
+            if (availability && Object.keys(availability).length > 0 && Object.values(availability).some((arr) => arr.length > 0)) {
+              setMentorAvailability(availability);
             } else {
               setMentorAvailability(DEFAULT_MENTOR_AVAILABILITY);
             }
@@ -326,7 +308,7 @@ export default function BookingModal({
                 const parts = classTiming.split(/[–\-]|to/);
                 if (parts.length === 2) {
                   let startStr = parts[0].trim();
-                  let endStr = parts[1].trim();
+                  const endStr = parts[1].trim();
                   if (!/AM|PM/i.test(startStr)) {
                     const suffixMatch = endStr.match(/AM|PM/i);
                     if (suffixMatch) startStr += " " + suffixMatch[0];
@@ -372,7 +354,7 @@ export default function BookingModal({
       const dayName = d.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
       const dayNameShort = d.toLocaleDateString("en-US", { weekday: "short" }).toLowerCase();
       return allowedDays.includes(dayName) || allowedDays.includes(dayNameShort) || allowedDays.some((ad: string) => ad.startsWith(dayNameShort));
-    } catch (e) {
+    } catch {
       return false;
     }
   };
@@ -394,7 +376,7 @@ export default function BookingModal({
     });
   })();
 
-  const isCustomScheduled = targetType === "mentor" || 
+  const isCustomScheduled =
     (targetType === "session" && (sessionDetails?.type === "1-on-1" || sessionDetails?.is_repeatable)) ||
     (targetType === "course" && courseDetails?.format === "Live individual");
 
@@ -432,14 +414,11 @@ export default function BookingModal({
         targetId,
         targetType,
         studentId: role === "student" ? currentUserId : selectedStudentId,
-        durationMinutes: isCustomScheduled ? (targetType === "mentor" ? selectedDuration : 60) : durationMinutes,
+        durationMinutes: isCustomScheduled ? 60 : durationMinutes,
         selectedSlot: isCustomScheduled
           ? { day: getDayOfWeekName(selectedDateStr), time: selectedSlotTime }
           : selectedSlot,
         selectedDate: isCustomScheduled ? selectedDateStr : undefined,
-        subject: targetType === "mentor" ? selectedSubject : undefined,
-        topicDetails: targetType === "mentor" ? topicDetails : undefined,
-        attachmentUrl: attachmentUrl || undefined,
       });
 
       if (res.success) {
@@ -454,12 +433,10 @@ export default function BookingModal({
     }
   };
 
-  const currentPrice = targetType === "mentor"
-    ? (selectedDuration === 90 ? Math.round(price * 1.5) : price)
-    : price;
+  const currentPrice = price;
 
   const displayBookingDetailsStr = () => {
-    if ((targetType === "mentor" || (targetType === "session" && isLiveIndividual)) && selectedDateStr) {
+    if (targetType === "session" && isLiveIndividual && selectedDateStr) {
       const d = new Date(selectedDateStr);
       const formattedDate = d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
       return `${formattedDate} at ${selectedSlotTime} IST`;
@@ -503,7 +480,7 @@ export default function BookingModal({
             <div>
               <h4 className="font-heading font-bold text-primary text-base">Authentication Required</h4>
               <p className="text-xs text-text-muted mt-1 max-w-[280px]">
-                Please sign in or create an account to book this {targetType === "mentor" ? "session" : targetType}.
+                Please sign in or create an account to book this {targetType}.
               </p>
             </div>
             <div className="flex flex-col gap-2 w-full mt-2">
@@ -521,6 +498,25 @@ export default function BookingModal({
               </button>
             </div>
           </div>
+        ) : role === "mentor" ? (
+          /* Mentor Not Allowed State */
+          <div className="p-6 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center shadow-inner">
+              <IconAlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-heading font-bold text-primary text-base">Booking Not Available</h4>
+              <p className="text-xs text-text-muted mt-1 max-w-[280px]">
+                Mentor accounts can&apos;t book courses or sessions. Sign in with a student or parent account instead.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="py-2.5 px-6 border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition-all"
+            >
+              Close
+            </button>
+          </div>
         ) : success ? (
           /* Success Screen */
           <div className="p-8 flex flex-col items-center text-center gap-5">
@@ -532,7 +528,7 @@ export default function BookingModal({
               <p className="text-xs text-text-muted mt-1 px-4 leading-relaxed">
                 Your request for <strong>{title}</strong> with <strong>{mentorName}</strong> has been received. Our operations team will contact you shortly to confirm payment and finalize your session details.
               </p>
-              {isLiveIndividual && (selectedSlot || targetType === "mentor") && (
+              {isLiveIndividual && selectedSlot && (
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F8FF] border border-blue-100 rounded-lg text-[11px] font-semibold text-secondary">
                   <IconCalendar className="w-3.5 h-3.5" />
                   <span>Requested for {displayBookingDetailsStr()}</span>
@@ -563,7 +559,7 @@ export default function BookingModal({
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-secondary font-bold uppercase tracking-wider">
-                  {targetType === "mentor" ? "1-on-1 session" : (targetType === "session" && sessionDetails?.type === "Group" ? "Group Session" : targetType)}
+                  {targetType === "session" && sessionDetails?.type === "Group" ? "Group Session" : targetType}
                 </p>
                 <h4 className="font-heading text-sm font-bold text-primary truncate">{title}</h4>
                 <p className="text-[11px] text-text-muted mt-0.5">Mentor: {mentorName}</p>
@@ -621,18 +617,6 @@ export default function BookingModal({
 
             {/* DATE & TIME SELECTORS FOR MENTORS & 1-on-1 SESSIONS */}
             {isCustomScheduled && (() => {
-              const getTomorrowDateString = () => {
-                const d = new Date();
-                d.setDate(d.getDate() + 1);
-                return d.toISOString().split("T")[0];
-              };
-
-              const getMaxDateString = () => {
-                const d = new Date();
-                d.setDate(d.getDate() + 90);
-                return d.toISOString().split("T")[0];
-              };
-
               const formatSelectedDate = (dateStr: string): string => {
                 if (!dateStr) return "Select Date";
                 try {
@@ -641,46 +625,9 @@ export default function BookingModal({
                   const dayNum = d.getDate();
                   const monthName = d.toLocaleDateString("en-US", { month: "short" });
                   return `${dayName}, ${dayNum} ${monthName}`;
-                } catch (e) {
+                } catch {
                   return dateStr;
                 }
-              };
-
-              const getAvailableTimes = () => {
-                const defaultTimes = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"];
-                if (!mentorAvailability || !selectedDateStr) return defaultTimes;
-
-                try {
-                  const d = new Date(selectedDateStr);
-                  const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
-                  const slots = mentorAvailability[dayName];
-                  
-                  if (Array.isArray(slots)) {
-                    if (slots.length === 0) return [];
-                    const timeToMinutes = (timeStr: string): number => {
-                      const match = timeStr.match(/^(\d+):?(\d*)\s*(AM|PM)$/i);
-                      if (!match) return 0;
-                      let h = parseInt(match[1], 10);
-                      const m = match[2] ? parseInt(match[2], 10) : 0;
-                      const meridiem = match[3].toUpperCase();
-                      if (meridiem === "PM" && h < 12) h += 12;
-                      if (meridiem === "AM" && h === 12) h = 0;
-                      return h * 60 + m;
-                    };
-
-                    return defaultTimes.filter((t) => {
-                      const optMin = timeToMinutes(t);
-                      return slots.some((slot) => {
-                        const startMin = timeToMinutes(slot.start);
-                        const endMin = timeToMinutes(slot.end);
-                        return optMin >= startMin && optMin <= endMin;
-                      });
-                    });
-                  }
-                } catch (e) {
-                  console.error(e);
-                }
-                return defaultTimes;
               };
 
               const displayDateLabel = formatSelectedDate(selectedDateStr);
@@ -927,7 +874,7 @@ export default function BookingModal({
 
 
             {/* Selected Timing & Location Summary (Only for Course/Session that have page-level selected slot) */}
-            {targetType !== "mentor" && isLiveIndividual && selectedSlot && (
+            {isLiveIndividual && selectedSlot && (
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                   Scheduled time
@@ -968,7 +915,7 @@ export default function BookingModal({
                   const d = new Date(selectedDateStr);
                   d.setDate(d.getDate() + Number(courseDetails.duration_days));
                   return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-                } catch (e) {
+                } catch {
                   return "";
                 }
               };
@@ -1055,147 +1002,6 @@ export default function BookingModal({
                         <strong className="text-secondary font-bold">{sessionDetails.session_time || "TBA"}</strong>
                       </div>
                     </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Subject, Duration & Topic Details for Mentor Direct Booking */}
-            {targetType === "mentor" && (
-              <div className="space-y-4 border-t border-slate-100 pt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5 text-left">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Select Subject
-                    </label>
-                    {mentorExpertise.length === 0 ? (
-                      <select
-                        value={selectedSubject}
-                        onChange={(e) => setSelectedSubject(e.target.value)}
-                        className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg outline-none bg-white text-primary focus:border-secondary cursor-pointer"
-                      >
-                        <option value="General">General</option>
-                        <option value="Mathematics">Mathematics</option>
-                        <option value="Science">Science</option>
-                        <option value="Programming">Programming</option>
-                        <option value="English">English</option>
-                      </select>
-                    ) : (
-                      <select
-                        value={selectedSubject}
-                        onChange={(e) => setSelectedSubject(e.target.value)}
-                        className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg outline-none bg-white text-primary focus:border-secondary cursor-pointer"
-                      >
-                        {mentorExpertise.map((sub) => (
-                          <option key={sub} value={sub}>
-                            {sub}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 text-left">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Duration
-                    </label>
-                    <select
-                      value={selectedDuration}
-                      onChange={(e) => setSelectedDuration(Number(e.target.value))}
-                      className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg outline-none bg-white text-primary focus:border-secondary cursor-pointer"
-                    >
-                      <option value={60}>60 minutes</option>
-                      <option value={90}>90 minutes</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 text-left">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    What topic or unit do you want to learn?
-                  </label>
-                  <textarea
-                    rows={2.5}
-                    placeholder="e.g. Chapter 4 Chemistry - Redox Reactions doubts."
-                    value={topicDetails}
-                    onChange={(e) => setTopicDetails(e.target.value)}
-                    className="w-full text-xs font-semibold p-3.5 border border-slate-200 rounded-lg outline-none bg-white text-primary focus:border-secondary resize-none"
-                  />
-                </div>
-
-                {/* Document Upload Input */}
-                <div className="space-y-1.5 text-left">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Attach reference document (Optional)
-                  </label>
-                  {attachmentUrl ? (
-                    <div className="flex items-center justify-between p-3 border border-green-200 bg-green-50/30 rounded-xl">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-green-800 truncate">
-                          ✓ Reference Uploaded
-                        </p>
-                        <a
-                          href={attachmentUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[9px] text-green-700 underline font-medium break-all block truncate mt-0.5"
-                        >
-                          {attachmentUrl}
-                        </a>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setAttachmentUrl("")}
-                        className="text-[10px] font-bold px-2.5 py-1 bg-white hover:bg-red-50 text-red-600 border border-slate-200 rounded-lg cursor-pointer shrink-0 ml-3"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="relative border border-dashed border-slate-200 hover:border-secondary rounded-xl p-4 text-center bg-slate-50/50 flex flex-col items-center justify-center min-h-[90px] cursor-pointer">
-                      <input
-                        type="file"
-                        accept=".pdf,.png,.jpg,.jpeg,.docx"
-                        disabled={uploadingFile}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          
-                          // Validate file type
-                          const allowedExtensions = ["pdf", "png", "jpg", "jpeg", "docx"];
-                          const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
-                          if (!allowedExtensions.includes(fileExt)) {
-                            alert("Invalid file format. Please upload PDF, PNG, JPG, or DOCX.");
-                            return;
-                          }
-
-                          // Validate file size (max 5MB)
-                          if (file.size > 5 * 1024 * 1024) {
-                            alert("File size exceeds 5MB limit.");
-                            return;
-                          }
-
-                          setUploadingFile(true);
-                          try {
-                            const formData = new FormData();
-                            formData.append("file", file);
-                            const res = await uploadBookingAttachment(formData);
-                            setAttachmentUrl(res.publicUrl);
-                          } catch (err: any) {
-                            alert("File upload failed: " + err.message);
-                          } finally {
-                            setUploadingFile(false);
-                          }
-                        }}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                      />
-                      <span className="text-[11px] text-text-muted font-bold block">
-                        {uploadingFile ? "Uploading File..." : "Click to Upload PDF or Image"}
-                      </span>
-                      <span className="text-[9px] text-slate-400 mt-1 font-semibold block">
-                        Allowed: PDF, PNG, JPG, DOCX (Max 5MB)
-                      </span>
-                    </div>
                   )}
                 </div>
               </div>

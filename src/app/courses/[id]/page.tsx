@@ -2,6 +2,7 @@
 
 import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   IconCheck,
   IconChevronDown,
@@ -310,7 +311,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
     { day: "Sun", slots: [{ time: "10 AM", status: "booked" }, { time: "11 AM", status: "booked" }, { time: "12 PM", status: "booked" }] },
   ];
 
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Awaited<ReturnType<typeof getItemReviews>>>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [newReviewRating, setNewReviewRating] = useState(5);
@@ -336,14 +337,16 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
         const res = await getCourseDetails(id);
         setData(res as CourseDetailsResponse);
       } catch (err: unknown) {
-        console.error(err);
-        setError(err instanceof Error ? err.message : "Failed to load course details");
+        console.error("Failed to load course details:", err);
+        setError("Couldn't load this course. Please try again.");
       } finally {
         setLoading(false);
       }
     }
     loadData();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadReviews is redefined each render but only reads id, which is already tracked
   }, [id]);
 
   const handleAddReviewSubmit = async (e: React.FormEvent) => {
@@ -364,8 +367,9 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
       setReviewModalOpen(false);
       await loadReviews();
       alert("Review submitted successfully!");
-    } catch (err: any) {
-      alert("Failed to submit review: " + err.message);
+    } catch (err) {
+      console.error("Failed to submit review:", err);
+      alert("Couldn't submit your review. Please try again.");
     } finally {
       setSubmittingReview(false);
     }
@@ -529,7 +533,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
           {/* Cover Hero Banner Image */}
           <div className={`w-full h-72 rounded-2xl flex items-center justify-center relative shadow-sm overflow-hidden ${getSubjectBgColor(course.subject)}`}>
             {course.coverImageUrl ? (
-              <img src={course.coverImageUrl} className="w-full h-full object-cover" alt={course.title} />
+              <Image src={course.coverImageUrl} fill className="object-cover" alt={course.title} />
             ) : (
               getDetailsIcon(course.iconName)
             )}
@@ -586,8 +590,8 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-text-muted font-medium pt-2">
               <div className="flex items-center gap-1">
                 <span className="text-accent font-bold">
-                  ★ {reviews.length > 0 
-                    ? (reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / reviews.length).toFixed(1) 
+                  ★ {reviews.length > 0
+                    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
                     : "5.0"}
                 </span>
                 <span>({reviews.length} review{reviews.length === 1 ? "" : "s"})</span>
@@ -820,7 +824,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
             ) : (
               <div className="overflow-hidden relative w-full pb-2 [mask-image:linear-gradient(to_right,transparent,black_3%,black_97%,transparent)]">
                 <div className="animate-marquee gap-4">
-                  {[...reviews, ...reviews, ...reviews, ...reviews].map((r: any, idx: number) => (
+                  {[...reviews, ...reviews, ...reviews, ...reviews].map((r, idx) => (
                     <div key={`${r.id}-${idx}`} className="w-[280px] sm:w-[320px] shrink-0 border border-border-subtle rounded-2xl p-5 shadow-sm space-y-3 bg-white">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-secondary/10 flex items-center justify-center font-heading text-xs font-bold text-secondary">
@@ -829,7 +833,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                         <div>
                           <p className="text-xs font-bold text-primary">{r.studentName}</p>
                           <p className="text-[10px] text-text-muted">
-                            {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                            {new Date(r.createdAt ?? 0).toLocaleDateString("en-IN", {
                               day: "numeric",
                               month: "short",
                               year: "numeric"
@@ -1051,8 +1055,9 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
         <div className="px-6 md:px-12 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
             <div className="lg:col-span-2">
-              <div className="font-heading text-xl font-extrabold text-white mb-3">
-                Tuto<span className="text-accent">board</span>
+              <div className="flex items-center gap-2 mb-3">
+                <Image src="/logo.png" alt="Gadha Online" width={40} height={40} className="w-10 h-10 object-contain" />
+                <span className="font-heading text-xl font-extrabold text-white">Gadha Online</span>
               </div>
               <p className="text-xs text-white/50 leading-relaxed max-w-[280px]">
                 India&apos;s most trusted online tutoring platform. Learn at your pace, with the best mentors.
@@ -1066,14 +1071,37 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                 <li>
                   <Link href="/about" className="hover:text-white transition-colors">About us</Link>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Explore
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">Careers</a>
+                  <Link href="/courses" className="hover:text-white transition-colors">Courses</Link>
+                </li>
+                <li>
+                  <Link href="/sessions" className="hover:text-white transition-colors">Sessions</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-4">
+                Legal
+              </div>
+              <ul className="space-y-2.5 text-xs text-white/60">
+                <li>
+                  <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
-            <p>&copy; 2026 Tutoboard. All rights reserved.</p>
+            <p>&copy; 2026 Gadha Online. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">
                 <IconBrandInstagram className="w-5 h-5" />

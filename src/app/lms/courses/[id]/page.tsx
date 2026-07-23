@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  IconVideo, IconClock, IconCheck, IconChevronLeft,
-  IconPlayerPlay, IconArrowRight, IconSparkles, IconLoader,
+  IconClock, IconCheck, IconChevronLeft,
+  IconSparkles,
 } from "@tabler/icons-react";
 import {
   getStudentCourseDetails,
@@ -13,10 +13,31 @@ import {
   updateVideoProgress,
 } from "@/app/actions";
 
+interface YTPlayer {
+  loadVideoById: (videoId: string) => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
+}
+
+interface YTPlayerEvent {
+  data: number;
+}
+
 declare global {
   interface Window {
     onYouTubeIframeAPIReady?: () => void;
-    YT?: any;
+    YT?: {
+      Player: new (
+        elementId: string,
+        options: {
+          height: string;
+          width: string;
+          videoId: string;
+          playerVars: Record<string, number>;
+          events: { onStateChange: (event: YTPlayerEvent) => void };
+        }
+      ) => YTPlayer;
+    };
   }
 }
 
@@ -85,13 +106,13 @@ export default function RecordedCourseViewerPage() {
   const courseId = params.id as string;
 
   const [loading, setLoading] = useState(true);
-  const [course, setCourse] = useState<any>(null);
-  const [units, setUnits] = useState<any[]>([]);
+  const [course, setCourse] = useState<Awaited<ReturnType<typeof getStudentCourseDetails>> | null>(null);
+  const [units, setUnits] = useState<Awaited<ReturnType<typeof getCourseUnitsForStudent>>>([]);
   const [progress, setProgress] = useState<Record<string, { watch_percentage: number; completed: boolean }>>({});
   const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
 
-  const playerRef = useRef<any>(null);
-  const progressTimerRef = useRef<any>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const apiLoadedRef = useRef(false);
 
   // Load basic course + units + initial progress
@@ -125,43 +146,6 @@ export default function RecordedCourseViewerPage() {
   }, [loading, units]);
 
   const currentUnit = units[currentUnitIndex];
-
-  // Initialize/recreate player when current video ID changes
-  useEffect(() => {
-    if (!currentUnit?.video_id) return;
-
-    const setupPlayer = () => {
-      if (playerRef.current) {
-        playerRef.current.loadVideoById(currentUnit.video_id);
-        return;
-      }
-
-      playerRef.current = new window.YT.Player("recorded-youtube-player", {
-        height: "100%",
-        width: "100%",
-        videoId: currentUnit.video_id,
-        playerVars: {
-          autoplay: 0,
-          controls: 1,
-          rel: 0,
-          modestbranding: 1,
-        },
-        events: {
-          onStateChange: handlePlayerStateChange,
-        },
-      });
-    };
-
-    if (window.YT && window.YT.Player) {
-      setupPlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = setupPlayer;
-    }
-
-    return () => {
-      stopProgressTracking();
-    };
-  }, [currentUnit, loading]);
 
   const startProgressTracking = () => {
     stopProgressTracking();
@@ -207,7 +191,7 @@ export default function RecordedCourseViewerPage() {
     }
   };
 
-  const handlePlayerStateChange = (event: any) => {
+  const handlePlayerStateChange = (event: YTPlayerEvent) => {
     // YT.PlayerState.PLAYING is 1
     if (event.data === 1) {
       startProgressTracking();
@@ -215,6 +199,44 @@ export default function RecordedCourseViewerPage() {
       stopProgressTracking();
     }
   };
+
+  // Initialize/recreate player when current video ID changes
+  useEffect(() => {
+    if (!currentUnit?.video_id) return;
+
+    const setupPlayer = () => {
+      if (playerRef.current) {
+        playerRef.current.loadVideoById(currentUnit.video_id);
+        return;
+      }
+
+      playerRef.current = new window.YT!.Player("recorded-youtube-player", {
+        height: "100%",
+        width: "100%",
+        videoId: currentUnit.video_id,
+        playerVars: {
+          autoplay: 0,
+          controls: 1,
+          rel: 0,
+          modestbranding: 1,
+        },
+        events: {
+          onStateChange: handlePlayerStateChange,
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      setupPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = setupPlayer;
+    }
+
+    return () => {
+      stopProgressTracking();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handlePlayerStateChange/stopProgressTracking are stable per-render closures over refs/state already tracked by currentUnit and loading
+  }, [currentUnit, loading]);
 
   if (loading) {
     return <RecordedCourseViewerSkeleton />;

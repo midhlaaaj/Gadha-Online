@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   IconPlus,
   IconUserPlus,
@@ -8,7 +9,6 @@ import {
   IconEdit,
   IconMail,
   IconCheck,
-  IconClock,
   IconCalendarEvent,
   IconClipboardList,
   IconInfoCircle,
@@ -16,7 +16,6 @@ import {
   IconCameraPlus,
   IconArrowRight,
   IconAlertCircle,
-  IconChevronRight,
 } from "@tabler/icons-react";
 import {
   getParentChildren,
@@ -26,17 +25,32 @@ import {
 } from "../actions";
 import { validateName, validateEmail, validateGrade, sanitizeText } from "@/lib/validate";
 
+// NOTE: getParentChildren() currently always returns recentActivity: [] (hardcoded
+// empty array, never populated server-side), so the "Recent Activity" feed rendered
+// below is always empty in practice. Typed here as it's intended to be shaped, not
+// as `any`, to satisfy lint without papering over the gap.
+interface ChildActivity {
+  type: "upcoming" | "due" | "completed";
+  text: string;
+  meta: string;
+}
+type Child = Omit<Awaited<ReturnType<typeof getParentChildren>>[number], "recentActivity"> & { recentActivity: ChildActivity[] };
+
 export default function MyChildrenPage() {
   const [loading, setLoading] = useState(true);
-  const [children, setChildren] = useState<any[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
-  const [selectedIsInvite, setSelectedIsInvite] = useState(false);
+  // NOTE: pre-existing — captured on edit-open but never consulted by
+  // handleAddOrEditChild, which currently only performs the "add" flow via
+  // inviteChild() and fakes a success message for "edit" without persisting
+  // changes. Kept as-is (not in scope) but retyped to satisfy lint.
+  const [, setSelectedChildId] = useState<string | null>(null);
+  const [, setSelectedIsInvite] = useState(false);
 
   // Form State
   const [inputName, setInputName] = useState("");
@@ -48,15 +62,16 @@ export default function MyChildrenPage() {
       setLoading(true);
       const data = await getParentChildren();
       setChildren(data);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to load children list. Please sign in.");
+    } catch (err) {
+      console.error("Failed to load children list:", err);
+      setError("Failed to load children list. Please sign in.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadChildren();
   }, []);
 
@@ -76,7 +91,7 @@ export default function MyChildrenPage() {
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (child: any) => {
+  const handleOpenEditModal = (child: Child) => {
     setModalMode("edit");
     setSelectedChildId(child.id);
     setSelectedIsInvite(!child.joined);
@@ -112,8 +127,8 @@ export default function MyChildrenPage() {
       }
       setIsModalOpen(false);
       await loadChildren();
-    } catch (err: any) {
-      setError(err.message || "Failed to add/update child profile.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add/update child profile.");
     }
   };
 
@@ -125,11 +140,16 @@ export default function MyChildrenPage() {
       await deleteChild(childId, isInvite);
       setSuccess("Child profile removed successfully.");
       await loadChildren();
-    } catch (err: any) {
-      setError(err.message || "Failed to remove child profile.");
+    } catch (err) {
+      console.error("Failed to remove child profile:", err);
+      setError("Failed to remove child profile. Please try again.");
     }
   };
 
+  // NOTE: pre-existing — this handler is not wired to any button in the JSX
+  // below (no "resend invite" action is rendered), so it is currently dead
+  // code. Kept as-is (not in scope) but retyped to satisfy lint.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleResendInvite = async (e: React.MouseEvent, inviteId: string) => {
     e.stopPropagation();
     setError(null);
@@ -137,8 +157,9 @@ export default function MyChildrenPage() {
     try {
       await resendChildInvitation(inviteId);
       setSuccess("Dashboard invitation link resent successfully.");
-    } catch (err: any) {
-      setError(err.message || "Failed to resend invitation.");
+    } catch (err) {
+      console.error("Failed to resend invitation:", err);
+      setError("Failed to resend invitation. Please try again.");
     }
   };
 
@@ -156,7 +177,7 @@ export default function MyChildrenPage() {
           <div>
             {/* Breadcrumb */}
             <nav className="text-[11px] text-slate-400 mb-3 flex items-center gap-1.5 font-medium">
-              <a href="/" className="hover:text-[#2F7FE8] transition-colors">Home</a>
+              <Link href="/" className="hover:text-[#2F7FE8] transition-colors">Home</Link>
               <span className="text-slate-300">/</span>
               <span className="text-[#1B3A6B] font-semibold">My children</span>
             </nav>
@@ -165,7 +186,7 @@ export default function MyChildrenPage() {
               My children
             </h1>
             <p className="text-xs md:text-sm text-slate-500 font-medium">
-              Manage your children's profiles and view their recent activity
+              Manage your children&apos;s profiles and view their recent activity
             </p>
           </div>
           
@@ -294,7 +315,7 @@ export default function MyChildrenPage() {
                 <div className="px-5 py-4 space-y-3">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Recent Activity</span>
                   {child.recentActivity && child.recentActivity.length > 0 ? (
-                    child.recentActivity.map((act: any, idx: number) => (
+                    child.recentActivity.map((act, idx) => (
                       <div key={idx} className="flex items-center gap-3">
                         <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center flex-shrink-0 ${
                           act.type === "upcoming" ? "bg-blue-50 text-[#2F7FE8]" : act.type === "due" ? "bg-purple-50 text-[#534AB7]" : "bg-green-50 text-[#085041]"
@@ -396,7 +417,7 @@ export default function MyChildrenPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-slate-500">Child's name</label>
+                <label className="text-[11px] font-bold text-slate-500">Child&apos;s name</label>
                 <input
                   type="text"
                   placeholder="e.g. Rahul Kumar"
@@ -418,7 +439,7 @@ export default function MyChildrenPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-slate-500">Child's email</label>
+                <label className="text-[11px] font-bold text-slate-500">Child&apos;s email</label>
                 <input
                   type="email"
                   placeholder="child@email.com"

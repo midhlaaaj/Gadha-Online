@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  IconSend, IconMessageCircle, IconUser, IconChevronLeft,
-  IconClock, IconLoader
+  IconSend, IconMessageCircle, IconUser, IconChevronLeft, IconHeadset,
 } from "@tabler/icons-react";
-import { getChatRooms, getMessages, sendMessage, getMentorProfile } from "@/app/actions";
+import { getChatRooms, getMessages, sendMessage, getMentorProfile, getOrCreateSupportChatRoom } from "@/app/actions";
 
 type ChatRoom = Awaited<ReturnType<typeof getChatRooms>>[number];
 type Message = Awaited<ReturnType<typeof getMessages>>[number];
@@ -19,8 +18,8 @@ function colorFor(id: string) {
 
 function MessagesSkeleton() {
   return (
-    <div className="flex h-[calc(100vh-220px)] min-h-[500px] bg-white rounded-2xl border border-[#D0DCF5] overflow-hidden">
-      <div className="w-80 border-r border-[#D0DCF5] p-4 space-y-3 hidden md:block">
+    <div className="flex -m-4 h-[calc(100%+2rem)] sm:m-0 sm:h-[calc(100vh-220px)] sm:min-h-[500px] bg-white sm:rounded-2xl border-0 sm:border sm:border-[#D0DCF5] overflow-hidden">
+      <div className="w-full md:w-80 border-r border-[#D0DCF5] p-4 space-y-3">
         <div className="h-4 w-24 bg-slate-100 rounded animate-pulse" />
         {[...Array(4)].map((_, i) => (
           <div key={i} className="flex items-center gap-3 p-3">
@@ -32,7 +31,7 @@ function MessagesSkeleton() {
           </div>
         ))}
       </div>
-      <div className="flex-1 p-6 space-y-4 flex flex-col justify-end">
+      <div className="flex-1 p-6 space-y-4 flex-col justify-end hidden md:flex">
         {[...Array(3)].map((_, i) => (
           <div key={i} className={`flex gap-3 items-end ${i % 2 === 0 ? "" : "flex-row-reverse"}`}>
             <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse shrink-0" />
@@ -52,10 +51,11 @@ export default function MentorMessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  
+  const [openingSupport, setOpeningSupport] = useState(false);
+
   // Responsive layout state
   const [mobileShowChat, setMobileShowChat] = useState(false);
-  
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Load profile and rooms
@@ -67,7 +67,7 @@ export default function MentorMessagesPage() {
       ]);
       setProfile(p);
       setChatRooms(rooms || []);
-      
+
       if (selectFirst && rooms && rooms.length > 0) {
         setActiveRoom(rooms[0]);
       }
@@ -79,12 +79,36 @@ export default function MentorMessagesPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount; setState fires after the awaited request resolves, not synchronously
     loadRooms(true);
   }, []);
+
+  const supportRoom = chatRooms.find((r) => r.room_type === "support") || null;
+  const otherRooms = chatRooms.filter((r) => r.room_type !== "support");
+
+  const openSupport = async () => {
+    setMobileShowChat(true);
+    if (supportRoom) {
+      setActiveRoom(supportRoom);
+      return;
+    }
+    setOpeningSupport(true);
+    try {
+      const roomId = await getOrCreateSupportChatRoom();
+      const newRoom: ChatRoom = { id: roomId, name: null, room_type: "support", created_at: new Date().toISOString(), chat_participants: [] };
+      setChatRooms((prev) => [newRoom, ...prev]);
+      setActiveRoom(newRoom);
+    } catch (e) {
+      console.error("Failed to open support conversation:", e);
+    } finally {
+      setOpeningSupport(false);
+    }
+  };
 
   // Poll messages when active room changes
   useEffect(() => {
     if (!activeRoom) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the message list when no room is selected, in sync with the activeRoom external state
       setMessages([]);
       return;
     }
@@ -133,10 +157,13 @@ export default function MentorMessagesPage() {
 
   // Helper to extract receiver details from a chat room
   const getReceiverInfo = (room: ChatRoom) => {
+    if (room.room_type === "support") {
+      return { name: "Gadha Online Support", role: "Help & Support", initials: "", color: "#1B3A6B", isSupport: true };
+    }
     const otherParticipant = (room.chat_participants || []).find(
-      (p: any) => p.user_id !== profile?.id
+      (p) => p.user_id !== profile?.id
     );
-    const profileObj = otherParticipant?.profile as any;
+    const profileObj = otherParticipant?.profile;
     const name = (Array.isArray(profileObj) ? profileObj[0]?.full_name : profileObj?.full_name) || room.name || "Chat Room";
     const role = (Array.isArray(profileObj) ? profileObj[0]?.role : profileObj?.role) || "";
     const initials = name
@@ -145,30 +172,49 @@ export default function MentorMessagesPage() {
       .join("")
       .substring(0, 2)
       .toUpperCase();
-    
-    return { name, role, initials, color: colorFor(room.id) };
+
+    return { name, role, initials, color: colorFor(room.id), isSupport: false };
   };
 
   if (loading) return <MessagesSkeleton />;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[500px] bg-white rounded-2xl border border-[#D0DCF5] overflow-hidden">
+    <div className="flex flex-col -m-4 h-[calc(100%+2rem)] sm:m-0 sm:h-[calc(100vh-140px)] sm:min-h-[500px] bg-white sm:rounded-2xl border-0 sm:border sm:border-[#D0DCF5] overflow-hidden">
       {/* Messages Layout Split Screen */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Column: Chat Rooms List */}
         <div className={`w-full md:w-80 border-r border-[#D0DCF5] flex flex-col ${mobileShowChat ? "hidden md:flex" : "flex"}`}>
-          <div className="px-5 py-4 border-b border-[#D0DCF5] bg-[#F5F8FF]">
-            <h2 className="text-[15px] font-extrabold font-heading text-[#1B3A6B]">Messages</h2>
-            <p className="text-[11px] text-[#4A5A7A] mt-0.5">Inbox with students & parents</p>
+          <div className="px-4 pt-4 pb-2 sm:px-5 sm:py-4 border-b border-[#D0DCF5] sm:bg-[#F5F8FF]">
+            <p className="text-[11px] font-bold text-[#4A5A7A] uppercase tracking-widest sm:hidden">Conversations</p>
+            <h2 className="text-[15px] font-extrabold font-heading text-[#1B3A6B] hidden sm:block">Messages</h2>
+            <p className="text-[11px] text-[#4A5A7A] mt-0.5 hidden sm:block">Inbox with students & parents</p>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-1 premium-scrollbar">
-            {chatRooms.length === 0 ? (
-              <div className="text-center py-10 text-[12px] text-[#9BA8C0]">
-                No active conversations.
+            <button
+              onClick={openSupport}
+              disabled={openingSupport}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors cursor-pointer focus:outline-none disabled:opacity-60 ${
+                activeRoom?.room_type === "support" ? "bg-[#E6F1FB]" : "hover:bg-[#F5F8FF]"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-full bg-[#1B3A6B] flex items-center justify-center shrink-0 shadow-sm">
+                <IconHeadset className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-[12px] font-bold truncate ${activeRoom?.room_type === "support" ? "text-[#0C447C]" : "text-[#1B3A6B]"}`}>
+                  Gadha Online Support
+                </p>
+                <p className="text-[10px] text-[#9BA8C0] truncate">Help & Support</p>
+              </div>
+            </button>
+
+            {otherRooms.length === 0 ? (
+              <div className="text-center py-6 text-[12px] text-[#9BA8C0]">
+                No other conversations.
               </div>
             ) : (
-              chatRooms.map((room) => {
+              otherRooms.map((room) => {
                 const info = getReceiverInfo(room);
                 const isActive = activeRoom?.id === room.id;
 
@@ -222,7 +268,7 @@ export default function MentorMessagesPage() {
                         className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-bold shadow-sm shrink-0"
                         style={{ backgroundColor: info.color }}
                       >
-                        {info.initials}
+                        {info.isSupport ? <IconHeadset className="w-4 h-4" /> : info.initials}
                       </div>
                       <div>
                         <h3 className="text-[13px] font-extrabold text-[#1B3A6B]">{info.name}</h3>
