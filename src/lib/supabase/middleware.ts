@@ -139,5 +139,19 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // Mentors don't get to browse/manage bookings from the parent-facing
+  // /bookings page — they have their own classes/earnings views.
+  if (pathname.startsWith("/bookings") && user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role === "mentor") {
+      return NextResponse.redirect(new URL("/mentor/overview", request.url));
+    }
+  }
+
   return supabaseResponse;
 }

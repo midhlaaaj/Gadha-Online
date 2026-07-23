@@ -19,6 +19,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { getHomepageData, submitContactMessage } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 
 type HomepageData = Awaited<ReturnType<typeof getHomepageData>>;
 import BookingModal from "@/components/BookingModal";
@@ -159,6 +160,7 @@ export default function Home() {
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [activeReviewIndex, setActiveReviewIndex] = useState<number | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [testimonialCardWidth, setTestimonialCardWidth] = useState<number | null>(null);
   const testimonialObserverRef = useRef<ResizeObserver | null>(null);
 
@@ -201,6 +203,27 @@ export default function Home() {
       }
     }
     loadData();
+  }, []);
+
+  // Mentors can browse the public site but shouldn't book or contact support
+  // from here — they have their own dashboard for that.
+  useEffect(() => {
+    const cachedRole = localStorage.getItem("tutoboard_user_role_cache");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seeds state from a synchronous cache read before the async role fetch below resolves
+    if (cachedRole) setUserRole(cachedRole);
+
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { setUserRole(null); return; }
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+        .then(({ data: profile }) => {
+          if (profile?.role) setUserRole(profile.role);
+        });
+    });
   }, []);
 
   const handleInputChange = (
@@ -1306,7 +1329,20 @@ export default function Home() {
             Have a question or want to book a trial session? We&apos;ll get back to you within 24 hours.
           </p>
 
-          {formSubmitted ? (
+          {userRole === "mentor" ? (
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 text-center animate-fade-in">
+              <h3 className="font-heading text-lg font-bold text-white mb-2">
+                Not available for mentor accounts
+              </h3>
+              <p className="text-sm text-white/70 max-w-sm mx-auto">
+                This contact form is for prospective students and parents. Need help with your mentor account? Reach out from your{" "}
+                <Link href="/mentor/messages" className="text-accent font-semibold hover:underline">
+                  mentor dashboard
+                </Link>{" "}
+                instead.
+              </p>
+            </div>
+          ) : formSubmitted ? (
             <div className="bg-white/10 border border-white/20 rounded-2xl p-8 text-center animate-fade-in">
               <h3 className="font-heading text-xl font-bold text-accent mb-2">
                 Thank you!

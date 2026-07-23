@@ -116,7 +116,9 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
         setSuccess("Signed in! Redirecting you...");
         setRedirecting(true);
 
-        let targetUrl = "/dashboard/overview";
+        // Students and parents stay on the homepage after signing in —
+        // only mentors and admins get sent to their dashboard.
+        let targetUrl = "/";
         if (authData.user) {
           const { data: profile } = await supabase
             .from("profiles")
@@ -124,14 +126,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
             .eq("id", authData.user.id)
             .single();
 
-          if (profile?.role === "student") {
-            targetUrl = "/lms/overview";
-          } else if (profile?.role === "mentor") {
+          if (profile?.role === "mentor") {
             targetUrl = "/mentor/overview";
           } else if (profile?.role === "admin") {
             targetUrl = "/admin/dashboard";
-          } else if (profile?.role === "parent") {
-            targetUrl = "/dashboard/overview";
           }
         }
 
@@ -153,7 +151,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
           email: cleanEmail,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/${signupRole === "student" ? "lms/overview" : ""}`,
+            emailRedirectTo: `${window.location.origin}/`,
           },
         });
         if (err) throw err;
@@ -163,7 +161,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
         setRedirecting(true);
         setTimeout(() => {
           onClose();
-          window.location.href = signupRole === "student" ? "/lms/overview" : "/";
+          window.location.href = "/";
         }, 1200);
       } else if (mode === "forgot") {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email, {

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   IconLayoutDashboard, IconVideo, IconClipboardList,
   IconFiles, IconChartBar, IconMessageCircle,
-  IconLogout, IconBook,
+  IconLogout, IconBook, IconHome,
 } from "@tabler/icons-react";
 
 const NAV = [
@@ -27,14 +27,14 @@ export function StudentAppSidebar() {
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/");
+    router.push("/lms/login");
   };
 
   return (
     <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-white border-r border-[#E6EBF8] h-screen sticky top-0 z-30">
       {/* Logo */}
       <div className="h-[80px] flex items-center px-6 border-b border-[#E6EBF8] shrink-0">
-        <Link href="/" className="flex items-center gap-2 font-heading text-lg font-extrabold tracking-tight text-[#1B3A6B] hover:opacity-90 transition-opacity">
+        <Link href="/lms/overview" className="flex items-center gap-2 font-heading text-lg font-extrabold tracking-tight text-[#1B3A6B] hover:opacity-90 transition-opacity">
           <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" />
           <span>Gadha Online</span>
         </Link>
@@ -69,8 +69,15 @@ export function StudentAppSidebar() {
         })}
       </nav>
 
-      {/* Sign out */}
-      <div className="px-3 pb-5 border-t border-[#E6EBF8] pt-3">
+      {/* Back to homepage + Sign out */}
+      <div className="px-3 pb-5 border-t border-[#E6EBF8] pt-3 space-y-0.5">
+        <Link
+          href="/"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#6B7A99] hover:bg-[#F5F7FF] hover:text-[#1B3A6B] transition-all"
+        >
+          <IconHome className="w-[17px] h-[17px]" />
+          Back to Homepage
+        </Link>
         <button
           onClick={handleSignOut}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-[#E24B4A] hover:bg-red-50 transition-all cursor-pointer"

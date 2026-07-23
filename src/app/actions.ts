@@ -1565,6 +1565,15 @@ export async function submitContactMessage(data: ContactMessageInput) {
   }
 
   const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (profile?.role === "mentor") {
+      throw new Error("Mentor accounts can't use this form. Please reach out from your mentor dashboard instead.");
+    }
+  }
+
   const { error } = await supabase.from("contact_messages").insert([
     {
       full_name: fullName,

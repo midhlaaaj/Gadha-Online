@@ -12,6 +12,7 @@ import {
   IconFolder,
   IconChartBar,
   IconClock,
+  IconHome,
 } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -40,6 +41,7 @@ const OVERFLOW_LINKS: Record<TopBarRole, OverflowLink[]> = {
     { label: "Bookings", href: "/lms/bookings", icon: IconCalendar },
     { label: "Resources", href: "/lms/resources", icon: IconFolder },
     { label: "Performance", href: "/lms/performance", icon: IconChartBar },
+    { label: "Back to Homepage", href: "/", icon: IconHome },
   ],
   mentor: [
     { label: "Attendance", href: "/mentor/attendance", icon: IconCalendar },
@@ -85,7 +87,7 @@ export function DashboardMobileTopBar({ role, contextControl }: DashboardMobileT
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    const loginRedirect = role === "mentor" ? "/mentor/login" : role === "student" ? "/lms/login" : "/";
+    const loginRedirect = role === "mentor" ? "/" : role === "student" ? "/lms/login" : "/";
     router.push(loginRedirect);
   };
 
