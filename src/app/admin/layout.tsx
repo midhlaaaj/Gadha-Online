@@ -20,6 +20,7 @@ import {
   IconInbox,
   IconShieldLock,
   IconHeadset,
+  IconTags,
 } from "@tabler/icons-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -48,6 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const getHeaderTitle = () => {
     if (pathname.startsWith("/admin/dashboard")) return "Dashboard";
     if (pathname.startsWith("/admin/courses")) return "Courses";
+    if (pathname.startsWith("/admin/subjects")) return "Subjects";
     if (pathname.startsWith("/admin/sessions")) return "Sessions";
     if (pathname.startsWith("/admin/mentors")) return "Mentors";
     if (pathname.startsWith("/admin/testimonials")) return "Testimonials";
@@ -102,6 +104,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <IconClock className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/sessions")}`} />
             Sessions
             {pathname.startsWith("/admin/sessions") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
+          </Link>
+
+          <Link
+            href="/admin/subjects"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 cursor-pointer ${getActiveClass("/admin/subjects")}`}
+          >
+            <IconTags className={`w-[17px] h-[17px] shrink-0 ${getIconClass("/admin/subjects")}`} />
+            Subjects
+            {pathname.startsWith("/admin/subjects") && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2F7FE8]" />}
           </Link>
 
           <Link

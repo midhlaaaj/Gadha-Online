@@ -23,7 +23,7 @@ import {
   IconBrandYoutube,
   IconCheck,
 } from "@tabler/icons-react";
-import { getSessionsPageData } from "../actions";
+import { getSessionsPageData, getSubjects } from "../actions";
 import BookingModal from "@/components/BookingModal";
 
 
@@ -68,6 +68,7 @@ type SessionItem = Awaited<ReturnType<typeof getSessionsPageData>>[number];
 
 function SessionsPageContent() {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [allSubjects, setAllSubjects] = useState<Awaited<ReturnType<typeof getSubjects>>>([]);
   const [loading, setLoading] = useState(true);
   const [activeBooking, setActiveBooking] = useState<{
     id: string;
@@ -94,13 +95,16 @@ function SessionsPageContent() {
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   
+  // Sourced from the shared subjects table so a subject shows up here as soon
+  // as it's created — via the admin Subjects page or the "Create New
+  // Subject..." option on a course/session — even before any session uses it.
   const categoriesList = useMemo(() => {
-    const list = new Set<string>();
+    const list = new Set<string>(allSubjects.map((s) => s.name));
     sessions.forEach((s) => {
       if (s.subject) list.add(s.subject);
     });
     return Array.from(list);
-  }, [sessions]);
+  }, [allSubjects, sessions]);
 
   
   const [sortOption, setSortOption] = useState("Most popular");
@@ -121,8 +125,9 @@ function SessionsPageContent() {
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await getSessionsPageData();
+        const [res, subjectsRes] = await Promise.all([getSessionsPageData(), getSubjects()]);
         setSessions(res);
+        setAllSubjects(subjectsRes);
       } catch (err) {
         console.error("Failed to load sessions page data:", err);
       } finally {

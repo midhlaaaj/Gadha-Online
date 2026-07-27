@@ -23,7 +23,7 @@ import {
   IconBrandYoutube,
   IconCheck,
 } from "@tabler/icons-react";
-import { getCoursesPageData } from "../actions";
+import { getCoursesPageData, getSubjects } from "../actions";
 import BookingModal from "@/components/BookingModal";
 
 
@@ -78,6 +78,7 @@ function getCourseLevel(title: string) {
 
 function CoursesPageContent() {
   const [courses, setCourses] = useState<Awaited<ReturnType<typeof getCoursesPageData>>>([]);
+  const [allSubjects, setAllSubjects] = useState<Awaited<ReturnType<typeof getSubjects>>>([]);
   const [loading, setLoading] = useState(true);
   const [activeBooking, setActiveBooking] = useState<{
     id: string;
@@ -93,47 +94,128 @@ function CoursesPageContent() {
   const pathname = usePathname();
   const mentorParam = searchParams.get("mentor") || "";
 
-  // Filter & Search States
-  const [searchQuery, setSearchQuery] = useState(mentorParam);
+  const splitParam = (name: string) =>
+    (searchParams.get(name) || "").split(",").map((s) => s.trim()).filter(Boolean);
+
+  // Search: draft (what's typed) vs. applied (what's actually filtered/in the URL)
+  const initialSearch = searchParams.get("q") || mentorParam || "";
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [appliedSearch, setAppliedSearch] = useState(initialSearch);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [selectedRating, setSelectedRating] = useState<number | null>(null);
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-  
+  // Filters: draft (edited inside the panel) vs. applied (what's actually filtered/in the URL)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => splitParam("category"));
+  const [selectedFormats, setSelectedFormats] = useState<string[]>(() => splitParam("format"));
+  const [minPrice, setMinPrice] = useState(() => searchParams.get("minPrice") || "");
+  const [maxPrice, setMaxPrice] = useState(() => searchParams.get("maxPrice") || "");
+  const [selectedRating, setSelectedRating] = useState<number | null>(() => {
+    const r = searchParams.get("rating");
+    return r ? Number(r) : null;
+  });
+  const [selectedLevels, setSelectedLevels] = useState<string[]>(() => splitParam("level"));
+
+  const [appliedCategories, setAppliedCategories] = useState<string[]>(() => splitParam("category"));
+  const [appliedFormats, setAppliedFormats] = useState<string[]>(() => splitParam("format"));
+  const [appliedMinPrice, setAppliedMinPrice] = useState(() => searchParams.get("minPrice") || "");
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState(() => searchParams.get("maxPrice") || "");
+  const [appliedRating, setAppliedRating] = useState<number | null>(() => {
+    const r = searchParams.get("rating");
+    return r ? Number(r) : null;
+  });
+  const [appliedLevels, setAppliedLevels] = useState<string[]>(() => splitParam("level"));
+
+  // Sourced from the shared subjects table so a subject shows up here as soon
+  // as it's created — via the admin Subjects page or the "Create New
+  // Subject..." option on a course/session — even before any course uses it.
   const categoriesList = useMemo(() => {
-    const list = new Set<string>();
+    const list = new Set<string>(allSubjects.map((s) => s.name));
     courses.forEach((c) => {
       if (c.subject) list.add(c.subject);
     });
     return Array.from(list);
-  }, [courses]);
+  }, [allSubjects, courses]);
 
-  
-  const [sortOption, setSortOption] = useState("Most popular");
+
+  const [sortOption, setSortOption] = useState(searchParams.get("sort") || "Most popular");
   const initialPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
-  const [currentPage, setCurrentPageState] = useState(initialPage);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const itemsPerPage = 6;
 
-  const setCurrentPage = (value: number | ((prev: number) => number)) => {
-    const next = typeof value === "function" ? value(currentPage) : value;
-    setCurrentPageState(next);
-    const params = new URLSearchParams(searchParams.toString());
-    if (next <= 1) params.delete("page");
-    else params.set("page", String(next));
+  // Keep the URL in sync with whatever is actually applied (search, filters, sort, page)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (appliedSearch) params.set("q", appliedSearch);
+    if (appliedCategories.length) params.set("category", appliedCategories.join(","));
+    if (appliedFormats.length) params.set("format", appliedFormats.join(","));
+    if (appliedMinPrice) params.set("minPrice", appliedMinPrice);
+    if (appliedMaxPrice) params.set("maxPrice", appliedMaxPrice);
+    if (appliedRating !== null) params.set("rating", String(appliedRating));
+    if (appliedLevels.length) params.set("level", appliedLevels.join(","));
+    if (sortOption !== "Most popular") params.set("sort", sortOption);
+    if (currentPage > 1) params.set("page", String(currentPage));
     const qs = params.toString();
     router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedSearch, appliedCategories, appliedFormats, appliedMinPrice, appliedMaxPrice, appliedRating, appliedLevels, sortOption, currentPage]);
+
+  const commitSearch = () => {
+    setAppliedSearch(searchInput.trim());
+    setCurrentPage(1);
+  };
+
+  const clearSearch = () => {
+    setSearchInput("");
+    setAppliedSearch("");
+    setCurrentPage(1);
+  };
+
+  const openFilterPanel = () => {
+    if (!showFilterPanel) {
+      // Seed the draft with whatever is currently applied so the panel reflects reality
+      setSelectedCategories(appliedCategories);
+      setSelectedFormats(appliedFormats);
+      setMinPrice(appliedMinPrice);
+      setMaxPrice(appliedMaxPrice);
+      setSelectedRating(appliedRating);
+      setSelectedLevels(appliedLevels);
+    }
+    setShowFilterPanel((prev) => !prev);
+  };
+
+  const applyFilters = () => {
+    setAppliedCategories(selectedCategories);
+    setAppliedFormats(selectedFormats);
+    setAppliedMinPrice(minPrice);
+    setAppliedMaxPrice(maxPrice);
+    setAppliedRating(selectedRating);
+    setAppliedLevels(selectedLevels);
+    setCurrentPage(1);
+    setShowFilterPanel(false);
+  };
+
+  const clearFilters = () => {
+    setSelectedCategories([]);
+    setSelectedFormats([]);
+    setMinPrice("");
+    setMaxPrice("");
+    setSelectedRating(null);
+    setSelectedLevels([]);
+    setAppliedCategories([]);
+    setAppliedFormats([]);
+    setAppliedMinPrice("");
+    setAppliedMaxPrice("");
+    setAppliedRating(null);
+    setAppliedLevels([]);
+    setCurrentPage(1);
   };
 
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await getCoursesPageData();
+        const [res, subjectsRes] = await Promise.all([getCoursesPageData(), getSubjects()]);
         setCourses(res);
+        setAllSubjects(subjectsRes);
       } catch (err) {
         console.error("Failed to load courses page data:", err);
       } finally {
@@ -143,67 +225,60 @@ function CoursesPageContent() {
     loadData();
   }, []);
 
-  // Sync Categories with Tab Strip
+  // Tab strip is a quick shortcut outside the filter panel, so it applies immediately
+  // and keeps the panel's draft state in sync for whenever it's next opened.
   const handleTabSelect = (tab: string) => {
-    if (tab === "All courses") {
-      setSelectedCategories([]);
-    } else {
-      setSelectedCategories(prev => 
-        prev.includes(tab) ? prev.filter(c => c !== tab) : [...prev, tab]
-      );
-    }
+    const next = tab === "All courses"
+      ? []
+      : appliedCategories.includes(tab) ? appliedCategories.filter(c => c !== tab) : [...appliedCategories, tab];
+    setAppliedCategories(next);
+    setSelectedCategories(next);
     setCurrentPage(1);
   };
 
   const handleCategoryCheckbox = (category: string) => {
-    setSelectedCategories(prev => 
+    setSelectedCategories(prev =>
       prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
     );
-    setCurrentPage(1);
   };
 
   const handleFormatCheckbox = (format: string) => {
-    setSelectedFormats(prev => 
+    setSelectedFormats(prev =>
       prev.includes(format) ? prev.filter(f => f !== format) : [...prev, format]
     );
-    setCurrentPage(1);
   };
 
   const handleLevelCheckbox = (level: string) => {
-    setSelectedLevels(prev => 
+    setSelectedLevels(prev =>
       prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
     );
-    setCurrentPage(1);
   };
 
   const resetAllFilters = () => {
-    setSelectedCategories([]);
-    setSelectedFormats([]);
-    setMinPrice("");
-    setMaxPrice("");
-    setSelectedRating(null);
-    setSelectedLevels([]);
-    setSearchQuery("");
-    setCurrentPage(1);
+    clearFilters();
+    clearSearch();
   };
 
   const removeCategoryFilter = (cat: string) => {
+    setAppliedCategories(prev => prev.filter(c => c !== cat));
     setSelectedCategories(prev => prev.filter(c => c !== cat));
   };
 
   const removeFormatFilter = (form: string) => {
+    setAppliedFormats(prev => prev.filter(f => f !== form));
     setSelectedFormats(prev => prev.filter(f => f !== form));
   };
 
   const removeLevelFilter = (lvl: string) => {
+    setAppliedLevels(prev => prev.filter(l => l !== lvl));
     setSelectedLevels(prev => prev.filter(l => l !== lvl));
   };
 
-  // Filter Logic
+  // Filter Logic — always operates on the applied (committed) search/filter state
   const filteredCourses = courses.filter((c) => {
     // Search filter
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+    if (appliedSearch) {
+      const q = appliedSearch.toLowerCase();
       const matchTitle = c.title.toLowerCase().includes(q);
       const matchDesc = c.description.toLowerCase().includes(q);
       const matchMentor = c.mentor.toLowerCase().includes(q);
@@ -211,27 +286,27 @@ function CoursesPageContent() {
     }
 
     // Category filter
-    if (selectedCategories.length > 0) {
-      if (!selectedCategories.includes(c.subject)) return false;
+    if (appliedCategories.length > 0) {
+      if (!appliedCategories.includes(c.subject)) return false;
     }
 
     // Format filter
-    if (selectedFormats.length > 0) {
+    if (appliedFormats.length > 0) {
       const formatMapped = c.format === "Recorded" ? "Recorded course" : c.format === "Hourly" ? "Hourly 1-on-1" : c.format;
-      if (!selectedFormats.includes(formatMapped)) return false;
+      if (!appliedFormats.includes(formatMapped)) return false;
     }
 
     // Price range filter
-    if (minPrice && c.price < Number(minPrice)) return false;
-    if (maxPrice && c.price > Number(maxPrice)) return false;
+    if (appliedMinPrice && c.price < Number(appliedMinPrice)) return false;
+    if (appliedMaxPrice && c.price > Number(appliedMaxPrice)) return false;
 
     // Rating filter
-    if (selectedRating !== null && c.rating < selectedRating) return false;
+    if (appliedRating !== null && c.rating < appliedRating) return false;
 
     // Level filter
-    if (selectedLevels.length > 0) {
+    if (appliedLevels.length > 0) {
       const level = getCourseLevel(c.title);
-      if (!selectedLevels.includes(level)) return false;
+      if (!appliedLevels.includes(level)) return false;
     }
 
     return true;
@@ -253,13 +328,13 @@ function CoursesPageContent() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const currentCourses = sortedCourses.slice(startIndex, endIndex);
 
-  // Active Filter Count calculation
-  const activeFilterCount = 
-    selectedCategories.length +
-    selectedFormats.length +
-    (minPrice || maxPrice ? 1 : 0) +
-    (selectedRating !== null ? 1 : 0) +
-    selectedLevels.length;
+  // Active Filter Count calculation (reflects what's actually applied, not in-progress draft edits)
+  const activeFilterCount =
+    appliedCategories.length +
+    appliedFormats.length +
+    (appliedMinPrice || appliedMaxPrice ? 1 : 0) +
+    (appliedRating !== null ? 1 : 0) +
+    appliedLevels.length;
 
   // Counts for checkboxes (calculated on raw active courses list)
   const getCountByCategory = (cat: string) => courses.filter(c => c.subject === cat).length;
@@ -281,25 +356,25 @@ function CoursesPageContent() {
           <nav className="text-xs text-text-muted mb-3 flex items-center gap-1.5 font-medium">
             <Link href="/" className="hover:text-secondary transition-colors">Home</Link>
             <span className="text-slate-300">/</span>
-            {mentorParam ? (
+            {appliedSearch ? (
               <>
                 <Link href="/courses" className="hover:text-secondary transition-colors">Courses</Link>
                 <span className="text-slate-300">/</span>
-                <span className="text-primary font-semibold">{mentorParam}</span>
+                <span className="text-primary font-semibold">{appliedSearch}</span>
               </>
             ) : (
               <span className="text-primary font-semibold">Courses</span>
             )}
           </nav>
-          
+
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-primary mb-1">
-                {mentorParam ? `Explore courses by ${mentorParam}` : "Explore Courses"}
+                {appliedSearch ? `Explore courses by ${appliedSearch}` : "Explore Courses"}
               </h1>
               <p className="text-xs md:text-sm text-text-muted">
-                {mentorParam 
-                  ? `Browse courses taught by ${mentorParam}`
+                {appliedSearch
+                  ? `Browse courses taught by ${appliedSearch}`
                   : "Browse 320+ courses and live batches taught by verified mentors"
                 }
               </p>
@@ -312,25 +387,28 @@ function CoursesPageContent() {
                   <div className="flex items-center bg-white border border-secondary rounded-xl overflow-hidden w-full h-10 px-3 shadow-sm">
                     <input
                       type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setCurrentPage(1);
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitSearch();
                       }}
                       placeholder="Search subject, mentor, keyword..."
                       className="flex-1 text-xs outline-none text-primary"
                     />
-                    {searchQuery && (
-                      <button onClick={() => setSearchQuery("")} className="text-slate-400 hover:text-primary p-0.5">
+                    {searchInput && (
+                      <button onClick={clearSearch} className="text-slate-400 hover:text-primary p-0.5">
                         <IconX className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
                 </div>
-                
+
                 {/* Search Toggle Button */}
                 <button
-                  onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                  onClick={() => {
+                    if (isSearchExpanded) commitSearch();
+                    setIsSearchExpanded(!isSearchExpanded);
+                  }}
                   className="w-10 h-10 rounded-xl border border-border-subtle bg-white flex items-center justify-center cursor-pointer hover:border-secondary hover:bg-[#F0F6FF] transition-all focus:outline-none"
                   title="Search courses"
                 >
@@ -341,7 +419,7 @@ function CoursesPageContent() {
               {/* Filter Button next to search button */}
               <div className="relative">
                 <button
-                  onClick={() => setShowFilterPanel(!showFilterPanel)}
+                  onClick={openFilterPanel}
                   className="relative w-10 h-10 rounded-xl border border-border-subtle bg-slate-50 flex items-center justify-center cursor-pointer hover:border-secondary hover:bg-[#F0F6FF] transition-all focus:outline-none"
                   title="Filters"
                 >
@@ -357,14 +435,14 @@ function CoursesPageContent() {
                   <>
                     {/* Transparent overlay backdrop to capture clicks outside */}
                     <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowFilterPanel(false)} />
-                    
+
                     {/* Floating popover modal */}
-                    <div className="absolute right-0 top-12 mt-2 w-[320px] bg-white border border-border-subtle rounded-2xl shadow-xl z-50 p-5 origin-top-right animate-fade-in">
+                    <div className="absolute right-0 top-12 mt-2 w-[90vw] max-w-[320px] max-h-[min(75vh,520px)] flex flex-col bg-white border border-border-subtle rounded-2xl shadow-xl z-50 p-5 origin-top-right animate-fade-in">
                       {/* Triangle pointer arrow pointing up at the filter button */}
                       <div className="w-3 h-3 bg-white rotate-45 border-t border-l border-border-subtle absolute -top-1.5 right-3.5 z-10"></div>
-                      
+
                       {/* Body */}
-                      <div className="max-h-[350px] overflow-y-auto -mr-5 pr-4 space-y-6 premium-scrollbar relative z-20">
+                      <div className="flex-1 min-h-0 overflow-y-auto -mr-5 pr-4 space-y-6 premium-scrollbar relative z-20">
                         {/* Category Section */}
                         <div>
                           <div className="font-heading text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
@@ -426,10 +504,7 @@ function CoursesPageContent() {
                             <input
                               type="number"
                               value={minPrice}
-                              onChange={(e) => {
-                                setMinPrice(e.target.value);
-                                setCurrentPage(1);
-                              }}
+                              onChange={(e) => setMinPrice(e.target.value)}
                               placeholder="₹ Min"
                               className="w-full text-xs p-2.5 border border-border-subtle rounded-lg outline-none focus:border-secondary text-primary"
                             />
@@ -437,10 +512,7 @@ function CoursesPageContent() {
                             <input
                               type="number"
                               value={maxPrice}
-                              onChange={(e) => {
-                                setMaxPrice(e.target.value);
-                                setCurrentPage(1);
-                              }}
+                              onChange={(e) => setMaxPrice(e.target.value)}
                               placeholder="₹ Max"
                               className="w-full text-xs p-2.5 border border-border-subtle rounded-lg outline-none focus:border-secondary text-primary"
                             />
@@ -456,10 +528,7 @@ function CoursesPageContent() {
                             {[4.5, 4.0, 3.0].map((rating) => (
                               <button
                                 key={rating}
-                                onClick={() => {
-                                  setSelectedRating(selectedRating === rating ? null : rating);
-                                  setCurrentPage(1);
-                                }}
+                                onClick={() => setSelectedRating(selectedRating === rating ? null : rating)}
                                 className={`flex items-center gap-2.5 text-xs w-full text-left py-2 px-3 rounded-lg border transition-colors cursor-pointer ${
                                   selectedRating === rating
                                     ? "bg-[#F0F6FF] border-secondary/50 text-secondary font-bold"
@@ -499,16 +568,16 @@ function CoursesPageContent() {
                         </div>
                       </div>
 
-                      {/* Footer Actions */}
-                      <div className="flex gap-3 mt-4 pt-3 border-t border-slate-100 relative z-20 flex-shrink-0">
+                      {/* Footer Actions — persistent, always visible regardless of body scroll */}
+                      <div className="flex gap-3 mt-4 pt-3 border-t border-slate-100 relative z-20 shrink-0">
                         <button
-                          onClick={resetAllFilters}
+                          onClick={clearFilters}
                           className="flex-1 text-xs font-semibold py-2.5 border border-border-subtle rounded-xl text-primary bg-white hover:bg-slate-50 cursor-pointer text-center"
                         >
                           Clear all
                         </button>
                         <button
-                          onClick={() => setShowFilterPanel(false)}
+                          onClick={applyFilters}
                           className="flex-1 text-xs font-bold py-2.5 bg-secondary text-white rounded-xl hover:bg-secondary/90 cursor-pointer text-center shadow-md"
                         >
                           Apply
@@ -533,7 +602,7 @@ function CoursesPageContent() {
                 key={tab}
                 onClick={() => handleTabSelect(tab)}
                 className={`text-xs font-semibold px-4 py-2 rounded-full border transition-all cursor-pointer whitespace-nowrap ${
-                  (tab === "All courses" ? selectedCategories.length === 0 : selectedCategories.includes(tab))
+                  (tab === "All courses" ? appliedCategories.length === 0 : appliedCategories.includes(tab))
                     ? "bg-primary text-white border-primary"
                     : "bg-white text-text-muted border-border-subtle hover:bg-slate-50"
                 }`}
@@ -562,7 +631,7 @@ function CoursesPageContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 min-h-[32px]">
           <div className="flex flex-wrap items-center gap-2">
             {/* Category pills */}
-            {selectedCategories.map((cat) => (
+            {appliedCategories.map((cat) => (
               <div key={cat} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
                 {cat}
                 <button onClick={() => removeCategoryFilter(cat)} className="hover:text-red-600 transition-colors">
@@ -570,9 +639,9 @@ function CoursesPageContent() {
                 </button>
               </div>
             ))}
-            
+
             {/* Format pills */}
-            {selectedFormats.map((form) => (
+            {appliedFormats.map((form) => (
               <div key={form} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
                 {form}
                 <button onClick={() => removeFormatFilter(form)} className="hover:text-red-600 transition-colors">
@@ -582,7 +651,7 @@ function CoursesPageContent() {
             ))}
 
             {/* Level pills */}
-            {selectedLevels.map((lvl) => (
+            {appliedLevels.map((lvl) => (
               <div key={lvl} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
                 {lvl}
                 <button onClick={() => removeLevelFilter(lvl)} className="hover:text-red-600 transition-colors">
@@ -592,20 +661,29 @@ function CoursesPageContent() {
             ))}
 
             {/* Price range pills */}
-            {(minPrice || maxPrice) && (
+            {(appliedMinPrice || appliedMaxPrice) && (
               <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                Price: {minPrice ? `₹${minPrice}` : "0"} — {maxPrice ? `₹${maxPrice}` : "Max"}
-                <button onClick={() => { setMinPrice(""); setMaxPrice(""); }} className="hover:text-red-600 transition-colors">
+                Price: {appliedMinPrice ? `₹${appliedMinPrice}` : "0"} — {appliedMaxPrice ? `₹${appliedMaxPrice}` : "Max"}
+                <button
+                  onClick={() => {
+                    setAppliedMinPrice(""); setAppliedMaxPrice("");
+                    setMinPrice(""); setMaxPrice("");
+                  }}
+                  className="hover:text-red-600 transition-colors"
+                >
                   <IconX className="w-3 h-3" />
                 </button>
               </div>
             )}
 
             {/* Rating pill */}
-            {selectedRating !== null && (
+            {appliedRating !== null && (
               <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-badge-bg text-badge-text border border-badge-border">
-                Rating: ★ {selectedRating}+
-                <button onClick={() => setSelectedRating(null)} className="hover:text-red-600 transition-colors">
+                Rating: ★ {appliedRating}+
+                <button
+                  onClick={() => { setAppliedRating(null); setSelectedRating(null); }}
+                  className="hover:text-red-600 transition-colors"
+                >
                   <IconX className="w-3 h-3" />
                 </button>
               </div>

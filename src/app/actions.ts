@@ -848,6 +848,8 @@ interface CourseInput {
 export async function upsertCourse(course: CourseInput) {
   const supabase = createAdminClient();
 
+  if (course.subject) await ensureSubjectExists(course.subject);
+
   // Resolve mentor string to a UUID
   let mentorId = await resolveMentorIdByName(course.mentor);
   if (!mentorId) {
@@ -965,6 +967,8 @@ interface SessionInput {
 
 export async function upsertSession(session: SessionInput) {
   const supabase = createAdminClient();
+
+  if (session.subject) await ensureSubjectExists(session.subject);
 
   // Resolve mentor
   let mentorId = await resolveMentorIdByName(session.mentor);
@@ -1137,6 +1141,101 @@ export async function deleteMentor(id: string) {
   }
   revalidatePath("/");
   revalidatePath("/admin");
+  return { success: true };
+}
+
+// ----------------------------------------------------
+// SUBJECTS
+// ----------------------------------------------------
+
+export async function getSubjects() {
+  noStore();
+  const supabase = await createClient();
+  const { data: subjects, error } = await supabase
+    .from("subjects")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  const { data: courses } = await supabase.from("courses").select("subject");
+  const { data: sessions } = await supabase.from("sessions").select("subject");
+
+  return (subjects || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    iconName: s.icon_name,
+    courseCount: (courses || []).filter((c) => c.subject === s.name).length,
+    sessionCount: (sessions || []).filter((sess) => sess.subject === s.name).length,
+  }));
+}
+
+export async function getSubjectDetails(name: string) {
+  noStore();
+  const supabase = await createClient();
+
+  const { data: dbCourses } = await supabase
+    .from("courses")
+    .select("*, mentor:mentors(profile:profiles(full_name))")
+    .eq("subject", name)
+    .order("created_at", { ascending: false });
+
+  const { data: dbSessions } = await supabase
+    .from("sessions")
+    .select("*, mentor:mentors(profile:profiles(full_name, avatar_url))")
+    .eq("subject", name)
+    .order("created_at", { ascending: false });
+
+  return {
+    courses: (dbCourses || []).map((c: CourseWithMentor) => ({
+      id: c.id,
+      title: c.title,
+      format: c.format,
+      price: Number(c.price),
+      status: c.status,
+      mentor: c.mentor?.profile?.full_name || "Unknown Mentor",
+    })),
+    sessions: (dbSessions || []).map((s: SessionWithMentor) => ({
+      id: s.id,
+      title: s.title,
+      type: s.type,
+      price: Number(s.price),
+      status: s.status,
+      mentor: s.mentor?.profile?.full_name || "Unknown Mentor",
+    })),
+  };
+}
+
+// Registers a subject name in the shared subjects table if it isn't already
+// there. Used both by the admin Subjects page and by the "Create New
+// Subject..." option in the course/session forms, so a subject typed in
+// either place shows up everywhere subjects are listed.
+export async function ensureSubjectExists(name: string, iconName: string = "book") {
+  const trimmed = sanitizeText(name).trim();
+  if (!trimmed) throw new Error("Subject name is required");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("subjects")
+    .insert([{ name: trimmed, icon_name: iconName }])
+    .select()
+    .single();
+
+  // Unique violation just means the subject already exists — that's fine.
+  if (error && error.code !== "23505") throw new Error(error.message);
+
+  revalidatePath("/");
+  revalidatePath("/courses");
+  revalidatePath("/sessions");
+  revalidatePath("/mentors");
+  revalidatePath("/admin/subjects");
+  return { success: true };
+}
+
+export async function deleteSubject(id: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("subjects").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/subjects");
   return { success: true };
 }
 

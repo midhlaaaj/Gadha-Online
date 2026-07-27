@@ -92,7 +92,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
   const [data, setData] = useState<MentorDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -108,13 +107,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
     }
     loadData();
   }, [id]);
-
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
-  };
 
   if (error || (!loading && !data)) {
     return (
@@ -223,14 +215,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
       <title>{`${mentor.name} - Expert Subject Tutor | Gadha Online`}</title>
       <meta name="description" content={`Explore courses and hourly sessions taught by ${mentor.name}, verified educator specializing in ${mentor.subject || "tutoring"} on Gadha Online.`} />
 
-      {/* TOAST MESSAGE */}
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 bg-primary text-white border border-secondary text-xs px-4 py-3 rounded-xl shadow-xl z-50 animate-fade-in flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-          {toastMessage}
-        </div>
-      )}
-
       {/* HEADER SECTION */}
       <header className="bg-surface px-6 md:px-12 py-8 border-b border-border-subtle">
         <div className="max-w-7xl mx-auto">
@@ -253,8 +237,8 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
       <main className="max-w-7xl mx-auto w-full px-6 md:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start flex-1">
         
         {/* LEFT COLUMN: ABOUT, COURSES, SESSIONS */}
-        <div className="lg:col-span-2 space-y-8">
-          
+        <div className="order-2 lg:order-none lg:col-span-2 space-y-8">
+
           {/* About/Bio Box */}
           <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm">
             <h2 className="font-heading text-lg font-bold text-primary mb-3">About {mentor.name}</h2>
@@ -408,7 +392,7 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* RIGHT COLUMN: OVERVIEW CARD */}
-        <div className="space-y-6">
+        <div className="order-1 lg:order-none space-y-6">
           <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col items-center text-center">
             
             <div
@@ -445,13 +429,6 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
                 <span className="text-xs font-extrabold text-primary block mt-0.5">{mentor.experience} yrs</span>
               </div>
             </div>
-
-            <button
-              onClick={() => triggerToast("Message service coming soon!")}
-              className="w-full text-xs font-bold py-3.5 rounded-xl bg-transparent text-primary border border-border-subtle hover:bg-slate-50 transition-all cursor-pointer"
-            >
-              Message Mentor
-            </button>
           </div>
 
           {/* Vetted Box */}

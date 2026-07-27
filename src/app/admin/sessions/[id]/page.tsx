@@ -19,6 +19,7 @@ import {
   getAdminSessionDetails,
   getAdminData,
   upsertSession,
+  getSubjects,
 } from "../../../actions";
 
 type SessionDetails = Awaited<ReturnType<typeof getAdminSessionDetails>>;
@@ -36,6 +37,7 @@ export default function AdminSessionDetailPage({ params }: { params: Promise<{ i
   const [session, setSession] = useState<SessionDetails["session"] | null>(null);
   const [bookings, setBookings] = useState<SessionDetails["bookings"]>([]);
   const [mentors, setMentors] = useState<AdminData["mentors"]>([]);
+  const [subjects, setSubjects] = useState<Awaited<ReturnType<typeof getSubjects>>>([]);
   const [loading, setLoading] = useState(true);
 
   // Editing States
@@ -48,9 +50,10 @@ export default function AdminSessionDetailPage({ params }: { params: Promise<{ i
       const res = await getAdminSessionDetails(sessionId);
       setSession(res.session);
       setBookings(res.bookings || []);
-      
-      const adminData = await getAdminData();
+
+      const [adminData, subjectsRes] = await Promise.all([getAdminData(), getSubjects()]);
       setMentors(adminData.mentors || []);
+      setSubjects(subjectsRes);
     } catch (err) {
       console.error("Failed to load session details:", err);
     } finally {
@@ -116,8 +119,6 @@ export default function AdminSessionDetailPage({ params }: { params: Promise<{ i
   const totalSales = bookings.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
   const totalBookings = bookings.length;
   const activeBookings = bookings.filter((b) => b.status === "confirmed").length;
-
-  const standardSubjects = ["Mathematics", "Science", "Programming", "English"];
 
   return (
     <div className="space-y-6 font-sans">
@@ -189,11 +190,11 @@ export default function AdminSessionDetailPage({ params }: { params: Promise<{ i
                   <select
                     className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
                     value={
-                      standardSubjects.includes(editForm.subject || "")
+                      subjects.some((s) => s.name === editForm.subject)
                         ? editForm.subject
                         : editForm.subject
                         ? "Custom"
-                        : "Mathematics"
+                        : subjects[0]?.name || "Custom"
                     }
                     onChange={(e) => {
                       const val = e.target.value;
@@ -204,12 +205,12 @@ export default function AdminSessionDetailPage({ params }: { params: Promise<{ i
                       }
                     }}
                   >
-                    {standardSubjects.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                    {subjects.map((s) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
                     ))}
                     <option value="Custom">Create New Subject...</option>
                   </select>
-                  {(editForm._customSubjectActive || !standardSubjects.includes(editForm.subject || "")) && (
+                  {(editForm._customSubjectActive || !subjects.some((s) => s.name === editForm.subject)) && (
                     <input
                       className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none font-semibold text-[#1B3A6B] mt-1.5 bg-white w-full"
                       type="text"

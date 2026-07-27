@@ -249,7 +249,7 @@ export default function Navbar() {
           </div>
 
           {/* AUTHENTICATION ACTION AREA */}
-          <div className="flex items-center gap-3">
+          <div className={`items-center gap-3 ${mobileMenuOpen ? "hidden md:flex" : "flex"}`}>
             {loading ? (
               <div className="h-9 w-28 bg-slate-100/60 animate-pulse rounded-full" />
             ) : user ? (

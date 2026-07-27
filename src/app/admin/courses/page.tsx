@@ -28,6 +28,7 @@ import {
   upsertCourseUnit,
   deleteCourseUnit,
   reorderCourseUnits,
+  getSubjects,
 } from "../../actions";
 import { SkeletonCard } from "@/components/Skeleton";
 import ImageCropperModal from "@/components/ImageCropperModal";
@@ -55,6 +56,7 @@ interface Course {
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [mentors, setMentors] = useState<AdminData["mentors"]>([]);
+  const [subjects, setSubjects] = useState<Awaited<ReturnType<typeof getSubjects>>>([]);
   const [loading, setLoading] = useState(true);
 
   // View States
@@ -86,9 +88,10 @@ export default function CoursesPage() {
 
   const loadData = async () => {
     try {
-      const res = await getAdminData();
+      const [res, subjectsRes] = await Promise.all([getAdminData(), getSubjects()]);
       setCourses(res.courses as Course[]);
       setMentors(res.mentors);
+      setSubjects(subjectsRes);
     } catch (err) {
       console.error("Failed to load courses:", err);
     } finally {
@@ -684,11 +687,11 @@ export default function CoursesPage() {
                 <select
                   className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
                   value={
-                    ["Mathematics", "Science", "Programming", "English"].includes(drawerForm.subject || "")
+                    subjects.some((s) => s.name === drawerForm.subject)
                       ? drawerForm.subject
                       : drawerForm.subject
                       ? "Custom"
-                      : "Mathematics"
+                      : subjects[0]?.name || "Custom"
                   }
                   onChange={(e) => {
                     const val = e.target.value;
@@ -699,13 +702,12 @@ export default function CoursesPage() {
                     }
                   }}
                 >
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Science">Science</option>
-                  <option value="Programming">Programming</option>
-                  <option value="English">English</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
                   <option value="Custom">Create New Subject...</option>
                 </select>
-                {(drawerForm._customSubjectActive || !["Mathematics", "Science", "Programming", "English"].includes(drawerForm.subject || "")) && (
+                {(drawerForm._customSubjectActive || !subjects.some((s) => s.name === drawerForm.subject)) && (
                   <input
                     className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none font-semibold text-[#1B3A6B] mt-1.5"
                     type="text"

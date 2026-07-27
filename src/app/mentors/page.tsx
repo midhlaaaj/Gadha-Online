@@ -17,7 +17,7 @@ import {
   IconBrandLinkedin,
   IconBrandYoutube,
 } from "@tabler/icons-react";
-import { getMentorsPageData } from "../actions";
+import { getMentorsPageData, getSubjects } from "../actions";
 
 type Mentor = Awaited<ReturnType<typeof getMentorsPageData>>[number];
 
@@ -27,6 +27,7 @@ function MentorsPageContent() {
   const pathname = usePathname();
 
   const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [subjectsList, setSubjectsList] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter & Search States
@@ -58,8 +59,11 @@ function MentorsPageContent() {
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await getMentorsPageData();
+        const [res, subjectsRes] = await Promise.all([getMentorsPageData(), getSubjects()]);
         setMentors(res);
+        // "Test Prep" isn't a course/session subject — it's a mentor-only
+        // specialization tag — so it's kept alongside the dynamic list.
+        setSubjectsList([...subjectsRes.map((s) => s.name), "Test Prep"]);
       } catch (err) {
         console.error("Failed to load mentors data:", err);
       } finally {
@@ -267,7 +271,7 @@ function MentorsPageContent() {
                             Subject
                           </div>
                           <div className="flex flex-col">
-                            {["Mathematics", "Science", "Programming", "English", "Test Prep"].map((sub) => (
+                            {subjectsList.map((sub) => (
                               <div
                                 key={sub}
                                 onClick={() => handleSubjectCheckbox(sub)}
@@ -368,7 +372,7 @@ function MentorsPageContent() {
         {/* TOPBAR (Tabs & Sort) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-subtle mb-6">
           <div className="flex items-center gap-1.5 overflow-x-auto premium-scrollbar pb-2 sm:pb-0">
-            {["All mentors", "Mathematics", "Science", "Programming", "English", "Test Prep"].map((tab) => (
+            {["All mentors", ...subjectsList].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabSelect(tab)}

@@ -26,6 +26,7 @@ import {
   deleteCourseUnit,
   reorderCourseUnits,
   checkMentorScheduleConflict,
+  getSubjects,
   type ScheduleConflict,
 } from "../../../actions";
 import { parseTimeToMinutes, minutesToTimeString } from "@/lib/schedule";
@@ -58,6 +59,7 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
   const [course, setCourse] = useState<Course | null>(null);
   const [bookings, setBookings] = useState<CourseBooking[]>([]);
   const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [subjects, setSubjects] = useState<Awaited<ReturnType<typeof getSubjects>>>([]);
   const [loading, setLoading] = useState(true);
 
   // Editing States
@@ -85,9 +87,10 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
       setCourse(res.course);
       setBookings(res.bookings || []);
       
-      // Load mentors too
-      const adminData = await getAdminData();
+      // Load mentors and subjects too
+      const [adminData, subjectsRes] = await Promise.all([getAdminData(), getSubjects()]);
       setMentors(adminData.mentors || []);
+      setSubjects(subjectsRes);
 
       if (res.course && res.course.format === "Recorded") {
         const units = await getCourseUnits(courseId);
@@ -309,9 +312,6 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
   const totalBookings = bookings.length;
   const activeBookings = bookings.filter((b) => b.status === "confirmed").length;
 
-  // Gather unique subjects from all courses for autocomplete
-  const standardSubjects = ["Mathematics", "Science", "Programming", "English"];
-
   return (
     <div className="space-y-6 font-sans">
       {/* Back Link & Edit Toolbar */}
@@ -414,11 +414,11 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
                   <select
                     className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
                     value={
-                      standardSubjects.includes(editForm.subject ?? "")
+                      subjects.some((s) => s.name === editForm.subject)
                         ? editForm.subject
                         : editForm.subject
                         ? "Custom"
-                        : "Mathematics"
+                        : subjects[0]?.name || "Custom"
                     }
                     onChange={(e) => {
                       const val = e.target.value;
@@ -429,12 +429,12 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
                       }
                     }}
                   >
-                    {standardSubjects.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                    {subjects.map((s) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
                     ))}
                     <option value="Custom">Create New Subject...</option>
                   </select>
-                  {(editForm._customSubjectActive || !standardSubjects.includes(editForm.subject ?? "")) && (
+                  {(editForm._customSubjectActive || !subjects.some((s) => s.name === editForm.subject)) && (
                     <input
                       className="text-xs p-3 border border-[#E6EBF8] rounded-xl outline-none font-semibold text-[#1B3A6B] mt-1.5 bg-white w-full"
                       type="text"
