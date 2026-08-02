@@ -535,7 +535,7 @@ export default function ProfilePage() {
                         setEditPhone(cleaned);
                       }}
                       maxLength={15}
-                      placeholder="+91 98765 43210"
+                      placeholder="Your Mobile Number"
                       inputMode="tel"
                       className="border border-[#d0dcf5] rounded-xl px-4 py-2.5 text-xs text-[#1B3A6B] font-medium outline-none focus:border-[#2F7FE8] transition-colors"
                     />

@@ -241,9 +241,12 @@ export default function Home() {
     const nameCheck = validateName(formData.fullName);
     if (!nameCheck.valid) { setFormError(nameCheck.error!); return; }
 
-    const emailCheck = validateEmail(formData.email);
-    if (!emailCheck.valid) { setFormError(emailCheck.error!); return; }
+    if (formData.email.trim()) {
+      const emailCheck = validateEmail(formData.email);
+      if (!emailCheck.valid) { setFormError(emailCheck.error!); return; }
+    }
 
+    if (!formData.phone.trim()) { setFormError("Please enter your mobile number."); return; }
     const phoneCheck = validatePhone(formData.phone);
     if (!phoneCheck.valid) { setFormError(phoneCheck.error!); return; }
 
@@ -1414,16 +1417,15 @@ export default function Home() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-white/75 uppercase tracking-wider">
-                    Email address
+                    Email address (optional)
                   </label>
                   <input
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    required
                     className="font-sans text-sm p-3 rounded-lg border border-white/25 bg-white/10 text-white outline-none focus:border-accent/50 focus:bg-white/15 transition-all"
                     type="email"
-                    placeholder="you@email.com"
+                    placeholder="Your Email Address"
                   />
                 </div>
               </div>
@@ -1444,15 +1446,16 @@ export default function Home() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-white/75 uppercase tracking-wider">
-                    Phone (optional)
+                    Mobile number
                   </label>
                   <input
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
+                    required
                     className="font-sans text-sm p-3 rounded-lg border border-white/25 bg-white/10 text-white outline-none focus:border-accent/50 focus:bg-white/15 transition-all"
                     type="tel"
-                    placeholder="+91 98765 43210"
+                    placeholder="Your Mobile Number"
                   />
                 </div>
               </div>

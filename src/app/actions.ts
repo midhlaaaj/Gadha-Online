@@ -1637,9 +1637,9 @@ export async function reorderAchievements(items: { id: string; displayOrder: num
 
 interface ContactMessageInput {
   fullName: string;
-  email: string;
+  email?: string;
   subject: string;
-  phone?: string;
+  phone: string;
   message: string;
 }
 
@@ -1647,16 +1647,19 @@ export async function submitContactMessage(data: ContactMessageInput) {
   const fullName = sanitizeText(data.fullName, 100);
   const email = (data.email || "").trim();
   const subject = sanitizeText(data.subject, 150);
-  const phone = data.phone ? sanitizeText(data.phone, 20) : null;
+  const phone = sanitizeText(data.phone, 20);
   const message = sanitizeText(data.message, 2000);
 
   if (!fullName) {
     throw new Error("Please enter your full name.");
   }
-  if (!validateEmail(email).valid) {
+  if (email && !validateEmail(email).valid) {
     throw new Error("Please enter a valid email address.");
   }
-  if (phone && !validatePhone(phone).valid) {
+  if (!phone) {
+    throw new Error("Please enter your mobile number.");
+  }
+  if (!validatePhone(phone).valid) {
     throw new Error("Please enter a valid phone number.");
   }
   if (!message) {

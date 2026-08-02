@@ -211,7 +211,7 @@ export default function LMSLoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@email.com"
+                placeholder="Your Email Address"
                 disabled={loading}
                 required
                 className="w-full text-xs p-3.5 border border-slate-200 focus:border-[#2F7FE8] focus:ring-1 focus:ring-[#2F7FE8]/20 rounded-lg outline-none text-[#1B3A6B] font-sans transition-all disabled:opacity-50"

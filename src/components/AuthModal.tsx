@@ -292,7 +292,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@email.com"
+                placeholder="Your Email Address"
                 disabled={loading}
                 required
                 className="w-full text-xs p-3.5 border border-slate-200 focus:border-secondary focus:ring-1 focus:ring-secondary/20 rounded-lg outline-none text-primary font-sans transition-all disabled:opacity-50"
