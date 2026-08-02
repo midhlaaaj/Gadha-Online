@@ -12,7 +12,6 @@ import {
   IconInfoCircle,
 } from "@tabler/icons-react";
 import { getAdminSchedules, markAdminAttendance } from "../../actions";
-import { SkeletonCard } from "@/components/Skeleton";
 
 type ScheduleItem = Awaited<ReturnType<typeof getAdminSchedules>>[number];
 type StudentInfo = ScheduleItem["studentInfo"];
@@ -272,9 +271,23 @@ export default function SchedulesPage() {
           <div className="h-8 bg-slate-200 rounded-lg w-48"></div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white border border-[#E6EBF8] rounded-2xl p-5 shadow-sm space-y-3">
+              <div className="flex justify-between items-start">
+                <div className="h-4 w-16 rounded-full bg-slate-100 animate-shimmer"></div>
+                <div className="h-4 w-24 rounded-full bg-slate-100 animate-shimmer"></div>
+              </div>
+              <div className="h-3.5 w-3/4 bg-slate-200 rounded animate-shimmer"></div>
+              <div className="h-2.5 w-1/2 bg-slate-100 rounded animate-shimmer"></div>
+              <div className="space-y-1.5 pt-3 border-t border-[#E6EBF8]">
+                <div className="h-3 w-40 bg-slate-100 rounded animate-shimmer"></div>
+                <div className="h-3 w-32 bg-slate-100 rounded animate-shimmer"></div>
+              </div>
+              <div className="pt-3 border-t border-[#E6EBF8]">
+                <div className="h-8 w-full rounded-xl bg-slate-200 animate-shimmer"></div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

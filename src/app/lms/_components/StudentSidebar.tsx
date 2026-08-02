@@ -35,7 +35,7 @@ export function StudentAppSidebar() {
       {/* Logo */}
       <div className="h-[80px] flex items-center px-6 border-b border-[#E6EBF8] shrink-0">
         <Link href="/lms/overview" className="flex items-center gap-2 font-heading text-lg font-extrabold tracking-tight text-[#1B3A6B] hover:opacity-90 transition-opacity">
-          <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" />
+          <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" priority />
           <span>Gadha Online</span>
         </Link>
       </div>

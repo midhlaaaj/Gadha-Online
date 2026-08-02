@@ -12,7 +12,6 @@ import {
   IconUsers,
   IconQuote,
   IconList,
-  IconBell,
   IconNotebook,
   IconCalendar,
   IconCreditCard,
@@ -22,6 +21,7 @@ import {
   IconHeadset,
   IconTags,
 } from "@tabler/icons-react";
+import { AdminNotificationBell } from "./_components/AdminNotificationBell";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -72,7 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="w-[240px] shrink-0 bg-white border-r border-[#E6EBF8] flex flex-col overflow-hidden">
         <div className="h-[80px] flex items-center px-6 border-b border-[#E6EBF8] shrink-0">
           <Link href="/admin/dashboard" className="flex items-center gap-2 font-heading text-base font-extrabold tracking-tight text-[#1B3A6B] whitespace-nowrap">
-            <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" />
+            <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" priority />
             <span>Gadha Online</span>
           </Link>
         </div>
@@ -237,10 +237,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {getHeaderTitle()}
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8.5 h-8.5 rounded-xl border border-[#E6EBF8] bg-white flex items-center justify-center cursor-pointer relative hover:bg-slate-50 transition-colors">
-              <IconBell className="w-4 h-4 text-[#6B7A99]" />
-              <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-red-500"></div>
-            </div>
+            <AdminNotificationBell />
           </div>
         </header>
 

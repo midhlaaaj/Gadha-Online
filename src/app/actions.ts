@@ -1684,6 +1684,14 @@ export async function submitContactMessage(data: ContactMessageInput) {
   ]);
 
   if (error) throw new Error(error.message);
+
+  await notifyAdmins({
+    type: "new_lead",
+    title: "New contact form lead",
+    message: `${fullName} sent a message: "${subject || "General Inquiry"}"`,
+    linkUrl: "/admin/leads",
+  });
+
   return { success: true };
 }
 
@@ -2198,6 +2206,80 @@ export async function getMessages(chatRoomId: string) {
   return messages || [];
 }
 
+// Notifies every other participant in a chat room that a new message arrived.
+// Admins are intentionally skipped here — support rooms have no admin
+// participant row (see getOrCreateSupportChatRoom), so this never fires for
+// them; new tickets are covered separately by the `new_support_ticket` admin
+// notification fired on room creation.
+async function notifyChatRecipients(chatRoomId: string, senderId: string, content: string) {
+  const adminClient = createAdminClient();
+
+  const { data: participants } = await adminClient
+    .from("chat_participants")
+    .select("user_id")
+    .eq("chat_room_id", chatRoomId)
+    .neq("user_id", senderId);
+
+  const recipientIds = (participants || []).map((p) => p.user_id);
+  if (recipientIds.length === 0) return;
+
+  const [{ data: sender }, { data: recipientProfiles }] = await Promise.all([
+    adminClient.from("profiles").select("full_name").eq("id", senderId).single(),
+    adminClient.from("profiles").select("id, role").in("id", recipientIds),
+  ]);
+  const senderName = sender?.full_name || "Someone";
+  const preview = content.length > 80 ? content.slice(0, 80) + "…" : content;
+
+  const parentIds = (recipientProfiles || []).filter((p) => p.role === "parent").map((p) => p.id);
+  let mutedParentIds = new Set<string>();
+  if (parentIds.length > 0) {
+    const { data: parentPrefs } = await adminClient
+      .from("parents")
+      .select("id, notification_preferences")
+      .in("id", parentIds);
+    mutedParentIds = new Set(
+      (parentPrefs || [])
+        .filter((p) => (p.notification_preferences as Record<string, boolean> | null)?.mentor_messages === false)
+        .map((p) => p.id)
+    );
+  }
+
+  const userNotifRows: TablesInsert<"user_notifications">[] = [];
+  const mentorNotifRows: TablesInsert<"mentor_notifications">[] = [];
+
+  (recipientProfiles || []).forEach((p) => {
+    if (p.role === "mentor") {
+      mentorNotifRows.push({
+        mentor_id: p.id,
+        type: "new_message",
+        title: "New message",
+        message: `${senderName}: ${preview}`,
+        link_url: "/mentor/messages",
+        scheduled_for: new Date().toISOString(),
+      });
+    } else if (p.role === "student") {
+      userNotifRows.push({
+        user_id: p.id,
+        type: "new_message",
+        title: "New message",
+        message: `${senderName}: ${preview}`,
+        link_url: "/lms/messages",
+      });
+    } else if (p.role === "parent" && !mutedParentIds.has(p.id)) {
+      userNotifRows.push({
+        user_id: p.id,
+        type: "new_message",
+        title: "New message",
+        message: `${senderName}: ${preview}`,
+        link_url: "/dashboard/messages",
+      });
+    }
+  });
+
+  if (userNotifRows.length > 0) await adminClient.from("user_notifications").insert(userNotifRows);
+  if (mentorNotifRows.length > 0) await adminClient.from("mentor_notifications").insert(mentorNotifRows);
+}
+
 export async function sendMessage(chatRoomId: string, content: string, fileUrl?: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -2217,6 +2299,9 @@ export async function sendMessage(chatRoomId: string, content: string, fileUrl?:
     .single();
 
   if (error) throw new Error(error.message);
+
+  await notifyChatRecipients(chatRoomId, user.id, content);
+
   return data;
 }
 
@@ -2366,6 +2451,18 @@ export async function getOrCreateSupportChatRoom() {
     .insert([{ chat_room_id: room.id, user_id: user.id }]);
   if (partError) throw new Error(partError.message);
 
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .single();
+  await notifyAdmins({
+    type: "new_support_ticket",
+    title: "New support conversation",
+    message: `${profile?.full_name || "A user"} started a new support conversation.`,
+    linkUrl: "/admin/support",
+  });
+
   return room.id;
 }
 
@@ -2442,6 +2539,9 @@ export async function sendSupportReply(roomId: string, content: string) {
     .select()
     .single();
   if (error) throw new Error(error.message);
+
+  await notifyChatRecipients(roomId, admin.id, content);
+
   return data;
 }
 
@@ -4336,6 +4436,27 @@ export async function updateScheduledClass(
   if (error) throw new Error(error.message);
   revalidatePath("/mentor/classes");
   revalidatePath("/mentor/overview");
+
+  if (updates.status === "cancelled") {
+    await notifyStudentAndParent(data.student_id, {
+      type: "class_cancelled",
+      title: "Class cancelled",
+      message: `"${data.title}" has been cancelled by your mentor`,
+      studentLinkUrl: "/lms/classes",
+      parentLinkUrl: "/dashboard/classes",
+      preferenceKey: "class_reminders",
+    });
+  } else if (updates.scheduledAt !== undefined) {
+    await notifyStudentAndParent(data.student_id, {
+      type: "class_rescheduled",
+      title: "Class rescheduled",
+      message: `"${data.title}" has been rescheduled to ${new Date(updates.scheduledAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}`,
+      studentLinkUrl: "/lms/classes",
+      parentLinkUrl: "/dashboard/classes",
+      preferenceKey: "class_reminders",
+    });
+  }
+
   return data;
 }
 
@@ -4501,6 +4622,16 @@ export async function createAssignment(data: {
 
   if (error) throw new Error(error.message);
   revalidatePath("/mentor/assignments");
+
+  await notifyStudentAndParent(data.studentId, {
+    type: "new_assignment",
+    title: "New assignment",
+    message: `A new assignment "${data.title}" was posted, due ${data.dueDate}`,
+    studentLinkUrl: "/lms/assignments",
+    parentLinkUrl: "/dashboard/assignments",
+    preferenceKey: "assignment_updates",
+  });
+
   return newAssign;
 }
 
@@ -4524,6 +4655,16 @@ export async function reviewAssignmentSubmission(assignmentId: string, score: nu
   if (error) throw new Error(error.message);
   revalidatePath("/mentor/assignments");
   revalidatePath("/mentor/overview");
+
+  await notifyStudentAndParent(data.student_id, {
+    type: "assignment_graded",
+    title: "Assignment graded",
+    message: `"${data.title}" was graded: ${score}/100`,
+    studentLinkUrl: "/lms/assignments",
+    parentLinkUrl: "/dashboard/assignments",
+    preferenceKey: "assignment_updates",
+  });
+
   return data;
 }
 
@@ -4580,6 +4721,18 @@ export async function createResource(data: {
 
   if (error) throw new Error(error.message);
   revalidatePath("/mentor/resources");
+
+  if (data.studentId) {
+    await notifyStudentAndParent(data.studentId, {
+      type: "new_resource",
+      title: "New resource shared",
+      message: `A new ${data.type} "${data.name}" was shared with you`,
+      studentLinkUrl: "/lms/resources",
+      parentLinkUrl: "/dashboard/overview",
+      preferenceKey: "assignment_updates",
+    });
+  }
+
   return resource;
 }
 
@@ -4852,6 +5005,7 @@ async function createBookingRecord(params: {
   subject?: string;
   topicDetails?: string;
   attachmentUrl?: string;
+  notifyAdminsOnCreate?: boolean;
 }): Promise<{ bookingId: string }> {
   const adminClient = createAdminClient();
   const { targetId, targetType, studentId, parentId } = params;
@@ -5120,6 +5274,20 @@ async function createBookingRecord(params: {
     }
   }
 
+  if (params.notifyAdminsOnCreate) {
+    const { data: studentProfile } = await adminClient
+      .from("profiles")
+      .select("full_name")
+      .eq("id", studentId)
+      .single();
+    await notifyAdmins({
+      type: "new_booking_request",
+      title: "New booking placed",
+      message: `${studentProfile?.full_name || "A student"} placed a booking for "${title}" — awaiting review.`,
+      linkUrl: "/admin/bookings",
+    });
+  }
+
   return { bookingId: newBooking.id };
 }
 
@@ -5184,6 +5352,7 @@ export async function bookCourseOrSessionAction(data: {
     subject: data.subject,
     topicDetails: data.topicDetails,
     attachmentUrl: data.attachmentUrl,
+    notifyAdminsOnCreate: true,
   });
 
   revalidatePath("/bookings");
@@ -5794,6 +5963,72 @@ export async function markUserNotificationsRead(ids: string[]) {
   return { success: true };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getAdminNotifications() {
+  await assertAdminCaller();
+
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient
+    .from("admin_notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function getUnreadAdminNotificationCount() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const adminClient = createAdminClient();
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (profile?.role !== "admin") return 0;
+
+  const { count } = await adminClient
+    .from("admin_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("is_read", false);
+
+  return count || 0;
+}
+
+export async function markAdminNotificationsRead(ids: string[]) {
+  await assertAdminCaller();
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .from("admin_notifications")
+    .update({ is_read: true })
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+async function notifyAdmins(params: {
+  type: "new_booking_request" | "new_lead" | "new_support_ticket" | "mentor_invite_accepted";
+  title: string;
+  message: string;
+  linkUrl?: string;
+}) {
+  const adminClient = createAdminClient();
+  await adminClient.from("admin_notifications").insert({
+    type: params.type,
+    title: params.title,
+    message: params.message,
+    link_url: params.linkUrl || null,
+  });
+}
+
 async function createMentorNotifications(params: {
   mentorId: string;
   itemTitle: string;
@@ -5881,15 +6116,94 @@ async function buildUserNotificationLinks(adminClient: ReturnType<typeof createA
   return links;
 }
 
+type ParentPreferenceKey =
+  | "booking_confirmations"
+  | "class_reminders"
+  | "assignment_updates"
+  | "mentor_messages"
+  | "offers_promotions";
+
+async function isParentNotifAllowed(
+  adminClient: ReturnType<typeof createAdminClient>,
+  parentId: string,
+  key: ParentPreferenceKey
+) {
+  const { data: parent } = await adminClient
+    .from("parents")
+    .select("notification_preferences")
+    .eq("id", parentId)
+    .single();
+  const prefs = parent?.notification_preferences as Record<string, boolean> | null;
+  return prefs?.[key] !== false;
+}
+
+// Notifies a student and, if they have one, their parent — used for
+// classroom-side events (grading, resources, reschedules) that aren't
+// booking/payment notifications. The parent leg is skipped if they've
+// switched off the matching notification_preferences toggle.
+async function notifyStudentAndParent(
+  studentId: string,
+  params: {
+    type: string;
+    title: string;
+    message: string;
+    studentLinkUrl?: string;
+    parentLinkUrl?: string;
+    preferenceKey?: ParentPreferenceKey;
+  }
+) {
+  const adminClient = createAdminClient();
+
+  const { data: student } = await adminClient
+    .from("students")
+    .select("parent_id")
+    .eq("id", studentId)
+    .single();
+
+  const rows: TablesInsert<"user_notifications">[] = [
+    {
+      user_id: studentId,
+      type: params.type,
+      title: params.title,
+      message: params.message,
+      link_url: params.studentLinkUrl || "/lms/overview",
+    },
+  ];
+
+  if (student?.parent_id) {
+    let parentAllowed = true;
+    if (params.preferenceKey) {
+      const { data: parent } = await adminClient
+        .from("parents")
+        .select("notification_preferences")
+        .eq("id", student.parent_id)
+        .single();
+      const prefs = parent?.notification_preferences as Record<string, boolean> | null;
+      parentAllowed = prefs?.[params.preferenceKey] !== false;
+    }
+    if (parentAllowed) {
+      rows.push({
+        user_id: student.parent_id,
+        type: params.type,
+        title: params.title,
+        message: params.message,
+        link_url: params.parentLinkUrl || "/dashboard/overview",
+      });
+    }
+  }
+
+  await adminClient.from("user_notifications").insert(rows);
+}
+
 export async function cancelBooking(bookingId: string) {
   const adminClient = createAdminClient();
 
   const { data: booking } = await adminClient
     .from("bookings")
     .select(`
-      student_id, parent_id,
-      course:courses(title),
-      session:sessions(title)
+      student_id, parent_id, status, mentor_confirmed,
+      course:courses(title, mentor_id),
+      session:sessions(title, mentor_id)
     `)
     .eq("id", bookingId)
     .single();
@@ -5912,7 +6226,9 @@ export async function cancelBooking(bookingId: string) {
     const itemTitle = courseData?.title || sessionData?.title || "your session";
 
     const recipientIds = new Set<string>([booking.student_id]);
-    if (booking.parent_id) recipientIds.add(booking.parent_id);
+    if (booking.parent_id && await isParentNotifAllowed(adminClient, booking.parent_id, "booking_confirmations")) {
+      recipientIds.add(booking.parent_id);
+    }
     const links = await buildUserNotificationLinks(adminClient, Array.from(recipientIds));
 
     const notifRows = Array.from(recipientIds).map((uid) => ({
@@ -5924,6 +6240,21 @@ export async function cancelBooking(bookingId: string) {
     }));
     const { error: notifErr } = await adminClient.from("user_notifications").insert(notifRows);
     if (notifErr) console.error(notifErr);
+
+    // Only notify the mentor if they'd already been told about this booking
+    // (i.e. it was confirmed) — mentors aren't notified of bookings still
+    // pending admin review, so there's nothing for them to "un-know" here.
+    const mentorId = courseData?.mentor_id || sessionData?.mentor_id;
+    if (mentorId && booking.status === "confirmed") {
+      await adminClient.from("mentor_notifications").insert({
+        mentor_id: mentorId,
+        type: "booking_cancelled",
+        title: "Booking cancelled",
+        message: `A student's booking for "${itemTitle}" has been cancelled.`,
+        link_url: "/mentor/classes",
+        scheduled_for: new Date().toISOString(),
+      });
+    }
   }
 
   revalidatePath("/admin");
@@ -6047,7 +6378,9 @@ export async function finalizeBookingConfirmation(bookingId: string, params: {
     : null;
 
   const recipientIds = new Set<string>([booking.student_id]);
-  if (booking.parent_id) recipientIds.add(booking.parent_id);
+  if (booking.parent_id && await isParentNotifAllowed(adminClient, booking.parent_id, "booking_confirmations")) {
+    recipientIds.add(booking.parent_id);
+  }
   const links = await buildUserNotificationLinks(adminClient, Array.from(recipientIds));
 
   const notifRows = Array.from(recipientIds).map((uid) => ({
@@ -6268,7 +6601,9 @@ export async function createManualBooking(params: {
 
     // Send Notifications to Student, Parent & Admin
     const recipientIds = new Set<string>([params.studentId]);
-    if (params.parentId) recipientIds.add(params.parentId);
+    if (params.parentId && await isParentNotifAllowed(adminClient, params.parentId, "booking_confirmations")) {
+      recipientIds.add(params.parentId);
+    }
 
     const dueText = params.dueDate ? ` Dues of ₹${remaining.toLocaleString()} are scheduled for ${params.dueDate}.` : ` Remaining balance of ₹${remaining.toLocaleString()} is due soon.`;
     const notifRows = Array.from(recipientIds).map((uid) => ({
@@ -6358,7 +6693,9 @@ export async function recordBookingInstallment(params: {
 
   const recipientIds = new Set<string>();
   if (booking.student_id) recipientIds.add(booking.student_id);
-  if (booking.parent_id) recipientIds.add(booking.parent_id);
+  if (booking.parent_id && await isParentNotifAllowed(adminClient, booking.parent_id, "booking_confirmations")) {
+    recipientIds.add(booking.parent_id);
+  }
 
   const notifRows = Array.from(recipientIds).map((uid) => ({
     user_id: uid,

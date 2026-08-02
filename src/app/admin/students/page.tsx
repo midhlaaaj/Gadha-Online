@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { IconSearch, IconUserMinus } from "@tabler/icons-react";
 import { getAdminData } from "../../actions";
-import { SkeletonCard } from "@/components/Skeleton";
+import { SkeletonDetailCard } from "@/components/Skeleton";
 
 type AdminBooking = Awaited<ReturnType<typeof getAdminData>>["bookings"][number];
 
@@ -76,9 +76,9 @@ export default function StudentsPage() {
         </div>
         {/* Students Cards Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+          <SkeletonDetailCard avatar lines={4} />
+          <SkeletonDetailCard avatar lines={4} />
+          <SkeletonDetailCard avatar lines={4} />
         </div>
       </div>
     );

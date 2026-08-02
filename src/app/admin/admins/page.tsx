@@ -112,9 +112,26 @@ export default function AdminManagementPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px]">
-        <div className="w-8 h-8 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-3 text-xs font-semibold text-slate-500 font-sans">Loading admins...</p>
+      <div className="space-y-6 font-sans">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="h-3.5 w-28 bg-slate-200 rounded animate-shimmer"></div>
+            <div className="h-8 w-32 rounded-xl bg-slate-200 animate-shimmer"></div>
+          </div>
+          <div className="bg-white border border-[#E6EBF8] rounded-2xl divide-y divide-[#F0F3FB] shadow-sm overflow-hidden">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-4">
+                <div className="w-9 h-9 rounded-full bg-slate-100 animate-shimmer shrink-0"></div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="h-3 w-32 bg-slate-200 rounded animate-shimmer"></div>
+                  <div className="h-2.5 w-40 bg-slate-100 rounded animate-shimmer"></div>
+                </div>
+                <div className="h-5 w-16 rounded-full bg-slate-100 animate-shimmer shrink-0"></div>
+                <div className="h-2.5 w-20 bg-slate-100 rounded animate-shimmer shrink-0 hidden sm:block"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

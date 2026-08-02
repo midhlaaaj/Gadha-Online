@@ -183,6 +183,31 @@ export default function MentorDetailsPage({ params }: { params: Promise<{ id: st
                 ))}
               </div>
             </div>
+
+            {/* Sessions Conducted Skeleton */}
+            <div className="bg-white border border-border-subtle rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="h-6 w-56 bg-slate-200 rounded animate-shimmer"></div>
+                <div className="h-4 w-24 bg-slate-100 rounded animate-shimmer"></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="border border-border-subtle rounded-xl p-4 space-y-3 bg-white">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-20 bg-slate-100 rounded-full animate-shimmer"></div>
+                      <div className="h-4 w-14 bg-slate-100 rounded animate-shimmer"></div>
+                    </div>
+                    <div className="h-4 w-full bg-slate-200 rounded animate-shimmer"></div>
+                    <div className="h-3 w-full bg-slate-100 rounded animate-shimmer"></div>
+                    <div className="h-3 w-2/3 bg-slate-100 rounded animate-shimmer"></div>
+                    <div className="flex items-center justify-between pt-3 border-t border-border-subtle">
+                      <div className="h-3.5 w-8 bg-slate-100 rounded animate-shimmer"></div>
+                      <div className="h-4 w-14 bg-slate-100 rounded animate-shimmer"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Right Column (Overview Card) Skeleton */}

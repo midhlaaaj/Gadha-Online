@@ -12,7 +12,7 @@ import {
   cancelBooking,
   finalizeBookingConfirmation,
 } from "../../actions";
-import { SkeletonCard } from "@/components/Skeleton";
+import { SkeletonDetailCard } from "@/components/Skeleton";
 import NewBookingModal from "./_components/NewBookingModal";
 
 type AdminData = Awaited<ReturnType<typeof getAdminData>>;
@@ -167,9 +167,9 @@ export default function BookingsPage() {
         </div>
         {/* Bookings Cards Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+          <SkeletonDetailCard lines={7} />
+          <SkeletonDetailCard lines={7} />
+          <SkeletonDetailCard lines={7} />
         </div>
       </div>
     );

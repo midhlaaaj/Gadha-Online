@@ -41,11 +41,45 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ name:
       <h2 className="font-heading text-xl font-extrabold text-[#1B3A6B]">{name}</h2>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="bg-white border border-[#E6EBF8] rounded-2xl p-5 h-24 animate-pulse" />
-          ))}
-        </div>
+        <>
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-4 w-4 rounded bg-slate-100 animate-shimmer"></div>
+              <div className="h-3.5 w-28 bg-slate-200 rounded animate-shimmer"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="bg-white border border-[#E6EBF8] rounded-2xl p-4 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 w-14 rounded-full bg-slate-100 animate-shimmer"></div>
+                    <div className="h-3 w-12 bg-slate-100 rounded animate-shimmer"></div>
+                  </div>
+                  <div className="h-3.5 w-3/4 bg-slate-200 rounded animate-shimmer"></div>
+                  <div className="h-2.5 w-1/2 bg-slate-100 rounded animate-shimmer"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-4 w-4 rounded bg-slate-100 animate-shimmer"></div>
+              <div className="h-3.5 w-28 bg-slate-200 rounded animate-shimmer"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="bg-white border border-[#E6EBF8] rounded-2xl p-4 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 w-14 rounded-full bg-slate-100 animate-shimmer"></div>
+                    <div className="h-3 w-12 bg-slate-100 rounded animate-shimmer"></div>
+                  </div>
+                  <div className="h-3.5 w-3/4 bg-slate-200 rounded animate-shimmer"></div>
+                  <div className="h-2.5 w-1/2 bg-slate-100 rounded animate-shimmer"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       ) : (
         <>
           <div>

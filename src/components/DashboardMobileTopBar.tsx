@@ -103,7 +103,7 @@ export function DashboardMobileTopBar({ role, contextControl }: DashboardMobileT
       <div className="flex items-center justify-between gap-2">
         {/* Brand / Logo */}
         <Link href={role === "mentor" ? "/mentor/overview" : role === "student" ? "/lms/overview" : "/dashboard/overview"} className="flex items-center gap-2 shrink-0 min-w-0">
-          <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" />
+          <Image src="/logo.png" alt="Gadha Online" width={36} height={36} className="w-9 h-9 object-contain shrink-0" priority />
           <span className="font-heading text-base font-extrabold text-[#1B3A6B] truncate">
             Gadha Online
           </span>

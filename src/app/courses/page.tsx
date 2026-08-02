@@ -709,21 +709,30 @@ function CoursesPageContent() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10 w-full">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white border border-border-subtle rounded-2xl overflow-hidden p-5 space-y-4">
-                <div className="w-full h-36 bg-slate-100 rounded-xl animate-shimmer"></div>
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-16 bg-slate-100 rounded animate-shimmer"></div>
-                  <div className="h-4 w-16 bg-slate-100 rounded animate-shimmer"></div>
+              <div key={i} className="bg-white border border-border-subtle rounded-2xl overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div className="w-full h-36 bg-slate-100 animate-shimmer"></div>
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-[18px] w-14 bg-slate-100 rounded-full animate-shimmer"></div>
+                      <div className="h-[18px] w-12 bg-slate-100 rounded-full animate-shimmer"></div>
+                      <div className="h-[18px] w-16 bg-slate-100 rounded-full animate-shimmer"></div>
+                    </div>
+                    <div className="h-5 w-3/4 bg-slate-200 rounded animate-shimmer mb-1.5"></div>
+                    <div className="h-3.5 w-1/3 bg-slate-100 rounded animate-shimmer mb-1.5"></div>
+                    <div className="h-3 w-full bg-slate-100 rounded animate-shimmer mb-1.5"></div>
+                    <div className="h-3 w-2/3 bg-slate-100 rounded animate-shimmer"></div>
+                  </div>
                 </div>
-                <div className="h-6 w-3/4 bg-slate-200 rounded animate-shimmer"></div>
-                <div className="h-4 w-1/2 bg-slate-100 rounded animate-shimmer"></div>
-                <div className="border-t border-border-subtle pt-3 flex items-center justify-between">
-                  <div className="h-4 w-20 bg-slate-100 rounded animate-shimmer"></div>
-                  <div className="h-6 w-16 bg-slate-200 rounded animate-shimmer"></div>
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex-grow h-10 bg-slate-200 rounded-lg animate-shimmer"></div>
-                  <div className="flex-grow h-10 bg-slate-100 rounded-lg animate-shimmer"></div>
+                <div className="px-5 pb-5">
+                  <div className="flex items-center gap-2 border-t border-border-subtle pt-3 mb-4">
+                    <div className="h-3.5 w-10 bg-slate-100 rounded animate-shimmer"></div>
+                    <div className="h-5 w-16 bg-slate-200 rounded animate-shimmer ml-auto"></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1 h-9 bg-slate-200 rounded-lg animate-shimmer"></div>
+                    <div className="flex-1 h-9 bg-slate-100 rounded-lg animate-shimmer"></div>
+                  </div>
                 </div>
               </div>
             ))}

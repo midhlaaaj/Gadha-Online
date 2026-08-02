@@ -452,11 +452,16 @@ export default function Home() {
                   <div key={i} className="w-[85%] min-w-[85%] snap-center shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden animate-pulse">
                     <div className="w-full h-32 bg-slate-100" />
                     <div className="p-3 space-y-2">
-                      <div className="h-4 bg-slate-200 rounded w-3/4" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                      <div className="h-3.5 bg-slate-200 rounded w-full" />
+                      <div className="h-3.5 bg-slate-200 rounded w-2/3" />
+                      <div className="flex items-center justify-between pt-0.5">
+                        <div className="h-2.5 bg-slate-100 rounded w-16" />
+                        <div className="h-2.5 bg-slate-100 rounded w-8" />
+                      </div>
+                      <div className="h-2.5 bg-slate-100 rounded w-10" />
                       <div className="flex gap-2 pt-1">
-                        <div className="flex-1 h-7 bg-slate-200 rounded-lg" />
-                        <div className="flex-1 h-7 bg-slate-100 rounded-lg" />
+                        <div className="flex-1 h-9 bg-slate-200 rounded-lg" />
+                        <div className="flex-1 h-9 bg-slate-100 rounded-lg" />
                       </div>
                     </div>
                   </div>
@@ -553,13 +558,22 @@ export default function Home() {
               <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden animate-pulse">
-                    <div className="w-full h-32 bg-slate-100" />
-                    <div className="p-5 space-y-2">
-                      <div className="h-4 bg-slate-200 rounded w-3/4" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
-                      <div className="flex gap-2 pt-1">
-                        <div className="flex-1 h-7 bg-slate-200 rounded-lg" />
-                        <div className="flex-1 h-7 bg-slate-100 rounded-lg" />
+                    <div className="w-full h-44 bg-slate-100" />
+                    <div className="p-5 space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-16 bg-slate-100 rounded-full" />
+                        <div className="h-6 w-14 bg-slate-100 rounded-full" />
+                        <div className="h-6 w-16 bg-slate-100 rounded-full" />
+                      </div>
+                      <div className="h-[18px] bg-slate-200 rounded w-full" />
+                      <div className="h-3 bg-slate-100 rounded w-1/3" />
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="h-3.5 bg-slate-100 rounded w-10" />
+                        <div className="h-[18px] bg-slate-200 rounded w-16" />
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <div className="flex-1 h-9 bg-slate-200 rounded-xl" />
+                        <div className="flex-1 h-9 bg-slate-100 rounded-xl" />
                       </div>
                     </div>
                   </div>
@@ -692,11 +706,16 @@ export default function Home() {
                   <div key={i} className="w-[85%] min-w-[85%] snap-center shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden animate-pulse">
                     <div className="w-full h-32 bg-slate-100" />
                     <div className="p-3 space-y-2">
-                      <div className="h-4 bg-slate-200 rounded w-3/4" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                      <div className="h-3.5 bg-slate-200 rounded w-full" />
+                      <div className="h-3.5 bg-slate-200 rounded w-2/3" />
+                      <div className="flex items-center justify-between pt-0.5">
+                        <div className="h-2.5 bg-slate-100 rounded w-16" />
+                        <div className="h-2.5 bg-slate-100 rounded w-8" />
+                      </div>
+                      <div className="h-2.5 bg-slate-100 rounded w-10" />
                       <div className="flex gap-2 pt-1">
-                        <div className="flex-1 h-7 bg-slate-200 rounded-lg" />
-                        <div className="flex-1 h-7 bg-slate-100 rounded-lg" />
+                        <div className="flex-1 h-9 bg-slate-200 rounded-lg" />
+                        <div className="flex-1 h-9 bg-slate-100 rounded-lg" />
                       </div>
                     </div>
                   </div>
@@ -790,13 +809,22 @@ export default function Home() {
               <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory premium-scrollbar">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="w-[calc(50%_-_12px)] lg:w-[calc(33.333%_-_16px)] min-w-[calc(50%_-_12px)] lg:min-w-[calc(33.333%_-_16px)] snap-start shrink-0 bg-white border border-border-subtle rounded-2xl overflow-hidden animate-pulse">
-                    <div className="w-full h-32 bg-slate-100" />
-                    <div className="p-5 space-y-2">
-                      <div className="h-4 bg-slate-200 rounded w-3/4" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
-                      <div className="flex gap-2 pt-1">
-                        <div className="flex-1 h-7 bg-slate-200 rounded-lg" />
-                        <div className="flex-1 h-7 bg-slate-100 rounded-lg" />
+                    <div className="w-full h-44 bg-slate-100" />
+                    <div className="p-5 space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-16 bg-slate-100 rounded-full" />
+                        <div className="h-6 w-14 bg-slate-100 rounded-full" />
+                        <div className="h-6 w-16 bg-slate-100 rounded-full" />
+                      </div>
+                      <div className="h-[18px] bg-slate-200 rounded w-full" />
+                      <div className="h-3 bg-slate-100 rounded w-1/3" />
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="h-3.5 bg-slate-100 rounded w-10" />
+                        <div className="h-[18px] bg-slate-200 rounded w-16" />
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <div className="flex-1 h-9 bg-slate-200 rounded-xl" />
+                        <div className="flex-1 h-9 bg-slate-100 rounded-xl" />
                       </div>
                     </div>
                   </div>
@@ -921,11 +949,16 @@ export default function Home() {
                       <div className="w-16 h-16 rounded-full bg-slate-200" />
                     </div>
                     <div className="p-3 space-y-2">
-                      <div className="h-4 bg-slate-200 rounded w-3/4" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                      <div className="h-3.5 bg-slate-200 rounded w-full" />
+                      <div className="h-3.5 bg-slate-200 rounded w-2/3" />
+                      <div className="flex items-center justify-between pt-0.5">
+                        <div className="h-2.5 bg-slate-100 rounded w-16" />
+                        <div className="h-2.5 bg-slate-100 rounded w-8" />
+                      </div>
+                      <div className="h-2.5 bg-slate-100 rounded w-10" />
                       <div className="flex gap-2 pt-1">
-                        <div className="flex-1 h-7 bg-slate-200 rounded-lg" />
-                        <div className="flex-1 h-7 bg-slate-100 rounded-lg" />
+                        <div className="flex-1 h-9 bg-slate-200 rounded-lg" />
+                        <div className="flex-1 h-9 bg-slate-100 rounded-lg" />
                       </div>
                     </div>
                   </div>

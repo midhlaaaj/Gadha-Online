@@ -21,7 +21,6 @@ import {
   getSubjects,
   type ScheduleConflict,
 } from "../../actions";
-import { SkeletonCard } from "@/components/Skeleton";
 import { parseTimeToMinutes, minutesToTimeString } from "@/lib/schedule";
 
 type AdminData = Awaited<ReturnType<typeof getAdminData>>;
@@ -252,11 +251,30 @@ export default function SessionsPage() {
           </div>
           <div className="h-8 bg-slate-200 rounded-lg w-24"></div>
         </div>
-        {/* Course Cards Grid Skeleton */}
+        {/* Session Cards Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white border border-[#E6EBF8] rounded-2xl p-4 shadow-sm space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="h-3.5 w-28 bg-slate-200 rounded animate-shimmer"></div>
+                <div className="h-4 w-14 rounded-full bg-slate-100 animate-shimmer"></div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-slate-100 animate-shimmer"></div>
+                <div className="h-2.5 w-16 bg-slate-100 rounded animate-shimmer"></div>
+                <div className="h-4 w-12 rounded-full bg-slate-100 animate-shimmer ml-auto"></div>
+              </div>
+              <div className="h-12 bg-slate-100 rounded animate-shimmer"></div>
+              <div className="flex items-center gap-4 border-b border-[#E6EBF8]/50 pb-3">
+                <div className="h-3 w-14 bg-slate-100 rounded animate-shimmer"></div>
+                <div className="h-3 w-14 bg-slate-100 rounded animate-shimmer"></div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="h-5 w-16 bg-slate-200 rounded animate-shimmer"></div>
+                <div className="h-[18px] w-8 rounded-full bg-slate-100 animate-shimmer"></div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

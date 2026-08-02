@@ -117,6 +117,40 @@ body {
   animation: shimmer 1.5s infinite linear;
 }
 
+/* Left-to-right shimmer sweep for existing `animate-pulse` skeleton bars
+   (bg-slate-100/150/200 fills only) across the app, so we don't have to touch
+   every page individually. Non-skeleton uses of animate-pulse (e.g. a "LIVE"
+   status dot, pulsing loading text) have no such child and are left untouched. */
+@keyframes shimmerSweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-pulse:has([class*="bg-slate-1"], [class*="bg-slate-2"]) {
+  animation: none;
+}
+
+.animate-pulse[class*="bg-slate-1"],
+.animate-pulse[class*="bg-slate-2"],
+.animate-pulse [class*="bg-slate-1"],
+.animate-pulse [class*="bg-slate-2"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-pulse[class*="bg-slate-1"]::after,
+.animate-pulse[class*="bg-slate-2"]::after,
+.animate-pulse [class*="bg-slate-1"]::after,
+.animate-pulse [class*="bg-slate-2"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: shimmerSweep 1.6s ease-in-out infinite;
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0%);
