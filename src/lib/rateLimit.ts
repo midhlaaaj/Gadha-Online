@@ -30,21 +30,28 @@ export function rateLimit(
 
   const pathname = request.nextUrl.pathname;
   const isPost = request.method === "POST";
+  const isApi = pathname.startsWith("/api/");
+  const isAuth = pathname.includes("/auth") || pathname.includes("/login") || pathname.includes("/signup");
+
+  // Only rate limit auth and POST/API requests — plain page navigations are unrestricted
+  if (!isAuth && !isPost && !isApi) {
+    return null;
+  }
 
   // Stricter limits for POST, auth, and sensitive operations
   let max = options.maxRequests;
   const windowMs = options.windowMs;
 
-  if (pathname.includes("/auth") || pathname.includes("/login") || pathname.includes("/signup")) {
+  if (isAuth) {
     max = 10; // Max 10 auth attempts per minute — brute-force protection
-  } else if (isPost || pathname.startsWith("/api/")) {
+  } else {
     // Server Actions are POSTs to the current page, and this app polls
     // (chat, notifications) every few seconds per open tab, so this needs
     // headroom above just "clicking around" for one legitimate user.
     max = 120; // Max 120 POST/API requests per minute
   }
 
-  const key = `${ip}:${pathname.startsWith("/api") ? "api" : isPost ? "post" : "page"}`;
+  const key = `${ip}:${isApi ? "api" : "post"}`;
   const now = Date.now();
 
   if (!ipStore[key] || ipStore[key].resetTime < now) {
