@@ -5,7 +5,7 @@ import {
   IconClipboardList, IconAlertTriangle, IconCheck,
   IconClock, IconStar, IconX, IconUpload, IconCircleCheck,
 } from "@tabler/icons-react";
-import { getStudentAssignments } from "@/app/actions";
+import { getStudentAssignments, submitAssignment } from "@/app/actions";
 
 type Assignment = Awaited<ReturnType<typeof getStudentAssignments>>[number];
 type Filter = "all" | "pending" | "submitted" | "graded" | "overdue";
@@ -87,12 +87,16 @@ function AssignmentCard({ a, onClick }: { a: Assignment; onClick: () => void }) 
 function AssignmentDrawer({
   assignment,
   onClose,
+  onSubmitted,
 }: {
   assignment: Assignment | null;
   onClose: () => void;
+  onSubmitted: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const isOpen = !!assignment;
@@ -101,17 +105,31 @@ function AssignmentDrawer({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate reset-on-reopen; drawer stays mounted, form state is cleared whenever the target assignment changes
     setFile(null);
     setSubmitted(false);
+    setSubmitError(null);
     if (isOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
     return () => { document.body.style.overflow = ""; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- isOpen is derived directly from assignment, which is already tracked
   }, [assignment]);
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-    onClose();
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3500);
+  const handleSubmit = async () => {
+    if (!assignment || !file) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      await submitAssignment(assignment.id, formData);
+      setSubmitted(true);
+      onSubmitted();
+      onClose();
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3500);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const canSubmit = assignment?.status === "Pending" || assignment?.status === "Overdue";
@@ -214,13 +232,16 @@ function AssignmentDrawer({
 
             {/* Footer */}
             {canSubmit && !submitted && (
-              <div className="px-6 py-4 border-t border-[#D0DCF5] shrink-0">
+              <div className="px-6 py-4 border-t border-[#D0DCF5] shrink-0 space-y-2">
+                {submitError && (
+                  <p className="text-[11px] font-semibold text-red-600 text-center">{submitError}</p>
+                )}
                 <button
                   onClick={handleSubmit}
-                  disabled={!file}
+                  disabled={!file || submitting}
                   className="w-full py-3 rounded-xl bg-[#1B3A6B] text-white text-[13px] font-bold hover:bg-[#2F7FE8] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  Submit assignment
+                  {submitting ? "Submitting..." : "Submit assignment"}
                 </button>
               </div>
             )}
@@ -263,14 +284,17 @@ export default function StudentAssignmentsPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<Assignment | null>(null);
 
-  useEffect(() => {
+  const loadAssignments = () => {
     getStudentAssignments()
       .then(setAssignments)
       .catch(() => {})
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAssignments is stable across renders, only needs to run once on mount
   }, []);
-
-
 
   const filtered = assignments.filter((a) => {
     if (filter === "pending")   return a.status === "Pending";
@@ -344,7 +368,7 @@ export default function StudentAssignmentsPage() {
       </div>
 
       {/* Slide-in drawer */}
-      <AssignmentDrawer assignment={selected} onClose={() => setSelected(null)} />
+      <AssignmentDrawer assignment={selected} onClose={() => setSelected(null)} onSubmitted={loadAssignments} />
     </>
   );
 }

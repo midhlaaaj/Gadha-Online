@@ -73,9 +73,11 @@ function ResourceCard({ r }: { r: ResourceItem }) {
         </a>
       ) : (
         <button
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-2 rounded-lg bg-[#F5F8FF] border border-[#D0DCF5] text-[#4A5A7A] hover:border-[#2F7FE8] hover:text-[#2F7FE8] transition-colors shrink-0 cursor-pointer"
+          disabled
+          title="No file attached to this resource yet"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-2 rounded-lg bg-[#F5F8FF] border border-[#D0DCF5] text-[#4A5A7A]/50 shrink-0 cursor-not-allowed"
         >
-          <IconDownload className="w-3.5 h-3.5" /> Download
+          <IconDownload className="w-3.5 h-3.5" /> Unavailable
         </button>
       )}
     </div>

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { IconX, IconEye, IconEyeOff } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 import { validateEmail, validatePassword, sanitizeText } from "@/lib/validate";
-import { createSelfStudentInvite } from "@/app/actions";
+import { createSelfStudentInvite, getPlatformSettings } from "@/app/actions";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -138,6 +138,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = "signin" }: A
           window.location.href = targetUrl;
         }, 600);
       } else if (mode === "signup") {
+        const { allowSignups } = await getPlatformSettings();
+        if (!allowSignups) {
+          setError("New sign-ups are temporarily paused. Please check back soon.");
+          setLoading(false);
+          return;
+        }
+
         const cleanEmail = sanitizeText(email).trim();
 
         if (signupRole === "student") {

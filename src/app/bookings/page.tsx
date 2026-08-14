@@ -163,6 +163,19 @@ export default function BookingsPage() {
     return <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-slate-50 text-slate-500">{status}</span>;
   };
 
+  const getPaymentBadge = (paymentStatus: string | null | undefined) => {
+    if (paymentStatus === "paid") {
+      return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Paid</span>;
+    }
+    if (paymentStatus === "refunded") {
+      return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Refunded</span>;
+    }
+    if (paymentStatus === "failed") {
+      return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700">Payment failed</span>;
+    }
+    return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Payment pending</span>;
+  };
+
   const getFormatBadgeColor = (format: string) => {
     if (format === "1-on-1" || format === "Group" || format === "Session") {
       return "bg-[#dcfce7] text-[#085041]";
@@ -446,6 +459,7 @@ export default function BookingsPage() {
                           </div>
                           <div className="flex md:flex-col items-baseline md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                             {getStatusBadge(b.status, b.type)}
+                            {getPaymentBadge(b.paymentStatus)}
                             <strong className="font-heading text-base font-bold text-[#1B3A6B]">₹{b.price}</strong>
                           </div>
                         </div>
@@ -502,6 +516,7 @@ export default function BookingsPage() {
                           </div>
                           <div className="flex md:flex-col items-baseline md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                             {getStatusBadge(b.status, b.type)}
+                            {getPaymentBadge(b.paymentStatus)}
                             <strong className="font-heading text-base font-bold text-[#1B3A6B]">₹{b.price}</strong>
                           </div>
                         </div>
@@ -558,6 +573,7 @@ export default function BookingsPage() {
                           </div>
                           <div className="flex md:flex-col items-baseline md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                             {getStatusBadge(b.status, b.type)}
+                            {getPaymentBadge(b.paymentStatus)}
                             <strong className="font-heading text-base font-bold text-[#1B3A6B]">₹{b.price}</strong>
                           </div>
                         </div>
@@ -610,6 +626,7 @@ export default function BookingsPage() {
                           </div>
                           <div className="flex md:flex-col items-baseline md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                             {getStatusBadge(b.status, b.type)}
+                            {getPaymentBadge(b.paymentStatus)}
                             <strong className="font-heading text-base font-bold text-[#1B3A6B]">₹{b.price}</strong>
                           </div>
                         </div>
@@ -662,6 +679,7 @@ export default function BookingsPage() {
                           </div>
                           <div className="flex md:flex-col items-baseline md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                             {getStatusBadge(b.status, b.type)}
+                            {getPaymentBadge(b.paymentStatus)}
                             <strong className="font-heading text-base font-bold text-slate-400 line-through">₹{b.price}</strong>
                           </div>
                         </div>

@@ -29,6 +29,7 @@ import {
   deleteCourseUnit,
   reorderCourseUnits,
   getSubjects,
+  deleteStorageFileByUrl,
 } from "../../actions";
 import { SkeletonCard } from "@/components/Skeleton";
 import ImageCropperModal from "@/components/ImageCropperModal";
@@ -196,7 +197,7 @@ export default function CoursesPage() {
         await loadData();
       } catch (err) {
         console.error("Error deleting course:", err);
-        alert("Couldn't delete this course. Please try again.");
+        alert(err instanceof Error ? err.message : "Couldn't delete this course. Please try again.");
       }
     }
   };
@@ -776,7 +777,11 @@ export default function CoursesPage() {
                       <p className="text-[9px] font-semibold text-primary truncate">{drawerForm.coverImageUrl}</p>
                       <button
                         type="button"
-                        onClick={() => setDrawerForm({ ...drawerForm, coverImageUrl: "" })}
+                        onClick={() => {
+                          const url = drawerForm.coverImageUrl;
+                          setDrawerForm({ ...drawerForm, coverImageUrl: "" });
+                          if (url) deleteStorageFileByUrl(url).catch((err) => console.error("Failed to delete cover image:", err));
+                        }}
                         className="text-[9px] text-red-600 font-bold hover:underline cursor-pointer"
                       >
                         Remove

@@ -8,6 +8,7 @@ import {
   IconChartBar,
 } from "@tabler/icons-react";
 import { getStudentOverviewStats, getStudentProfile } from "@/app/actions";
+import { UserNotificationBell } from "@/components/UserNotificationBell";
 
 type Stats = Awaited<ReturnType<typeof getStudentOverviewStats>>;
 type Profile = Awaited<ReturnType<typeof getStudentProfile>>;
@@ -243,8 +244,10 @@ export default function StudentOverviewPage() {
           </p>
         </div>
 
-        {/* Profile pill (desktop only — mobile shows this in the top bar) */}
-        <div className="hidden sm:flex items-center gap-2 pl-1.5 pr-4 py-1.5 border border-[#d0e0f8] bg-white rounded-full shadow-sm shrink-0">
+        {/* Desktop-only: notification bell + profile pill (mobile shows these in the top bar) */}
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+        <UserNotificationBell />
+        <div className="flex items-center gap-2 pl-1.5 pr-4 py-1.5 border border-[#d0e0f8] bg-white rounded-full shadow-sm shrink-0">
           <div className="w-8 h-8 rounded-full bg-[#0f2347] flex items-center justify-center font-heading text-xs font-extrabold text-[#ffc107] shadow-inner shrink-0">
             {profile?.avatarText ?? "S"}
           </div>
@@ -252,6 +255,7 @@ export default function StudentOverviewPage() {
             <p className="text-[12px] font-bold text-[#1B3A6B] leading-tight">{profile?.name ?? "Student"}</p>
             <p className="text-[10px] text-[#9BA8C0] leading-tight capitalize">{profile?.gradeLevel ?? "Student"}</p>
           </div>
+        </div>
         </div>
       </div>
 

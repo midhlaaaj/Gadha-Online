@@ -11,6 +11,7 @@ import {
   IconTrash,
   IconEye,
   IconAlertTriangle,
+  IconExternalLink,
 } from "@tabler/icons-react";
 import {
   getAdminData,
@@ -29,6 +30,7 @@ interface Session {
   id: string;
   title: string;
   mentor: string;
+  mentorNames?: string[];
   mentorAvatar: string;
   mentorColor: string;
   type: "1-on-1" | "Group";
@@ -64,6 +66,7 @@ export default function SessionsPage() {
   const [showMoreSessionDetails, setShowMoreSessionDetails] = useState(false);
   const [scheduleConflicts, setScheduleConflicts] = useState<ScheduleConflict[]>([]);
   const [checkingConflicts, setCheckingConflicts] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -94,6 +97,7 @@ export default function SessionsPage() {
         description: "",
         subject: "Mathematics",
         mentor: mentors[0]?.name || "Arjun Kapoor",
+        mentorNames: mentors[0] ? [mentors[0].name] : [],
         price: 0,
         type: "1-on-1",
         status: "Active",
@@ -106,11 +110,12 @@ export default function SessionsPage() {
         days: "Mon – Sat",
         reschedulePolicy: "Up to 4 hrs before",
         sessionDate: "",
-        sessionTime: "",
+        sessionTime: "10:00 AM",
         classLevel: "",
       });
     }
     setScheduleConflicts([]);
+    setFormError(null);
     setDrawerOpen(true);
   };
 
@@ -119,6 +124,7 @@ export default function SessionsPage() {
     setDrawerEditId(null);
     setShowMoreSessionDetails(false);
     setScheduleConflicts([]);
+    setFormError(null);
   };
 
   // Only Group sessions with a fixed weekly day-list or a specific date
@@ -150,6 +156,26 @@ export default function SessionsPage() {
   };
 
   const saveDrawerData = async () => {
+    setFormError(null);
+
+    if (!drawerForm.mentorNames || drawerForm.mentorNames.length === 0) {
+      setFormError("Assign at least one mentor to this session.");
+      return;
+    }
+
+    if (drawerForm.type === "Group") {
+      if (drawerForm.isRepeatable) {
+        const days = drawerForm.days ? drawerForm.days.split(",").map((d) => d.trim()).filter(Boolean) : [];
+        if (days.length === 0 || !drawerForm.sessionTime) {
+          setFormError("Pick at least one repeat day and a session time before saving — students can't book a session with no schedule.");
+          return;
+        }
+      } else if (!drawerForm.sessionDate || !drawerForm.sessionTime) {
+        setFormError("Set a session date and time before saving — students can't book a session with no schedule.");
+        return;
+      }
+    }
+
     const mentorId = mentors.find((m) => m.name === drawerForm.mentor)?.id;
     const proposed = getProposedSchedule();
 
@@ -193,7 +219,7 @@ export default function SessionsPage() {
         await loadData();
       } catch (err) {
         console.error("Error deleting session:", err);
-        alert("Couldn't delete this session. Please try again.");
+        alert(err instanceof Error ? err.message : "Couldn't delete this session. Please try again.");
       }
     }
   };
@@ -386,7 +412,10 @@ export default function SessionsPage() {
                   >
                     {s.mentorAvatar}
                   </div>
-                  <span className="text-[10px] text-text-muted font-medium">{s.mentor}</span>
+                  <span className="text-[10px] text-text-muted font-medium">
+                    {s.mentor}
+                    {(s.mentorNames?.length || 0) > 1 && ` +${s.mentorNames!.length - 1} more`}
+                  </span>
                   <span className="text-[8px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 ml-auto">
                     {s.type}
                   </span>
@@ -483,6 +512,7 @@ export default function SessionsPage() {
                         {s.mentorAvatar}
                       </div>
                       {s.mentor}
+                      {(s.mentorNames?.length || 0) > 1 && ` +${s.mentorNames!.length - 1} more`}
                     </div>
                   </td>
                   <td className="py-2.5 px-3 text-xs text-text-muted font-medium">{s.subject}</td>
@@ -651,18 +681,50 @@ export default function SessionsPage() {
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Assign Mentor</label>
-                <select
-                  className="text-xs p-2.5 border border-border-subtle rounded-lg outline-none bg-white cursor-pointer font-semibold text-[#1B3A6B]"
-                  value={drawerForm.mentor || "Arjun Kapoor"}
-                  onChange={(e) => setDrawerForm({ ...drawerForm, mentor: e.target.value })}
-                >
-                  {mentors.map((m) => (
-                    <option key={m.id} value={m.name}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="text-[10px] font-bold text-[#1B3A6B] uppercase">Assign Mentor(s)</label>
+                <p className="text-[10px] text-text-muted -mt-0.5 mb-1">
+                  Pick one or more tutors who can teach this session. Students choose which one they want when booking.
+                </p>
+                <div className="border border-border-subtle rounded-lg divide-y divide-border-subtle max-h-48 overflow-y-auto">
+                  {mentors.map((m) => {
+                    const selected = (drawerForm.mentorNames || []).includes(m.name);
+                    return (
+                      <div key={m.id} className="flex items-center gap-2.5 px-3 py-2">
+                        <input
+                          type="checkbox"
+                          id={`mentor-${m.id}`}
+                          checked={selected}
+                          onChange={(e) => {
+                            const current = drawerForm.mentorNames || (drawerForm.mentor ? [drawerForm.mentor] : []);
+                            const next = e.target.checked
+                              ? [...current, m.name]
+                              : current.filter((n) => n !== m.name);
+                            setDrawerForm({
+                              ...drawerForm,
+                              mentorNames: next,
+                              mentor: next[0] || drawerForm.mentor,
+                            });
+                          }}
+                          className="w-3.5 h-3.5 cursor-pointer accent-secondary"
+                        />
+                        <label htmlFor={`mentor-${m.id}`} className="flex-1 text-xs font-semibold text-[#1B3A6B] cursor-pointer">
+                          {m.name}
+                        </label>
+                        <Link
+                          href={`/mentors/${m.id}`}
+                          target="_blank"
+                          title={`View ${m.name}'s profile`}
+                          className="text-slate-400 hover:text-secondary transition-colors"
+                        >
+                          <IconExternalLink className="w-3.5 h-3.5" />
+                        </Link>
+                      </div>
+                    );
+                  })}
+                  {mentors.length === 0 && (
+                    <p className="text-[10px] text-text-muted px-3 py-2">No mentors available yet.</p>
+                  )}
+                </div>
               </div>
 
               {drawerForm.type === "Group" && (
@@ -853,6 +915,12 @@ export default function SessionsPage() {
                 </div>
               )}
             </div>
+
+            {formError && (
+              <div className="mx-6 mb-3 p-3.5 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-[11px] font-bold text-red-700">{formError}</p>
+              </div>
+            )}
 
             {scheduleConflicts.length > 0 && (
               <div className="mx-6 mb-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2">

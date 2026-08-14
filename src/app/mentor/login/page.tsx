@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
@@ -25,6 +25,13 @@ export default function MentorLoginPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const supabase = createClient();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("err") === "wrong_role") {
+      setError("That account isn't registered as a tutor. Sign in with a tutor account, or use the student/parent login if this is a different kind of account.");
+    }
+  }, []);
 
   const switchMode = (newMode: "signin" | "signup" | "forgot") => {
     setMode(newMode);
@@ -88,11 +95,24 @@ export default function MentorLoginPage() {
 
     try {
       if (mode === "signin") {
-        const { error: err } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error: err } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
         if (err) throw err;
+
+        if (signInData.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", signInData.user.id)
+            .single();
+          if (profile?.role !== "mentor") {
+            setError("That account isn't registered as a tutor. Sign in with a tutor account, or use the student/parent login if this is a different kind of account.");
+            setLoading(false);
+            return;
+          }
+        }
 
         keepLoading = true;
         setSuccess("Signed in successfully!");

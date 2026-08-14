@@ -20,6 +20,7 @@ import {
 import {
   getParentChildren,
   inviteChild,
+  updateChild,
   deleteChild,
   resendChildInvitation,
 } from "../actions";
@@ -49,8 +50,8 @@ export default function MyChildrenPage() {
   // handleAddOrEditChild, which currently only performs the "add" flow via
   // inviteChild() and fakes a success message for "edit" without persisting
   // changes. Kept as-is (not in scope) but retyped to satisfy lint.
-  const [, setSelectedChildId] = useState<string | null>(null);
-  const [, setSelectedIsInvite] = useState(false);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [selectedIsInvite, setSelectedIsInvite] = useState(false);
 
   // Form State
   const [inputName, setInputName] = useState("");
@@ -122,7 +123,12 @@ export default function MyChildrenPage() {
           grade: sanitizeText(inputClass).trim(),
         });
         setSuccess(`Child ${inputName} added successfully.`);
-      } else {
+      } else if (selectedChildId) {
+        await updateChild(selectedChildId, selectedIsInvite, {
+          name: sanitizeText(inputName).trim(),
+          grade: sanitizeText(inputClass).trim(),
+          email: selectedIsInvite ? inputEmail.trim() : undefined,
+        });
         setSuccess(`Child profile changes for ${inputName} saved.`);
       }
       setIsModalOpen(false);
@@ -146,10 +152,6 @@ export default function MyChildrenPage() {
     }
   };
 
-  // NOTE: pre-existing — this handler is not wired to any button in the JSX
-  // below (no "resend invite" action is rendered), so it is currently dead
-  // code. Kept as-is (not in scope) but retyped to satisfy lint.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleResendInvite = async (e: React.MouseEvent, inviteId: string) => {
     e.stopPropagation();
     setError(null);
@@ -285,13 +287,22 @@ export default function MyChildrenPage() {
                     {child.joined && (
                       <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-150 mt-1">
                         <IconCheck className="w-3 h-3 stroke-[3]" />
-                        Joined dashboard
+                        Ready to sign in
                       </span>
                     )}
                   </div>
 
                   {/* Actions */}
                   <div className="flex gap-1.5 absolute top-4 right-4">
+                    {!child.joined && (
+                      <button
+                        onClick={(e) => handleResendInvite(e, child.id)}
+                        className="w-7.5 h-7.5 border border-[#d0dcf5] hover:border-[#1B3A6B] bg-white text-slate-500 hover:text-[#1B3A6B] rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                        title="Resend invitation email"
+                      >
+                        <IconMail className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleOpenEditModal(child)}
                       className="w-7.5 h-7.5 border border-[#d0dcf5] hover:border-[#1B3A6B] bg-white text-slate-500 hover:text-[#1B3A6B] rounded-lg flex items-center justify-center transition-colors cursor-pointer"
@@ -445,10 +456,13 @@ export default function MyChildrenPage() {
                   placeholder="child@email.com"
                   value={inputEmail}
                   onChange={(e) => setInputEmail(e.target.value)}
-                  className="border border-[#d0dcf5] rounded-xl px-4 py-2.5 text-xs text-[#1B3A6B] font-medium outline-none focus:border-[#2F7FE8] transition-colors"
+                  disabled={modalMode === "edit" && !selectedIsInvite}
+                  className="border border-[#d0dcf5] rounded-xl px-4 py-2.5 text-xs text-[#1B3A6B] font-medium outline-none focus:border-[#2F7FE8] transition-colors disabled:bg-slate-50 disabled:text-slate-400"
                 />
                 <span className="text-[9px] text-slate-400 font-medium mt-0.5 leading-normal">
-                  Your child must use this exact email when signing up on the LMS login page to link their profile.
+                  {modalMode === "edit" && !selectedIsInvite
+                    ? "This is your child's active sign-in email and can't be changed here — contact support if it needs to change."
+                    : "Your child must use this exact email when signing up on the LMS login page to link their profile."}
                 </span>
               </div>
             </div>

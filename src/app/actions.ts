@@ -521,6 +521,20 @@ export async function getAdminData() {
     .select("*, mentor:mentors(profile:profiles(full_name, avatar_url))")
     .order("created_at", { ascending: false });
 
+  // Every mentor eligible to teach each session (a session can have more
+  // than one — students pick which one they want at booking time).
+  const { data: dbSessionMentors } = await supabase
+    .from("session_mentors")
+    .select("session_id, mentor:mentors(id, profile:profiles(full_name))");
+
+  const mentorNamesBySession: Record<string, string[]> = {};
+  for (const sm of dbSessionMentors || []) {
+    const name = sm.mentor?.profile?.full_name;
+    if (!name) continue;
+    if (!mentorNamesBySession[sm.session_id]) mentorNamesBySession[sm.session_id] = [];
+    mentorNamesBySession[sm.session_id].push(name);
+  }
+
   const sessions = (dbSessions || []).map((s: SessionWithMentor) => {
     const name = s.mentor?.profile?.full_name || "Unknown Mentor";
     const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
@@ -530,6 +544,7 @@ export async function getAdminData() {
       title: s.title,
       description: s.description || "",
       mentor: name,
+      mentorNames: mentorNamesBySession[s.id]?.length ? mentorNamesBySession[s.id] : [name],
       mentorAvatar: init,
       mentorColor: s.color_bg || "#1B3A6B",
       type: s.type,
@@ -913,7 +928,12 @@ export async function upsertCourse(course: CourseInput) {
 export async function deleteCourse(id: string) {
   const supabase = createAdminClient();
   const { error } = await supabase.from("courses").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "23503") {
+      throw new Error("This course has existing bookings and can't be deleted. Mark it as Draft/Inactive instead, or cancel its bookings first.");
+    }
+    throw new Error(error.message);
+  }
   revalidatePath("/");
   revalidatePath("/admin");
   return { success: true };
@@ -940,6 +960,7 @@ interface SessionInput {
   id?: string;
   session_id?: string;
   mentor: string;
+  mentorNames?: string[];
   title?: string;
   description?: string;
   subject: string;
@@ -970,11 +991,21 @@ export async function upsertSession(session: SessionInput) {
 
   if (session.subject) await ensureSubjectExists(session.subject);
 
-  // Resolve mentor
-  let mentorId = await resolveMentorIdByName(session.mentor);
+  // Resolve every assigned mentor's id — the primary `mentor` field stays
+  // the session's default/display mentor (first in the list), while
+  // session_mentors below tracks the full set students can choose between.
+  const names = session.mentorNames && session.mentorNames.length > 0 ? session.mentorNames : [session.mentor];
+  const resolvedIds: string[] = [];
+  for (const name of names) {
+    const id = await resolveMentorIdByName(name);
+    if (id && !resolvedIds.includes(id)) resolvedIds.push(id);
+  }
+
+  let mentorId = resolvedIds[0] || null;
   if (!mentorId) {
     const { data } = await supabase.from("mentors").select("id").limit(1).single();
     mentorId = data?.id || null;
+    if (mentorId) resolvedIds.push(mentorId);
   }
 
   if (!mentorId) {
@@ -1009,17 +1040,27 @@ export async function upsertSession(session: SessionInput) {
   };
 
   const isNew = !session.id || session.id.startsWith("s-");
+  let sessionId = session.id;
 
   if (isNew) {
-    const { error } = await supabase.from("sessions").insert([sessionData]);
+    const { data, error } = await supabase.from("sessions").insert([sessionData]).select("id").single();
     if (error) throw new Error(error.message);
+    sessionId = data.id;
   } else {
     const { error } = await supabase
       .from("sessions")
       .update(sessionData)
       .eq("id", session.id!);
     if (error) throw new Error(error.message);
+    sessionId = session.id!;
   }
+
+  // Sync the full set of eligible mentors for this session.
+  await supabase.from("session_mentors").delete().eq("session_id", sessionId);
+  const { error: mentorsErr } = await supabase
+    .from("session_mentors")
+    .insert(resolvedIds.map((id) => ({ session_id: sessionId!, mentor_id: id })));
+  if (mentorsErr) throw new Error(mentorsErr.message);
 
   revalidatePath("/");
   revalidatePath("/admin");
@@ -1029,7 +1070,12 @@ export async function upsertSession(session: SessionInput) {
 export async function deleteSession(id: string) {
   const supabase = createAdminClient();
   const { error } = await supabase.from("sessions").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "23503") {
+      throw new Error("This session has existing bookings and can't be deleted. Mark it as Inactive instead, or cancel its bookings first.");
+    }
+    throw new Error(error.message);
+  }
   revalidatePath("/");
   revalidatePath("/admin");
   return { success: true };
@@ -1214,6 +1260,24 @@ export async function ensureSubjectExists(name: string, iconName: string = "book
   if (!trimmed) throw new Error("Subject name is required");
 
   const supabase = createAdminClient();
+
+  // Case-insensitive check first — the DB unique constraint on `name` is
+  // exact-match, so "Math" and "math" would otherwise both get created.
+  const { data: existing } = await supabase
+    .from("subjects")
+    .select("id")
+    .ilike("name", trimmed)
+    .maybeSingle();
+
+  if (existing) {
+    revalidatePath("/");
+    revalidatePath("/courses");
+    revalidatePath("/sessions");
+    revalidatePath("/mentors");
+    revalidatePath("/admin/subjects");
+    return { success: true };
+  }
+
   const { error } = await supabase
     .from("subjects")
     .insert([{ name: trimmed, icon_name: iconName }])
@@ -1242,6 +1306,31 @@ export async function deleteSubject(id: string) {
 // ----------------------------------------------------
 // TESTIMONIALS
 // ----------------------------------------------------
+
+// Generic cleanup for any Supabase Storage public URL produced by the
+// upload* actions in this file — parses "<bucket>/<path>" out of the public
+// URL so callers don't need to track which bucket a given field came from.
+export async function deleteStorageFileByUrl(url: string) {
+  await assertAdminCaller();
+  if (!url) return { success: false };
+
+  const marker = "/storage/v1/object/public/";
+  const idx = url.indexOf(marker);
+  if (idx === -1) return { success: false };
+
+  const rest = url.slice(idx + marker.length);
+  const [bucket, ...pathParts] = rest.split("/");
+  const path = decodeURIComponent(pathParts.join("/"));
+  if (!bucket || !path) return { success: false };
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient.storage.from(bucket).remove([path]);
+  if (error) {
+    console.error("Failed to delete storage file:", error);
+    return { success: false };
+  }
+  return { success: true };
+}
 
 export async function uploadTestimonialMedia(formData: FormData) {
   const file = formData.get("file") as File;
@@ -2369,7 +2458,7 @@ export async function startConversationWithMentor(mentorId: string) {
   const { data: bookings } = await supabase
     .from("bookings")
     .select(`
-      session_id, course_id,
+      session_id, course_id, mentor_id,
       session:sessions(mentor_id),
       course:courses(mentor_id)
     `)
@@ -2377,7 +2466,7 @@ export async function startConversationWithMentor(mentorId: string) {
     .eq("status", "confirmed");
 
   const isEnrolledWithMentor = (bookings || []).some((b) => {
-    const targetMentorId = b.session?.mentor_id || b.course?.mentor_id;
+    const targetMentorId = b.mentor_id || b.session?.mentor_id || b.course?.mentor_id;
     return targetMentorId === mentorId;
   });
   if (!isEnrolledWithMentor) throw new Error("You can only message mentors you are enrolled with.");
@@ -2404,7 +2493,7 @@ export async function startConversationWithMentorAsParent(mentorId: string, chil
   const { data: bookings } = await supabase
     .from("bookings")
     .select(`
-      session_id, course_id,
+      session_id, course_id, mentor_id,
       session:sessions(mentor_id),
       course:courses(mentor_id)
     `)
@@ -2412,7 +2501,7 @@ export async function startConversationWithMentorAsParent(mentorId: string, chil
     .eq("status", "confirmed");
 
   const mentorTeachesChild = (bookings || []).some((b) => {
-    const targetMentorId = b.session?.mentor_id || b.course?.mentor_id;
+    const targetMentorId = b.mentor_id || b.session?.mentor_id || b.course?.mentor_id;
     return targetMentorId === mentorId;
   });
   if (!mentorTeachesChild) throw new Error("This mentor is not teaching your child.");
@@ -2476,6 +2565,36 @@ async function assertAdminCaller() {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (profile?.role !== "admin") throw new Error("Unauthorized");
   return user;
+}
+
+export async function getPlatformSettings() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("platform_settings")
+    .select("commission_rate, allow_signups")
+    .eq("id", 1)
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    commissionRate: Number(data.commission_rate),
+    allowSignups: data.allow_signups,
+  };
+}
+
+export async function updatePlatformSettings(data: { commissionRate: number; allowSignups: boolean }) {
+  await assertAdminCaller();
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .from("platform_settings")
+    .update({
+      commission_rate: data.commissionRate,
+      allow_signups: data.allowSignups,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", 1);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/settings");
+  return { success: true };
 }
 
 export async function getSupportConversations() {
@@ -2854,6 +2973,26 @@ export async function getSessionsPageData() {
 
   if (error) throw new Error(error.message);
 
+  const sessionIds = (dbSessions || []).map((s) => s.id);
+  const ratingBySession = new Map<string, number>();
+  if (sessionIds.length > 0) {
+    const { data: reviewRows } = await supabase
+      .from("reviews")
+      .select("session_id, rating")
+      .in("session_id", sessionIds);
+    const sums = new Map<string, { total: number; count: number }>();
+    for (const r of reviewRows || []) {
+      if (!r.session_id) continue;
+      const entry = sums.get(r.session_id) || { total: 0, count: 0 };
+      entry.total += r.rating;
+      entry.count += 1;
+      sums.set(r.session_id, entry);
+    }
+    for (const [id, { total, count } ] of sums) {
+      ratingBySession.set(id, Math.round((total / count) * 10) / 10);
+    }
+  }
+
   return (dbSessions || []).map((s) => {
     const name = s.mentor?.profile?.full_name || "Unknown Mentor";
     const init = name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
@@ -2872,6 +3011,7 @@ export async function getSessionsPageData() {
       colorBg: s.color_bg || "#ede9fe",
       iconName: s.icon_name || "writing",
       class_level: s.class_level || "",
+      rating: ratingBySession.get(s.id) || null,
     };
   });
 }
@@ -2893,6 +3033,25 @@ export async function getSessionDetails(id: string) {
   // Resolve initials for avatar fallback
   const mentorName = s.mentor?.profile?.full_name || "Unknown Mentor";
   const initials = mentorName.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
+
+  // Every mentor eligible to teach this session — a student picks one at
+  // booking time when there's more than one.
+  const { data: dbSessionMentors } = await supabase
+    .from("session_mentors")
+    .select("mentor:mentors(id, profile:profiles(full_name, avatar_url))")
+    .eq("session_id", id);
+
+  const availableMentors = (dbSessionMentors || [])
+    .filter((sm) => sm.mentor?.id)
+    .map((sm) => {
+      const name = sm.mentor!.profile?.full_name || "Unknown Mentor";
+      return {
+        id: sm.mentor!.id,
+        name,
+        avatarUrl: sm.mentor!.profile?.avatar_url || "",
+        avatarText: name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase(),
+      };
+    });
 
   const sessionMapped = {
     id: s.id,
@@ -2929,6 +3088,9 @@ export async function getSessionDetails(id: string) {
       experience: s.mentor?.experience || 5,
       bio: s.mentor?.bio || "",
     },
+    availableMentors: availableMentors.length > 0
+      ? availableMentors
+      : [{ id: s.mentor_id, name: mentorName, avatarUrl: s.mentor?.profile?.avatar_url || "", avatarText: initials }],
   };
 
   // 2. Fetch Related Sessions (same subject, excluding current session)
@@ -3397,19 +3559,90 @@ export async function inviteChild(data: {
 }
 
 export async function deleteChild(childId: string, isInvitation: boolean) {
-  const supabase = createAdminClient(); // Use admin client to allow user cascading / deletion
-  
+  const userClient = await createClient();
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const adminClient = createAdminClient(); // Use admin client to allow user cascading / deletion
+
   if (isInvitation) {
-    const { error } = await supabase
+    const { data: invite, error: fetchErr } = await adminClient
+      .from("student_invitations")
+      .select("parent_id")
+      .eq("id", childId)
+      .single();
+    if (fetchErr || !invite || invite.parent_id !== user.id) throw new Error("Invitation not found.");
+
+    const { error } = await adminClient
       .from("student_invitations")
       .delete()
       .eq("id", childId);
 
     if (error) throw new Error(error.message);
   } else {
+    const { data: student, error: fetchErr } = await adminClient
+      .from("students")
+      .select("parent_id")
+      .eq("id", childId)
+      .single();
+    if (fetchErr || !student || student.parent_id !== user.id) throw new Error("Child profile not found.");
+
     // Delete the student's auth user which cascades to profiles, students, etc.
-    const { error } = await supabase.auth.admin.deleteUser(childId);
+    const { error } = await adminClient.auth.admin.deleteUser(childId);
     if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/my-children");
+  return { success: true };
+}
+
+export async function updateChild(
+  childId: string,
+  isInvitation: boolean,
+  data: { name: string; grade: string; email?: string }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const adminClient = createAdminClient();
+
+  if (isInvitation) {
+    const { data: invite, error: fetchErr } = await adminClient
+      .from("student_invitations")
+      .select("parent_id")
+      .eq("id", childId)
+      .single();
+    if (fetchErr || !invite || invite.parent_id !== user.id) throw new Error("Invitation not found.");
+
+    const { error } = await adminClient
+      .from("student_invitations")
+      .update({
+        full_name: data.name,
+        grade_level: data.grade,
+        email: data.email ? data.email.trim().toLowerCase() : undefined,
+      })
+      .eq("id", childId);
+    if (error) throw new Error(error.message);
+  } else {
+    const { data: student, error: fetchErr } = await adminClient
+      .from("students")
+      .select("parent_id")
+      .eq("id", childId)
+      .single();
+    if (fetchErr || !student || student.parent_id !== user.id) throw new Error("Child profile not found.");
+
+    const { error: profileErr } = await adminClient
+      .from("profiles")
+      .update({ full_name: data.name })
+      .eq("id", childId);
+    if (profileErr) throw new Error(profileErr.message);
+
+    const { error: studentErr } = await adminClient
+      .from("students")
+      .update({ grade_level: data.grade })
+      .eq("id", childId);
+    if (studentErr) throw new Error(studentErr.message);
   }
 
   revalidatePath("/my-children");
@@ -3493,6 +3726,20 @@ export async function getParentBookings() {
 
   if (error) throw new Error(error.message);
 
+  // Session bookings get their real scheduled date/time from scheduled_classes
+  // (created alongside the booking — see createBookingRecord), not a fixed string.
+  const sessionBookingIds = (dbBookings || []).filter((b) => !b.course_id).map((b) => b.id);
+  const scheduledByBookingId = new Map<string, { scheduled_at: string; duration_minutes: number | null }>();
+  if (sessionBookingIds.length > 0) {
+    const { data: scheduledClasses } = await supabase
+      .from("scheduled_classes")
+      .select("booking_id, scheduled_at, duration_minutes")
+      .in("booking_id", sessionBookingIds);
+    for (const sc of scheduledClasses || []) {
+      if (sc.booking_id) scheduledByBookingId.set(sc.booking_id, sc);
+    }
+  }
+
   return (dbBookings || []).map((b) => {
     const childName = b.student?.profile?.full_name || "Unknown Child";
     const childInitials = childName.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
@@ -3507,8 +3754,15 @@ export async function getParentBookings() {
     let durationStr = "";
 
     if (!isCourse) {
-      dateTimeStr = "Wed, 18 Jun · 9:00 AM";
-      durationStr = "60 min";
+      const scheduled = scheduledByBookingId.get(b.id);
+      if (scheduled) {
+        const d = new Date(scheduled.scheduled_at);
+        dateTimeStr = d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+        durationStr = `${scheduled.duration_minutes || 60} min`;
+      } else {
+        dateTimeStr = "Timing to be confirmed";
+        durationStr = "";
+      }
     } else {
       const format = courseTarget?.format || "Live batch";
       if (format === "Recorded") {
@@ -3552,6 +3806,7 @@ export async function getParentBookings() {
       mentorName,
       price: Number(b.amount_paid || (isCourse ? courseTarget?.price : sessionTarget?.price) || 0),
       status: b.status, // pending, confirmed, cancelled, completed
+      paymentStatus: b.payment_status, // unpaid, paid, refunded
       colorBg: !isCourse ? (sessionTarget?.color_bg || "#ede9fe") : (courseTarget?.subject === "Programming" ? "#dcfce7" : courseTarget?.subject === "Mathematics" ? "#dbeafe" : courseTarget?.subject === "Science" ? "#fef9c3" : "#ede9fe"),
       iconName: !isCourse ? (sessionTarget?.icon_name || "writing") : (courseTarget?.subject === "Programming" ? "code" : courseTarget?.subject === "Mathematics" ? "math" : courseTarget?.subject === "Science" ? "flask" : "book"),
       dateTime: dateTimeStr,
@@ -4110,6 +4365,57 @@ export async function getStudentAssignments() {
   });
 }
 
+export async function submitAssignment(assignmentId: string, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: assignment, error: fetchErr } = await supabase
+    .from("assignments")
+    .select("id, student_id, status")
+    .eq("id", assignmentId)
+    .single();
+
+  if (fetchErr || !assignment) throw new Error("Assignment not found.");
+  if (assignment.student_id !== user.id) throw new Error("You can only submit your own assignments.");
+  if (assignment.status === "graded") throw new Error("This assignment has already been graded.");
+
+  const file = formData.get("file") as File | null;
+  if (!file) throw new Error("Please attach a file before submitting.");
+
+  const adminClient = createAdminClient();
+  const bucketName = "assignment-submissions";
+  const { data: buckets } = await adminClient.storage.listBuckets();
+  if (!buckets?.some((b) => b.name === bucketName)) {
+    await adminClient.storage.createBucket(bucketName, { public: true, fileSizeLimit: 10485760 });
+  }
+
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${assignmentId}-${Date.now()}.${fileExt}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: uploadErr } = await adminClient.storage
+    .from(bucketName)
+    .upload(fileName, buffer, { contentType: file.type, duplex: "half" });
+  if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
+
+  const { data: { publicUrl } } = adminClient.storage.from(bucketName).getPublicUrl(fileName);
+
+  const { error: updateErr } = await adminClient
+    .from("assignments")
+    .update({
+      status: "submitted",
+      submission_url: publicUrl,
+      submitted_at: new Date().toISOString(),
+    })
+    .eq("id", assignmentId);
+
+  if (updateErr) throw new Error(updateErr.message);
+
+  revalidatePath("/lms/assignments");
+  return { success: true };
+}
+
 export async function getStudentPerformance() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -4293,12 +4599,9 @@ export async function getMentorOverviewStats() {
       
     supabase
       .from("bookings")
-      .select(`
-        amount_paid,
-        session:sessions(mentor_id),
-        course:courses(mentor_id)
-      `)
+      .select("amount_paid")
       .eq("payment_status", "paid")
+      .eq("mentor_id", user.id)
       .gte("created_at", startOfMonth.toISOString())
   ]);
 
@@ -4323,13 +4626,7 @@ export async function getMentorOverviewStats() {
   }
 
   // Earnings this month
-  const earningsThisMonth = (bookings || []).reduce((acc: number, b) => {
-    const targetMentorId = b.session?.mentor_id || b.course?.mentor_id;
-    if (targetMentorId === user.id) {
-      return acc + Number(b.amount_paid);
-    }
-    return acc;
-  }, 0);
+  const earningsThisMonth = (bookings || []).reduce((acc: number, b) => acc + Number(b.amount_paid), 0);
 
   return {
     todayClassesCount: todayClasses?.length || 0,
@@ -4472,7 +4769,9 @@ export async function getMentorStudents() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  // Fetch bookings for sessions or courses taught by this mentor
+  // Fetch bookings actually assigned to this mentor (a session can have
+  // several eligible mentors, so this must be the booking's own mentor_id,
+  // not just any booking against a session/course this mentor is listed on)
   const { data: bookings, error } = await supabase
     .from("bookings")
     .select(`
@@ -4487,9 +4786,10 @@ export async function getMentorStudents() {
         profile:profiles(full_name, email, avatar_url),
         parent:parents(phone, profile:profiles(full_name, email))
       ),
-      session:sessions(title, subject, mentor_id),
-      course:courses(title, subject, mentor_id)
-    `);
+      session:sessions(title, subject),
+      course:courses(title, subject)
+    `)
+    .eq("mentor_id", user.id);
 
   if (error) throw new Error(error.message);
 
@@ -4511,9 +4811,6 @@ export async function getMentorStudents() {
 
   const studentsMap: Record<string, MentorStudentEntry> = {};
   for (const b of (bookings || [])) {
-    const mentorId = b.session?.mentor_id || b.course?.mentor_id;
-    if (mentorId !== user.id) continue;
-
     const studentId = b.student_id;
     const studentInfo = b.student;
     if (!studentInfo) continue;
@@ -4537,31 +4834,34 @@ export async function getMentorStudents() {
     }
   }
 
-  // Count attendance/classes for each student
+  // Count attendance/classes for each student, scoped to THIS mentor's own
+  // classes only — a student attendance rate shouldn't include classes taken
+  // with other mentors.
   const studentIds = Object.keys(studentsMap);
   if (studentIds.length > 0) {
-    const { data: attendance } = await supabase
-      .from("attendance_records")
-      .select("student_id, status")
-      .in("student_id", studentIds);
-
     const { data: classes } = await supabase
       .from("scheduled_classes")
-      .select("student_id")
+      .select("id, student_id")
       .eq("mentor_id", user.id)
       .in("student_id", studentIds);
-
-    for (const att of (attendance || [])) {
-      if (studentsMap[att.student_id]) {
-        if (att.status === "present") {
-          studentsMap[att.student_id].attendedClasses++;
-        }
-      }
-    }
 
     for (const cl of (classes || [])) {
       if (studentsMap[cl.student_id]) {
         studentsMap[cl.student_id].totalClasses++;
+      }
+    }
+
+    const mentorClassIds = (classes || []).map((cl) => cl.id);
+    if (mentorClassIds.length > 0) {
+      const { data: attendance } = await supabase
+        .from("attendance_records")
+        .select("student_id, status")
+        .in("scheduled_class_id", mentorClassIds);
+
+      for (const att of (attendance || [])) {
+        if (studentsMap[att.student_id] && att.status === "present") {
+          studentsMap[att.student_id].attendedClasses++;
+        }
       }
     }
   }
@@ -4826,7 +5126,7 @@ export async function getMentorEarnings() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  // Fetch all paid bookings for sessions or courses taught by this mentor
+  // Fetch all paid bookings actually assigned to this mentor
   const { data: bookings, error } = await supabase
     .from("bookings")
     .select(`
@@ -4840,17 +5140,15 @@ export async function getMentorEarnings() {
       student:students(
         profile:profiles(full_name)
       ),
-      session:sessions(title, subject, mentor_id, price),
-      course:courses(title, subject, mentor_id, price)
+      session:sessions(title, subject, price),
+      course:courses(title, subject, price)
     `)
-    .eq("payment_status", "paid");
+    .eq("payment_status", "paid")
+    .eq("mentor_id", user.id);
 
   if (error) throw new Error(error.message);
 
-  const mentorBookings = (bookings || []).filter((b) => {
-    const mentorId = b.session?.mentor_id || b.course?.mentor_id;
-    return mentorId === user.id;
-  });
+  const mentorBookings = bookings || [];
 
   const totalEarnings = mentorBookings.reduce((acc, b) => acc + Number(b.amount_paid), 0);
 
@@ -4918,6 +5216,7 @@ export async function getMentorProfile() {
     name: profile?.full_name ?? "Mentor",
     email: profile?.email ?? user.email ?? "",
     role: profile?.role ?? "mentor",
+    avatarUrl: profile?.avatar_url ?? "",
     avatarText: (profile?.full_name ?? "M")
       .split(" ")
       .map((w: string) => w[0])
@@ -5009,6 +5308,7 @@ async function createBookingRecord(params: {
   topicDetails?: string;
   attachmentUrl?: string;
   notifyAdminsOnCreate?: boolean;
+  selectedMentorId?: string;
 }): Promise<{ bookingId: string }> {
   const adminClient = createAdminClient();
   const { targetId, targetType, studentId, parentId } = params;
@@ -5056,6 +5356,19 @@ async function createBookingRecord(params: {
     iconName = session.icon_name || "book";
     isLiveIndividual = session.type === "1-on-1";
     sessionId = targetId;
+
+    // If this session has more than one eligible mentor, the student must
+    // pick one — and it must actually be assigned to this session.
+    if (params.selectedMentorId) {
+      const { data: eligible } = await adminClient
+        .from("session_mentors")
+        .select("mentor_id")
+        .eq("session_id", targetId)
+        .eq("mentor_id", params.selectedMentorId)
+        .maybeSingle();
+      if (!eligible) throw new Error("The selected tutor isn't available for this session.");
+      mentorId = params.selectedMentorId;
+    }
   }
 
   const bookingData: TablesInsert<"bookings"> = {
@@ -5064,6 +5377,7 @@ async function createBookingRecord(params: {
     status: "pending",
     payment_status: "unpaid",
     amount_paid: amountPaid,
+    mentor_id: mentorId,
   };
 
   if (courseId) {
@@ -5304,6 +5618,7 @@ export async function bookCourseOrSessionAction(data: {
   subject?: string;
   topicDetails?: string;
   attachmentUrl?: string;
+  selectedMentorId?: string;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -5355,6 +5670,7 @@ export async function bookCourseOrSessionAction(data: {
     subject: data.subject,
     topicDetails: data.topicDetails,
     attachmentUrl: data.attachmentUrl,
+    selectedMentorId: data.selectedMentorId,
     notifyAdminsOnCreate: true,
   });
 
@@ -5556,6 +5872,24 @@ export async function checkMentorScheduleConflict(
       date: other.date,
       time: `${other.displayTime} (${other.endMin - other.startMin} min)`,
     }));
+}
+
+// Same conflict check as checkMentorScheduleConflict, but scoped to the
+// calling mentor themself — used when a mentor schedules their own class.
+export async function checkMyScheduleConflict(
+  params: {
+    days?: string[];
+    sessionDate?: string;
+    startTime: string;
+    endTime: string;
+    excludeId?: string;
+    excludeType?: "course" | "session";
+  }
+): Promise<ScheduleConflict[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  return checkMentorScheduleConflict(user.id, params);
 }
 
 // Used by the mentor's own availability page to render already-committed
@@ -5773,15 +6107,20 @@ export async function updateVideoProgress(unitId: string, watchPercentage: numbe
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getClassAttendance(classId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
   const adminClient = createAdminClient();
 
   const { data: cls } = await adminClient
     .from("scheduled_classes")
-    .select("id, booking_id, student_id, title, subject, scheduled_at")
+    .select("id, booking_id, student_id, mentor_id, title, subject, scheduled_at")
     .eq("id", classId)
     .single();
 
   if (!cls) return { class: null, students: [], attendance: {} };
+  if (cls.mentor_id !== user.id) throw new Error("Unauthorized: this class doesn't belong to you.");
 
   const { data: booking } = await adminClient
     .from("bookings")
@@ -5829,15 +6168,20 @@ export async function markAttendance(
   classId: string,
   records: { studentId: string; status: "present" | "absent" | "excused" }[]
 ) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
   const adminClient = createAdminClient();
 
   const { data: cls } = await adminClient
     .from("scheduled_classes")
-    .select("scheduled_at, subject, booking_id")
+    .select("scheduled_at, subject, booking_id, mentor_id")
     .eq("id", classId)
     .single();
 
   if (!cls) throw new Error("Class not found");
+  if (cls.mentor_id !== user.id) throw new Error("Unauthorized: this class doesn't belong to you.");
 
   const sessionDate = new Date(cls.scheduled_at).toISOString().split("T")[0];
 
@@ -5859,11 +6203,16 @@ export async function markAttendance(
 }
 
 export async function markClassCompleted(classId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
   const adminClient = createAdminClient();
   const { error } = await adminClient
     .from("scheduled_classes")
     .update({ status: "completed" })
-    .eq("id", classId);
+    .eq("id", classId)
+    .eq("mentor_id", user.id);
 
   if (error) throw new Error(error.message);
 
@@ -6083,24 +6432,38 @@ async function createMentorNotifications(params: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function updateCourseJoinUrl(courseId: string, joinUrl: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
   const adminClient = createAdminClient();
-  const { error } = await adminClient
+  const { data, error } = await adminClient
     .from("courses")
     .update({ join_url: joinUrl || null })
-    .eq("id", courseId);
+    .eq("id", courseId)
+    .eq("mentor_id", user.id)
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Unauthorized: this course doesn't belong to you.");
   revalidatePath("/mentor/classes");
   revalidatePath("/dashboard/classes");
   return { success: true };
 }
 
 export async function updateSessionJoinUrl(sessionId: string, joinUrl: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
   const adminClient = createAdminClient();
-  const { error } = await adminClient
+  const { data, error } = await adminClient
     .from("sessions")
     .update({ join_url: joinUrl || null })
-    .eq("id", sessionId);
+    .eq("id", sessionId)
+    .eq("mentor_id", user.id)
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Unauthorized: this session doesn't belong to you.");
   revalidatePath("/mentor/classes");
   revalidatePath("/dashboard/classes");
   return { success: true };

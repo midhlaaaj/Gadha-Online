@@ -206,8 +206,8 @@ function SessionsPageContent() {
     if (minPrice && s.price < Number(minPrice)) return false;
     if (maxPrice && s.price > Number(maxPrice)) return false;
 
-    // Rating filter (simulated fallback to 5.0 for default reviews)
-    if (selectedRating !== null && 5.0 < selectedRating) return false;
+    // Rating filter — sessions with no reviews yet don't meet a minimum-rating filter
+    if (selectedRating !== null && (s.rating || 0) < selectedRating) return false;
 
     return true;
   });
@@ -632,7 +632,7 @@ function SessionsPageContent() {
                   <div>
                     <div className="flex items-center gap-2 border-t border-border-subtle pt-3 mb-4">
                       <span className="text-xs font-bold text-accent flex items-center gap-0.5">
-                        <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> 5.0
+                        <IconStar className="w-3.5 h-3.5 fill-accent text-accent" /> {s.rating ? s.rating.toFixed(1) : "New"}
                       </span>
                       <span className="ml-auto font-heading font-extrabold text-primary text-lg">
                         ₹{s.price.toLocaleString("en-IN")}/hr

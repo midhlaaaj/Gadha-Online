@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import {
   IconVideo, IconClock, IconCheck, IconX,
   IconPlayerPlay, IconBroadcast, IconCalendar,
-  IconLoader,
 } from "@tabler/icons-react";
-import { getStudentClasses, getStudentBookingsAction, getStudentScheduledClassesResolved } from "@/app/actions";
+import { getStudentClasses, getStudentBookingsAction } from "@/app/actions";
 
 type Classes = Awaited<ReturnType<typeof getStudentClasses>>;
 type AnyClass = Classes["today"][number];
@@ -144,28 +143,6 @@ export default function StudentClassesPage() {
   const [, setBookings] = useState<Awaited<ReturnType<typeof getStudentBookingsAction>>>([]);
   const [tab, setTab] = useState<SubTab>("today");
 
-  // Live booking classes schedule drill-down states
-  const [selectedLiveBooking, setSelectedLiveBooking] = useState<Awaited<ReturnType<typeof getStudentBookingsAction>>[number] | null>(null);
-  const [bookingClasses, setBookingClasses] = useState<Awaited<ReturnType<typeof getStudentScheduledClassesResolved>>>([]);
-  const [loadingBookingClasses, setLoadingBookingClasses] = useState(false);
-
-  // NOTE: not currently wired to any click handler in this page's JSX (pre-existing;
-  // the drill-down modal below is effectively unreachable). Kept as-is to avoid
-  // changing behavior; retyped only to satisfy no-explicit-any.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleOpenLiveBooking = async (b: Awaited<ReturnType<typeof getStudentBookingsAction>>[number]) => {
-    setSelectedLiveBooking(b);
-    setLoadingBookingClasses(true);
-    try {
-      const data = await getStudentScheduledClassesResolved(b.id);
-      setBookingClasses(data || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingBookingClasses(false);
-    }
-  };
-
   useEffect(() => {
     Promise.all([
       getStudentClasses().catch(() => null),
@@ -271,144 +248,6 @@ export default function StudentClassesPage() {
             </div>
           )}
         </>
-      )}
-
-
-
-      {/* Live Booking Classes Drill-Down Modal */}
-      {selectedLiveBooking && (
-        <div className="fixed inset-0 bg-[#0f2347]/30 backdrop-blur-xs flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl border border-[#D0DCF5] shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-scale-up">
-            <div className="flex items-center justify-between px-6 py-4.5 border-b border-[#F0F3FB]">
-              <div>
-                <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100">
-                  Course Schedule
-                </span>
-                <h3 className="text-[15px] font-extrabold font-heading text-[#1B3A6B] mt-1.5">
-                  {selectedLiveBooking.itemTitle}
-                </h3>
-                <p className="text-[11px] text-[#4A5A7A] mt-0.5">
-                  Mentor: {selectedLiveBooking.mentorName}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedLiveBooking(null)}
-                className="w-8 h-8 rounded-full border border-slate-100 flex items-center justify-center hover:bg-slate-50 cursor-pointer"
-              >
-                <IconX className="w-4 h-4 text-[#9BA8C0]" />
-              </button>
-            </div>
-
-            <div className="max-h-[350px] overflow-y-auto premium-scrollbar px-6 py-4 space-y-3">
-              {loadingBookingClasses ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-2">
-                  <IconLoader className="w-6 h-6 text-[#2F7FE8] animate-spin" />
-                  <p className="text-[11px] font-bold text-[#4A5A7A]">Loading schedule...</p>
-                </div>
-              ) : bookingClasses.length === 0 ? (
-                <p className="text-[12px] text-[#9BA8C0] text-center py-10 italic">
-                  No upcoming classes scheduled for this course yet.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {bookingClasses.map((c) => {
-                    const now = new Date();
-                    const classTime = new Date(c.scheduled_at);
-                    const minsUntil = (classTime.getTime() - now.getTime()) / 60000;
-                    const canJoin = c.status === "scheduled" && minsUntil <= 15 && minsUntil > -120;
-                    const isPastClass = minsUntil < -(c.duration_minutes || 60);
-
-                    const formatCountdown = () => {
-                      if (minsUntil <= 0) return null;
-                      if (minsUntil < 60) return `${Math.round(minsUntil)}m`;
-                      const h = Math.floor(minsUntil / 60);
-                      const m = Math.round(minsUntil % 60);
-                      return `${h}h ${m > 0 ? `${m}m` : ""}`;
-                    };
-
-                    const countdown = formatCountdown();
-                    const dateStr = classTime.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
-                    const timeStr = classTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-
-                    return (
-                      <div key={c.id} className="bg-[#F5F7FF] rounded-2xl border border-[#D0DCF5] p-4 flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-bold text-[#1B3A6B] truncate">{c.title}</p>
-                          <p className="text-[10px] text-[#4A5A7A] mt-0.5 font-semibold">
-                            {dateStr} at {timeStr} ({c.duration_minutes} mins)
-                          </p>
-                        </div>
-                        <div className="shrink-0 flex items-center gap-2">
-                          {c.attendance_status ? (
-                            c.attendance_status === "present" ? (
-                              <span className="text-[9px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full whitespace-nowrap">
-                                Attended
-                              </span>
-                            ) : c.attendance_status === "absent" ? (
-                              <span className="text-[9px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-full whitespace-nowrap">
-                                Absent
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full whitespace-nowrap">
-                                Excused
-                              </span>
-                            )
-                          ) : c.booking_created_at && (new Date(c.scheduled_at) < new Date(c.booking_created_at)) ? (
-                            <span className="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full whitespace-nowrap">
-                              Not Enrolled
-                            </span>
-                          ) : c.status === "scheduled" && (
-                            isPastClass ? (
-                              <span className="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full whitespace-nowrap">
-                                Session ended
-                              </span>
-                            ) : canJoin && c.join_url ? (
-                              <a
-                                href={c.join_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[10px] font-bold px-3 py-1.5 bg-[#2F7FE8] text-white rounded-full hover:bg-[#1B3A6B] transition-colors animate-pulse"
-                              >
-                                Join Class
-                              </a>
-                            ) : countdown ? (
-                              <span className="text-[9px] font-bold text-[#9BA8C0] bg-white border border-[#D0DCF5] px-2 py-1 rounded-full whitespace-nowrap">
-                                Starts in {countdown}
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded-full whitespace-nowrap">
-                                Upcoming
-                              </span>
-                            )
-                          )}
-                          {c.status === "completed" && (
-                            <span className="text-[9px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded-full whitespace-nowrap">
-                              Completed
-                            </span>
-                          )}
-                          {c.status === "cancelled" && (
-                            <span className="text-[9px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-1 rounded-full whitespace-nowrap">
-                              Cancelled
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-4 border-t border-[#F0F3FB] flex">
-              <button
-                onClick={() => setSelectedLiveBooking(null)}
-                className="w-full text-xs font-bold py-2.5 rounded-xl bg-slate-100 text-[#4A5A7A] hover:bg-slate-200 cursor-pointer"
-              >
-                Close Schedule
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

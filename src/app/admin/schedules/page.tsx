@@ -219,17 +219,18 @@ export default function SchedulesPage() {
 
     setSaving(true);
     try {
-      const recordsToUpdate = activeOcc.students.map((s) => {
-        const mark = editingAttendance[s.studentId];
-        return {
+      // Students left unmarked are skipped entirely — we shouldn't record an
+      // explicit "absent" for something the admin never actually marked.
+      const recordsToUpdate = activeOcc.students
+        .filter((s) => editingAttendance[s.studentId] && editingAttendance[s.studentId] !== "unmarked")
+        .map((s) => ({
           studentId: s.studentId,
           scheduledClassId: s.scheduledClassId,
           bookingId: s.bookingId,
-          status: mark === "unmarked" ? ("absent" as const) : mark,
+          status: editingAttendance[s.studentId] as "present" | "absent" | "excused",
           date: activeOcc.date,
           subject: selectedCard.subject,
-        };
-      });
+        }));
 
       await markAdminAttendance(recordsToUpdate);
       setModalOpen(false);

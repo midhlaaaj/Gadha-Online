@@ -51,7 +51,11 @@ export function rateLimit(
     max = 120; // Max 120 POST/API requests per minute
   }
 
-  const key = `${ip}:${isApi ? "api" : "post"}`;
+  // Auth requests get their own bucket, separate from general POST/API
+  // traffic — otherwise a burst of unrelated server-action calls (chat
+  // polling, form saves, etc.) could eat into the much stricter 10/min
+  // auth limit and lock a legitimate user out of the login page.
+  const key = `${ip}:${isApi ? "api" : isAuth ? "auth" : "post"}`;
   const now = Date.now();
 
   if (!ipStore[key] || ipStore[key].resetTime < now) {

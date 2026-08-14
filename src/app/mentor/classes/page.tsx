@@ -5,7 +5,7 @@ import {
   IconVideo, IconClock, IconCheck, IconX,
   IconCalendar, IconPlus, IconExternalLink,
   IconTrash, IconEdit, IconLoader, IconUsers,
-  IconLink, IconCheckbox,
+  IconLink, IconCheckbox, IconAlertTriangle,
 } from "@tabler/icons-react";
 import {
   getMentorClasses,
@@ -16,14 +16,12 @@ import {
   getClassAttendance,
   markAttendance,
   markClassCompleted,
-  updateCourseJoinUrl,
-  updateSessionJoinUrl,
+  checkMyScheduleConflict,
+  type ScheduleConflict,
 } from "@/app/actions";
+import { parseTimeToMinutes, minutesToTimeString } from "@/lib/schedule";
 
-type MentorClass = Awaited<ReturnType<typeof getMentorClasses>>[number] & {
-  bookingCourseId?: string;
-  bookingSessionId?: string;
-};
+type MentorClass = Awaited<ReturnType<typeof getMentorClasses>>[number];
 type StudentInfo = Awaited<ReturnType<typeof getMentorStudents>>[number];
 
 function ClassesSkeleton() {
@@ -152,20 +150,12 @@ function LinkModal({ cls, onClose, onSaved }: { cls: MentorClass; onClose: () =>
     e.preventDefault();
     setSaving(true);
     try {
-      if (cls.bookingCourseId) {
-        await updateCourseJoinUrl(cls.bookingCourseId, value);
-      } else if (cls.bookingSessionId) {
-        await updateSessionJoinUrl(cls.bookingSessionId, value);
-      } else {
-        await updateScheduledClass(cls.id, { joinUrl: value });
-      }
+      await updateScheduledClass(cls.id, { joinUrl: value });
       onSaved();
       onClose();
     } catch { alert("Failed to save meeting link"); }
     finally { setSaving(false); }
   };
-
-  const scope = cls.bookingCourseId ? "Course (applies to all sessions)" : cls.bookingSessionId ? "Session (applies to all students)" : "This class only";
 
   return (
     <div className="fixed inset-0 bg-[#0f2347]/30 backdrop-blur-xs flex items-center justify-center z-50">
@@ -173,7 +163,7 @@ function LinkModal({ cls, onClose, onSaved }: { cls: MentorClass; onClose: () =>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-[15px] font-extrabold font-heading text-[#1B3A6B]">Meeting Link</h3>
-            <p className="text-[10px] text-[#9BA8C0] mt-0.5">Scope: {scope}</p>
+            <p className="text-[10px] text-[#9BA8C0] mt-0.5">Applies to this class only</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full border border-slate-100 flex items-center justify-center hover:bg-slate-50 cursor-pointer"><IconX className="w-4 h-4 text-[#9BA8C0]" /></button>
         </div>
@@ -206,6 +196,8 @@ export default function MentorClassesPage() {
   const [linkModalClass, setLinkModalClass] = useState<MentorClass | null>(null);
   const [attendanceClassId, setAttendanceClassId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [scheduleConflicts, setScheduleConflicts] = useState<ScheduleConflict[]>([]);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -224,6 +216,7 @@ export default function MentorClassesPage() {
   const openAddModal = () => {
     setEditingClass(null);
     setFormData({ studentIndex: "", title: "", subject: "", scheduledAt: "", durationMinutes: 60, joinUrl: "" });
+    setScheduleConflicts([]);
     setIsModalOpen(true);
   };
 
@@ -233,11 +226,11 @@ export default function MentorClassesPage() {
     const d = new Date(c.scheduled_at);
     const localTime = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setFormData({ studentIndex: studIdx >= 0 ? studIdx.toString() : "", title: c.title, subject: c.subject, scheduledAt: localTime, durationMinutes: c.duration_minutes, joinUrl: c.join_url || "" });
+    setScheduleConflicts([]);
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSaveClass = async () => {
     setSubmitting(true);
     try {
       if (editingClass) {
@@ -251,6 +244,43 @@ export default function MentorClassesPage() {
       loadData();
     } catch { alert("Failed to schedule class"); }
     finally { setSubmitting(false); }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.scheduledAt) return;
+
+    setCheckingConflicts(true);
+    try {
+      const d = new Date(formData.scheduledAt);
+      const sessionDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      const startTime = minutesToTimeString(d.getHours() * 60 + d.getMinutes());
+      const duration = Number(formData.durationMinutes) || 60;
+      const startMinutes = parseTimeToMinutes(startTime);
+      const endTime = startMinutes === -1 ? startTime : minutesToTimeString(startMinutes + duration);
+
+      const conflicts = await checkMyScheduleConflict({
+        sessionDate,
+        startTime,
+        endTime,
+      });
+
+      if (conflicts.length > 0) {
+        setScheduleConflicts(conflicts);
+        return;
+      }
+    } catch (err) {
+      console.error("Conflict check failed:", err);
+    } finally {
+      setCheckingConflicts(false);
+    }
+
+    await doSaveClass();
+  };
+
+  const saveAnyway = async () => {
+    setScheduleConflicts([]);
+    await doSaveClass();
   };
 
   const handleCancelClass = async (classId: string) => {
@@ -430,12 +460,40 @@ export default function MentorClassesPage() {
                   <input type="url" placeholder="https://meet.google.com/..." value={formData.joinUrl} onChange={(e) => setFormData({ ...formData, joinUrl: e.target.value })} className="w-full text-[13px] px-3.5 py-2.5 rounded-xl border border-[#D0DCF5] text-[#1B3A6B] focus:outline-none focus:border-[#2F7FE8] font-semibold" />
                 </div>
               </div>
+              {scheduleConflicts.length > 0 && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                    <IconAlertTriangle className="w-4 h-4 shrink-0" />
+                    Schedule conflict
+                  </div>
+                  <ul className="space-y-1">
+                    {scheduleConflicts.map((c) => (
+                      <li key={`${c.type}-${c.id}`} className="text-[11px] text-amber-700 font-medium">
+                        Conflicts with {c.type} &quot;{c.name}&quot;{c.days ? ` on ${c.days}` : ""} at {c.time}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-amber-700">You can still save this class, or go back and change the time.</p>
+                </div>
+              )}
+
               <div className="border-t border-[#F0F3FB] pt-4 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 text-xs font-bold py-2.5 rounded-xl border border-[#D0DCF5] text-[#4A5A7A] hover:bg-slate-50 cursor-pointer">Cancel</button>
-                <button type="submit" disabled={submitting} className="flex-1 text-xs font-bold py-2.5 rounded-xl bg-[#2F7FE8] text-white hover:bg-[#1B3A6B] transition-all cursor-pointer flex items-center justify-center gap-1.5">
-                  {submitting && <IconLoader className="w-3.5 h-3.5 animate-spin" />}
-                  {editingClass ? "Reschedule" : "Create Class"}
-                </button>
+                {scheduleConflicts.length > 0 ? (
+                  <>
+                    <button type="button" onClick={() => setScheduleConflicts([])} className="flex-1 text-xs font-bold py-2.5 rounded-xl border border-[#D0DCF5] text-[#4A5A7A] hover:bg-slate-50 cursor-pointer">Go back and edit</button>
+                    <button type="button" onClick={saveAnyway} disabled={submitting} className="flex-1 text-xs font-bold py-2.5 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                      {submitting && <IconLoader className="w-3.5 h-3.5 animate-spin" />} Save anyway
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 text-xs font-bold py-2.5 rounded-xl border border-[#D0DCF5] text-[#4A5A7A] hover:bg-slate-50 cursor-pointer">Cancel</button>
+                    <button type="submit" disabled={submitting || checkingConflicts} className="flex-1 text-xs font-bold py-2.5 rounded-xl bg-[#2F7FE8] text-white hover:bg-[#1B3A6B] transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60">
+                      {(submitting || checkingConflicts) && <IconLoader className="w-3.5 h-3.5 animate-spin" />}
+                      {checkingConflicts ? "Checking availability..." : editingClass ? "Reschedule" : "Create Class"}
+                    </button>
+                  </>
+                )}
               </div>
             </form>
           </div>

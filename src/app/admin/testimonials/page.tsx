@@ -20,6 +20,7 @@ import {
   deleteTestimonial as apiDeleteTestimonial,
   toggleTestimonialStatus as apiToggleTestimonialStatus,
   uploadTestimonialMedia,
+  deleteStorageFileByUrl,
 } from "../../actions";
 import ImageCropperModal from "@/components/ImageCropperModal";
 
@@ -518,7 +519,11 @@ export default function TestimonialsPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setDrawerForm({ ...drawerForm, mediaUrl: "", mediaType: "" })}
+                      onClick={() => {
+                        const url = drawerForm.mediaUrl;
+                        setDrawerForm({ ...drawerForm, mediaUrl: "", mediaType: "" });
+                        if (url) deleteStorageFileByUrl(url).catch((err) => console.error("Failed to delete media file:", err));
+                      }}
                       className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer"
                     >
                       <IconX className="w-3.5 h-3.5" />

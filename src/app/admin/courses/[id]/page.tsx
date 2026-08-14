@@ -26,6 +26,7 @@ import {
   reorderCourseUnits,
   checkMentorScheduleConflict,
   getSubjects,
+  deleteStorageFileByUrl,
   type ScheduleConflict,
 } from "../../../actions";
 import { parseTimeToMinutes, minutesToTimeString } from "@/lib/schedule";
@@ -873,7 +874,11 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
                   </div>
                   <button
                     type="button"
-                    onClick={() => setEditForm({ ...editForm, coverImageUrl: "" })}
+                    onClick={() => {
+                      const url = editForm.coverImageUrl;
+                      setEditForm({ ...editForm, coverImageUrl: "" });
+                      if (url) deleteStorageFileByUrl(url).catch((err) => console.error("Failed to delete cover image:", err));
+                    }}
                     className="absolute top-4 right-4 bg-white/90 hover:bg-red-50 hover:text-red-600 text-xs font-bold px-2.5 py-1 rounded-lg border border-[#E6EBF8] cursor-pointer shadow"
                   >
                     Remove

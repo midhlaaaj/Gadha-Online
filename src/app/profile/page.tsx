@@ -603,8 +603,15 @@ export default function ProfilePage() {
                 <p className="text-xs font-bold text-[#1B3A6B]">Active sessions</p>
                 <p className="text-[10px] text-slate-400 mt-0.5 font-medium">You&apos;re signed in on 1 device</p>
               </div>
-              <button className="text-xs font-semibold px-4 py-2 border border-[#d0dcf5] text-[#1B3A6B] rounded-lg hover:border-[#1B3A6B] transition-colors cursor-pointer">
-                Manage
+              <button
+                onClick={async () => {
+                  if (!window.confirm("Sign out of all devices? You'll need to sign in again here too.")) return;
+                  await supabase.auth.signOut({ scope: "global" });
+                  window.location.href = "/";
+                }}
+                className="text-xs font-semibold px-4 py-2 border border-[#d0dcf5] text-[#1B3A6B] rounded-lg hover:border-[#1B3A6B] transition-colors cursor-pointer"
+              >
+                Sign out everywhere
               </button>
             </div>
           </div>

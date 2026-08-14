@@ -54,7 +54,7 @@ export async function updateSession(request: NextRequest) {
 
       if (profile?.role !== "student") {
         if (pathname !== "/lms/login") {
-          return NextResponse.redirect(new URL("/lms/login", request.url));
+          return NextResponse.redirect(new URL("/lms/login?err=wrong_role", request.url));
         }
       } else if (pathname === "/lms/login") {
         // If they are a student and on the login page, redirect them to overview
@@ -88,7 +88,7 @@ export async function updateSession(request: NextRequest) {
         .single();
 
       if (profile?.role !== "mentor") {
-        return NextResponse.redirect(new URL("/mentor/login", request.url));
+        return NextResponse.redirect(new URL("/mentor/login?err=wrong_role", request.url));
       }
     }
   }
@@ -118,7 +118,7 @@ export async function updateSession(request: NextRequest) {
         .single();
 
       if (profile?.role !== "admin") {
-        return NextResponse.redirect(new URL("/admin/login", request.url));
+        return NextResponse.redirect(new URL("/admin/login?err=wrong_role", request.url));
       }
     }
   }

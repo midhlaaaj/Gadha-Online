@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { IconX, IconCheck, IconCalendar, IconClock, IconUsers, IconChevronRight, IconAlertCircle } from "@tabler/icons-react";
+import { IconX, IconCheck, IconCalendar, IconClock, IconUsers, IconChevronRight, IconAlertCircle, IconPaperclip, IconUpload, IconExternalLink } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
-import { getParentChildren, bookCourseOrSessionAction } from "@/app/actions";
+import { getParentChildren, bookCourseOrSessionAction, uploadBookingAttachment } from "@/app/actions";
 import type { Tables } from "@/lib/supabase/database.types";
+import AuthModal from "@/components/AuthModal";
 
 type CourseDetails = Pick<Tables<"courses">, "id" | "format" | "duration_days" | "total_sessions" | "sessions_per_week" | "mentor_id">;
 type SessionDetails = Pick<Tables<"sessions">, "id" | "type" | "price" | "session_date" | "session_time" | "mentor_id" | "is_repeatable" | "days">;
@@ -80,6 +81,7 @@ export default function BookingModal({
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // States for Mentor Direct 1-on-1 Booking
   const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
@@ -93,11 +95,23 @@ export default function BookingModal({
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
   const [courseDetails, setCourseDetails] = useState<CourseDetails | null>(null);
   const [mentorActiveBatches, setMentorActiveBatches] = useState<MentorActiveBatch[]>([]);
+  const [selectedDuration, setSelectedDuration] = useState<60 | 90>(60);
+  const [topicDetails, setTopicDetails] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [availableMentors, setAvailableMentors] = useState<{ id: string; name: string; avatarText: string; avatarUrl: string }[]>([]);
+  const [selectedMentorId, setSelectedMentorId] = useState<string>("");
 
   const supabase = createClient();
 
   useEffect(() => {
     if (!isOpen) return;
+
+    setSelectedDuration(60);
+    setTopicDetails("");
+    setAttachmentFile(null);
+    setAvailableMentors([]);
+    setSelectedMentorId("");
 
     async function checkAuthAndLoadData() {
       try {
@@ -174,50 +188,35 @@ export default function BookingModal({
               if (sess.mentor_id) {
                 targetMentorId = sess.mentor_id;
               }
+
+              // Sessions can have more than one eligible mentor — fetch the
+              // full set so the student can pick who they want.
+              const { data: sessMentors } = await supabase
+                .from("session_mentors")
+                .select("mentor:mentors(id, profile:profiles(full_name, avatar_url))")
+                .eq("session_id", targetId);
+
+              const mentorList = (sessMentors || [])
+                .filter((sm) => sm.mentor?.id)
+                .map((sm) => {
+                  const name = sm.mentor!.profile?.full_name || "Unknown Mentor";
+                  return {
+                    id: sm.mentor!.id,
+                    name,
+                    avatarUrl: sm.mentor!.profile?.avatar_url || "",
+                    avatarText: name.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase(),
+                  };
+                });
+
+              setAvailableMentors(mentorList);
+              targetMentorId = (mentorList.find((m) => m.id === sess.mentor_id)?.id) || mentorList[0]?.id || targetMentorId;
             }
           } catch (e) {
             console.error("Failed to load session details:", e);
           }
         }
 
-        // Fetch mentor's availability if applicable (all paths except recorded courses have mentors)
-        if (targetMentorId) {
-          try {
-            const { data: ment } = await supabase
-              .from("mentors")
-              .select("availability")
-              .eq("id", targetMentorId)
-              .single();
-
-            const DEFAULT_MENTOR_AVAILABILITY = {
-              Monday: [{ start: "09:00 AM", end: "09:00 PM" }],
-              Tuesday: [{ start: "09:00 AM", end: "09:00 PM" }],
-              Wednesday: [{ start: "09:00 AM", end: "09:00 PM" }],
-              Thursday: [{ start: "09:00 AM", end: "09:00 PM" }],
-              Friday: [{ start: "09:00 AM", end: "09:00 PM" }],
-              Saturday: [],
-              Sunday: []
-            };
-
-            const availability = ment?.availability as MentorAvailabilityMap | null;
-            if (availability && Object.keys(availability).length > 0 && Object.values(availability).some((arr) => arr.length > 0)) {
-              setMentorAvailability(availability);
-            } else {
-              setMentorAvailability(DEFAULT_MENTOR_AVAILABILITY);
-            }
-
-            // Fetch active Live Batch courses taught by this mentor to block their calendar timing
-            const { data: activeBatches } = await supabase
-              .from("courses")
-              .select("title, batch_start_date, batch_end_date, class_days, class_timing")
-              .eq("mentor_id", targetMentorId)
-              .eq("format", "Live batch")
-              .eq("status", "Active");
-            setMentorActiveBatches(activeBatches || []);
-          } catch (e) {
-            console.error("Failed to load mentor availability:", e);
-          }
-        }
+        setSelectedMentorId(targetMentorId);
 
         // Check for existing bookings to detect duplicates
         const { data: dbBookings } = await supabase
@@ -253,6 +252,51 @@ export default function BookingModal({
       document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, []);
+
+  // Re-fetches whenever the chosen mentor changes — including the very
+  // first time it's set after the target's details load above.
+  useEffect(() => {
+    if (!isOpen || !selectedMentorId) return;
+
+    async function loadMentorAvailability() {
+      try {
+        const { data: ment } = await supabase
+          .from("mentors")
+          .select("availability")
+          .eq("id", selectedMentorId)
+          .single();
+
+        const DEFAULT_MENTOR_AVAILABILITY = {
+          Monday: [{ start: "09:00 AM", end: "09:00 PM" }],
+          Tuesday: [{ start: "09:00 AM", end: "09:00 PM" }],
+          Wednesday: [{ start: "09:00 AM", end: "09:00 PM" }],
+          Thursday: [{ start: "09:00 AM", end: "09:00 PM" }],
+          Friday: [{ start: "09:00 AM", end: "09:00 PM" }],
+          Saturday: [],
+          Sunday: []
+        };
+
+        const availability = ment?.availability as MentorAvailabilityMap | null;
+        if (availability && Object.keys(availability).length > 0 && Object.values(availability).some((arr) => arr.length > 0)) {
+          setMentorAvailability(availability);
+        } else {
+          setMentorAvailability(DEFAULT_MENTOR_AVAILABILITY);
+        }
+
+        const { data: activeBatches } = await supabase
+          .from("courses")
+          .select("title, batch_start_date, batch_end_date, class_days, class_timing")
+          .eq("mentor_id", selectedMentorId)
+          .eq("format", "Live batch")
+          .eq("status", "Active");
+        setMentorActiveBatches(activeBatches || []);
+      } catch (e) {
+        console.error("Failed to load mentor availability:", e);
+      }
+    }
+
+    loadMentorAvailability();
+  }, [isOpen, selectedMentorId, supabase]);
 
   const getAvailableTimesList = () => {
     const defaultTimes = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM"];
@@ -380,6 +424,12 @@ export default function BookingModal({
     (targetType === "session" && (sessionDetails?.type === "1-on-1" || sessionDetails?.is_repeatable)) ||
     (targetType === "course" && courseDetails?.format === "Live individual");
 
+  // Only plain 1-on-1 sessions support a 60/90-minute choice — repeatable
+  // group sessions and Live individual courses run on a fixed cadence set
+  // by the mentor/admin, not per-booking.
+  const isOneOnOneSession = targetType === "session" && sessionDetails?.type === "1-on-1";
+  const effectiveDuration = isOneOnOneSession ? selectedDuration : 60;
+
   if (!isOpen) return null;
 
   const handleBooking = async () => {
@@ -409,16 +459,36 @@ export default function BookingModal({
         throw new Error("The tutor is not available at the selected date and time. Please select an available slot.");
       }
 
+      if (targetType === "session" && availableMentors.length > 1 && !selectedMentorId) {
+        throw new Error("Please choose which tutor you'd like for this session.");
+      }
+
+      let attachmentUrl: string | undefined;
+      if (attachmentFile) {
+        setUploadingAttachment(true);
+        try {
+          const formData = new FormData();
+          formData.append("file", attachmentFile);
+          const uploadRes = await uploadBookingAttachment(formData);
+          attachmentUrl = uploadRes.publicUrl;
+        } finally {
+          setUploadingAttachment(false);
+        }
+      }
+
       const currentUserId = user?.id || "";
       const res = await bookCourseOrSessionAction({
         targetId,
         targetType,
         studentId: role === "student" ? currentUserId : selectedStudentId,
-        durationMinutes: isCustomScheduled ? 60 : durationMinutes,
+        durationMinutes: isCustomScheduled ? effectiveDuration : durationMinutes,
         selectedSlot: isCustomScheduled
           ? { day: getDayOfWeekName(selectedDateStr), time: selectedSlotTime }
           : selectedSlot,
         selectedDate: isCustomScheduled ? selectedDateStr : undefined,
+        topicDetails: isCustomScheduled && topicDetails.trim() ? topicDetails.trim() : undefined,
+        attachmentUrl,
+        selectedMentorId: targetType === "session" && availableMentors.length > 1 ? selectedMentorId : undefined,
       });
 
       if (res.success) {
@@ -433,7 +503,7 @@ export default function BookingModal({
     }
   };
 
-  const currentPrice = price;
+  const currentPrice = isOneOnOneSession && selectedDuration === 90 ? Math.round(price * 1.5) : price;
 
   const displayBookingDetailsStr = () => {
     if (targetType === "session" && isLiveIndividual && selectedDateStr) {
@@ -484,12 +554,12 @@ export default function BookingModal({
               </p>
             </div>
             <div className="flex flex-col gap-2 w-full mt-2">
-              <a
-                href="/mentor/login"
+              <button
+                onClick={() => setAuthModalOpen(true)}
                 className="py-3 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/95 shadow-md text-center transition-all"
               >
                 Sign In
-              </a>
+              </button>
               <button
                 onClick={onClose}
                 className="py-2.5 border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition-all"
@@ -562,9 +632,55 @@ export default function BookingModal({
                   {targetType === "session" && sessionDetails?.type === "Group" ? "Group Session" : targetType}
                 </p>
                 <h4 className="font-heading text-sm font-bold text-primary truncate">{title}</h4>
-                <p className="text-[11px] text-text-muted mt-0.5">Mentor: {mentorName}</p>
+                {availableMentors.length <= 1 && (
+                  <p className="text-[11px] text-text-muted mt-0.5">Mentor: {mentorName}</p>
+                )}
               </div>
             </div>
+
+            {/* Choose tutor — only shown when this session has more than one eligible mentor */}
+            {targetType === "session" && availableMentors.length > 1 && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Choose your tutor
+                </label>
+                <div className="space-y-1.5">
+                  {availableMentors.map((m) => (
+                    <div
+                      key={m.id}
+                      onClick={() => setSelectedMentorId(m.id)}
+                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                        selectedMentorId === m.id
+                          ? "border-secondary bg-[#F5F8FF]"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-secondary shrink-0 overflow-hidden">
+                        {m.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- small avatar inside a modal list, not worth next/image's overhead here
+                          <img src={m.avatarUrl} alt={m.name} className="w-full h-full object-cover" />
+                        ) : (
+                          m.avatarText
+                        )}
+                      </div>
+                      <span className={`flex-1 text-xs font-semibold truncate ${selectedMentorId === m.id ? "text-secondary" : "text-primary"}`}>
+                        {m.name}
+                      </span>
+                      <a
+                        href={`/mentors/${m.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title={`View ${m.name}'s profile`}
+                        className="text-slate-400 hover:text-secondary transition-colors shrink-0 p-1"
+                      >
+                        <IconExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Select student (Parents only) */}
             {role === "parent" && (
@@ -872,6 +988,78 @@ export default function BookingModal({
               );
             })()}
 
+            {/* Duration choice — 1-on-1 sessions only */}
+            {isOneOnOneSession && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Session duration
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([60, 90] as const).map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setSelectedDuration(mins)}
+                      className={`py-3 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                        selectedDuration === mins
+                          ? "border-secondary bg-[#F5F8FF] text-secondary"
+                          : "border-slate-200 text-slate-500 hover:border-slate-300"
+                      }`}
+                    >
+                      {mins} minutes
+                      {mins === 90 && <span className="block text-[10px] font-semibold opacity-70">+50% fee</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Topic details + optional attachment — 1-on-1 and repeatable sessions, and Live individual courses */}
+            {isCustomScheduled && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    What do you need help with? (optional)
+                  </label>
+                  <textarea
+                    value={topicDetails}
+                    onChange={(e) => setTopicDetails(e.target.value)}
+                    placeholder="e.g. Struggling with quadratic equations, chapter 4 homework..."
+                    rows={2}
+                    className="w-full text-xs p-3 border border-slate-200 rounded-lg outline-none text-primary focus:border-secondary resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Attach homework or reference (optional)
+                  </label>
+                  {attachmentFile ? (
+                    <div className="flex items-center gap-2 p-2.5 border border-slate-200 rounded-lg bg-slate-50">
+                      <IconPaperclip className="w-4 h-4 text-slate-400 shrink-0" />
+                      <span className="text-xs text-primary font-semibold truncate flex-1">{attachmentFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentFile(null)}
+                        className="text-slate-400 hover:text-red-500 cursor-pointer"
+                      >
+                        <IconX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 p-3 border border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-secondary hover:text-secondary transition-colors cursor-pointer text-xs font-semibold">
+                      <IconUpload className="w-4 h-4" />
+                      <span>Upload a file</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={(e) => setAttachmentFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Selected Timing & Location Summary (Only for Course/Session that have page-level selected slot) */}
             {isLiveIndividual && selectedSlot && (
@@ -1049,7 +1237,7 @@ export default function BookingModal({
                 {bookingLoading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Processing...</span>
+                    <span>{uploadingAttachment ? "Uploading attachment..." : "Processing..."}</span>
                   </>
                 ) : (
                   <>
@@ -1062,6 +1250,12 @@ export default function BookingModal({
           </div>
         )}
       </div>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        initialMode="signin"
+      />
     </div>
   );
 }

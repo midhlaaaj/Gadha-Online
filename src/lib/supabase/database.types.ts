@@ -156,6 +156,8 @@ export type Database = {
           status: string
           student_id: string
           subject: string
+          submission_url: string | null
+          submitted_at: string | null
           title: string
         }
         Insert: {
@@ -171,6 +173,8 @@ export type Database = {
           status?: string
           student_id: string
           subject: string
+          submission_url?: string | null
+          submitted_at?: string | null
           title: string
         }
         Update: {
@@ -186,6 +190,8 @@ export type Database = {
           status?: string
           student_id?: string
           subject?: string
+          submission_url?: string | null
+          submitted_at?: string | null
           title?: string
         }
         Relationships: [
@@ -342,6 +348,7 @@ export type Database = {
           id: string
           mentor_confirmed: boolean
           mentor_confirmed_at: string | null
+          mentor_id: string | null
           parent_id: string | null
           payment_collected_at: string | null
           payment_collected_by: string | null
@@ -362,6 +369,7 @@ export type Database = {
           id?: string
           mentor_confirmed?: boolean
           mentor_confirmed_at?: string | null
+          mentor_id?: string | null
           parent_id?: string | null
           payment_collected_at?: string | null
           payment_collected_by?: string | null
@@ -382,6 +390,7 @@ export type Database = {
           id?: string
           mentor_confirmed?: boolean
           mentor_confirmed_at?: string | null
+          mentor_id?: string | null
           parent_id?: string | null
           payment_collected_at?: string | null
           payment_collected_by?: string | null
@@ -399,6 +408,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
             referencedColumns: ["id"]
           },
           {
@@ -964,6 +980,27 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          allow_signups: boolean
+          commission_rate: number
+          id: number
+          updated_at: string | null
+        }
+        Insert: {
+          allow_signups?: boolean
+          commission_rate?: number
+          id?: number
+          updated_at?: string | null
+        }
+        Update: {
+          allow_signups?: boolean
+          commission_rate?: number
+          id?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1172,6 +1209,39 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_mentors: {
+        Row: {
+          created_at: string | null
+          mentor_id: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          mentor_id: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string | null
+          mentor_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_mentors_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_mentors_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]

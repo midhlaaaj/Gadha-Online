@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { IconSearch, IconUserMinus } from "@tabler/icons-react";
+import { IconSearch } from "@tabler/icons-react";
 import { getAdminData } from "../../actions";
 import { SkeletonDetailCard } from "@/components/Skeleton";
 
@@ -132,20 +132,6 @@ export default function StudentsPage() {
               </div>
             </div>
 
-            <div className="flex gap-2 pt-4 border-t border-[#E6EBF8] mt-4 font-sans">
-              <button
-                onClick={() => alert(`Showing profile insights for ${s.studentName}`)}
-                className="flex-1 text-xs font-bold py-2 rounded-xl bg-[#EBF2FF] text-[#1B3A6B] hover:bg-[#2F7FE8] hover:text-white transition-all cursor-pointer"
-              >
-                View Analytics
-              </button>
-              <button
-                onClick={() => alert("Suspend user account provisionally")}
-                className="px-3 text-xs py-2 rounded-xl border border-red-100 text-red-600 hover:bg-red-50 cursor-pointer flex items-center justify-center"
-              >
-                <IconUserMinus className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         ))}
 
